@@ -5,6 +5,7 @@ import { getName } from './auth.js';
 import { MS_DAY, fmtDate, uid } from './util.js';
 import { SITE } from './config.js';
 import { api } from './api.js';
+import * as db from './db.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
 export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
@@ -169,20 +170,23 @@ actions['dog-teksty'] = async (el) => {
 };
 
 // ===== porównanie ze stroną schroniska (cache w telefonie, odświeżany co 6 godzin) =====
-const SK = 'lapa.site';
-export const siteCache = () => { try { return JSON.parse(localStorage.getItem(SK)) || null; } catch { return null; } };
+// Pamięć podręczna w pamięci + IndexedDB (localStorage bywa wyłączony, np. w trybie prywatnym).
+let _site = null, _siteErr = null, _loaded = false;
+export const siteCache = () => _site;
+export const siteErr = () => _siteErr;
+export async function loadSite() { if (_loaded) return; _loaded = true; try { _site = (await db.metaGet('site')) || null; } catch { /* brak */ } }
 const idOf = (u) => (/\/(\d+)\/?$/.exec(u) || [])[1];
 export async function siteNew(force = false) {
-  const c = siteCache(); if (!force && c && Date.now() - c.ts < 6 * 3600e3) return c;
+  await loadSite();
+  if (!force && _site && Date.now() - _site.ts < 6 * 3600e3) return _site;
   try {
     const r = await api('/import/links', { timeout: 60000 }); const links = (r.links || []).filter((u) => idOf(u));
-    if (links.length >= 5) { const n = { ts: Date.now(), links }; localStorage.setItem(SK, JSON.stringify(n)); localStorage.removeItem(SK + 'err'); return n; }
-    localStorage.setItem(SK + 'err', `Serwer znalazł na stronie tylko ${links.length} psów. Zaktualizuj serwer (komenda aktualizuj.sh).`);
-  } catch (e) { try { localStorage.setItem(SK + 'err', e.status === 404 ? 'Serwer nie ma jeszcze funkcji sprawdzania strony. Zaktualizuj serwer (komenda aktualizuj.sh).' : e.status === 0 ? 'Brak połączenia z serwerem.' : 'Błąd (' + (e.status || '?') + '): ' + (e.message || '')); } catch {} }
-  return c;
+    if (links.length >= 5) { _site = { ts: Date.now(), links }; _siteErr = null; try { await db.metaSet('site', _site); } catch { /* tylko w pamięci */ } return _site; }
+    _siteErr = `Serwer znalazł na stronie tylko ${links.length} psów. Zaktualizuj serwer (komenda aktualizuj.sh).`;
+  } catch (e) { _siteErr = e.status === 404 ? 'Serwer nie ma jeszcze funkcji sprawdzania strony. Zaktualizuj serwer (komenda aktualizuj.sh).' : e.status === 0 ? 'Brak połączenia z serwerem.' : 'Błąd (' + (e.status || '?') + '): ' + (e.message || ''); }
+  return _site;
 }
-export const siteErr = () => { try { return localStorage.getItem(SK + 'err'); } catch { return null; } };
-export async function siteNewLinks() { const c = siteCache(); if (!c) return []; const have = new Set((await list('psy')).map((d) => String(d.zrodlo_id || ''))); return c.links.filter((u) => !have.has(idOf(u))); }
+export async function siteNewLinks() { await loadSite(); const c = siteCache(); if (!c) return []; const have = new Set((await list('psy')).map((d) => String(d.zrodlo_id || ''))); return c.links.filter((u) => !have.has(idOf(u))); }
 actions['site-retry'] = async () => { toast('Sprawdzam stronę schroniska…'); await siteNew(true); dispatchEvent(new HashChangeEvent('hashchange')); };
 actions['site-import-new'] = async (el) => {
   const links = await siteNewLinks(); const { importOne } = await import('./screens-psy.js'); el.disabled = true; let ok = 0;
