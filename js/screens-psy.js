@@ -5,6 +5,7 @@ import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
+import { dogBlock } from './adopcje.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -83,7 +84,7 @@ export async function card(id) {
   const km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
   const obs = obsAll.filter((o) => o.pies_id === id).sort((a, b) => b.ts - a.ts);
   const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks);
-  const interested = state.coordinator ? (await list('p_zainteresowani')).filter((z) => z.pies_id === id) : [];
+  const adBlock = state.coordinator ? await dogBlock(id) : null;
   return {
     tab: 'psy', nav: false, title: d.imie, live: true,
     html: html`<section class="dogtop"><div class="bar"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
@@ -102,9 +103,7 @@ export async function card(id) {
         <button class="row" data-act="dog-needs" data-id="${id}">${icon('medic')}<span class="rt"><b>Czego potrzebuje</b><small>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : 'Nic pilnego. Kliknij, żeby zgłosić potrzebę'}</small></span>${icon('chev')}</button>
         ${d.zrodlo_url ? html`<a class="row" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener">${icon('link')}<span class="rt"><b>Ogłoszenie na stronie schroniska</b><small>Otwórz w przeglądarce</small></span>${icon('chev')}</a>` : ''}
       </div>
-      ${state.coordinator ? html`<div class="sec"><h2>Zainteresowani adopcją</h2></div>
-        ${interested.length ? interested.map((z) => html`<div class="obs"><div class="oh"><b>${z.imie}</b><span>${z.status || ''}</span></div>${z.telefon ? html`<a href="tel:${z.telefon}" style="color:var(--green);font-weight:600">${z.telefon}</a>` : ''}<div style="white-space:pre-line">${z.notatka || ''}</div></div>`) : html`<p class="hint">Nikt jeszcze nie zapisany.</p>`}
-        <button class="btn ghost block sm" style="margin-top:10px" data-act="int-add" data-id="${id}">${icon('plus')} Dodaj osobę zainteresowaną</button>`
+      ${state.coordinator ? adBlock
         : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div>`}
       <div class="btnrow" style="margin-top:20px"><button class="btn block" data-act="dog-obs-add" data-id="${id}">${icon('pencil')} Zapisz obserwację</button></div>
       <div class="btnrow" style="margin-top:10px"><a class="btn ghost" href="#/spacer/${id}">${icon('walk')} Rozpocznij spacer</a><button class="btn ghost" data-act="dog-photo" data-id="${id}">${icon('camera')} Dodaj zdjęcie</button></div>
@@ -170,22 +169,6 @@ export function unlockSheet(after) {
     s.querySelector('#up').focus();
   });
 }
-actions['int-add'] = (el) => {
-  const dogId = el.dataset.id;
-  openSheet(`<h2>Osoba zainteresowana</h2><form id="zf" novalidate>
-    <div class="field"><label for="zi">Imię i nazwisko</label><input class="input" id="zi" maxlength="80"></div>
-    <div class="field"><label for="zt">Telefon</label><input class="input" id="zt" type="tel" maxlength="30"></div>
-    <div class="field"><label for="zs">Etap</label><select class="select" id="zs">${['Zainteresowanie', 'Rozmowa', 'Spotkanie z psem', 'Wizyta przedadopcyjna', 'Adopcja', 'Rezygnacja'].map((x) => `<option>${x}</option>`).join('')}</select></div>
-    <div class="field"><label for="zn">Notatka</label><textarea class="textarea" id="zn" maxlength="800"></textarea></div><div class="err" id="ze"></div>
-    <button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
-    s.querySelector('#zf').addEventListener('submit', async (e) => {
-      e.preventDefault(); const imie = s.querySelector('#zi').value.trim();
-      if (!imie) { s.querySelector('#ze').textContent = 'Wpisz imię.'; return; }
-      await save('p_zainteresowani', { pies_id: dogId, imie, telefon: s.querySelector('#zt').value.trim(), status: s.querySelector('#zs').value, notatka: s.querySelector('#zn').value.trim(), ts: Date.now(), autor: getName() });
-      closeSheet(); toast('Zapisane');
-    });
-  });
-};
 actions['dog-needs'] = async (el) => {
   const d = await get('psy', el.dataset.id); const cur = new Set(d.potrzeby || []);
   openSheet(`<h2>Czego potrzebuje ${esc(d.imie)}?</h2><p class="hint" style="margin:0 0 14px">Zaznacz, w czym wolontariusze mogą pomóc. Pojawi się to na ekranie „Pomoc”. Część potrzeb (np. brak zdjęć) aplikacja dodaje sama.</p>

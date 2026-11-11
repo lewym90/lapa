@@ -7,6 +7,7 @@ import { html, raw, icon, esc, openSheet, closeSheet, toast, actions } from './u
 import { VERSION } from './config.js';
 import { initUpdates } from './update.js';
 import * as T from './teczka.js';
+import * as A from './adopcje.js';
 import * as S from './screens-start.js';
 import * as P from './screens-psy.js';
 import * as W from './screens-spacer.js';
@@ -20,7 +21,7 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/wydarzenia$/, () => X.events()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => S.tasks()], [/^\/zrobic$/, () => T.zrobic()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => S.tasks()], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
@@ -125,6 +126,7 @@ actions.menu = () => {
     <a href="#/start">${icon('home').s}Start</a><a href="#/psy">${icon('paw').s}Psy</a>
     <a href="#/spacer">${icon('walk').s}Rozpocznij spacer</a><a href="#/zadania">${icon('check').s}Moje zadania</a>
     <a href="#/wydarzenia">${icon('calendar').s}Wydarzenia i sobotnie spacery</a><a href="#/transport">${icon('truck').s}Transport</a>
+    <a href="#/zrobic">${icon('check').s}Do zrobienia</a><a href="#/adopcje">${icon('heart').s}Adopcje</a><a href="#/dt">${icon('pin').s}Domy tymczasowe</a>
     <a href="#/pomoc">${icon('heart').s}Pomoc i potrzeby</a><a href="#/ustawienia">${icon('sliders').s}Ustawienia</a>
     <a href="#/dziekujemy">${icon('gift').s}Dziękujemy</a>
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
