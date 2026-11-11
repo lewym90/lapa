@@ -125,47 +125,53 @@ const textLines = (h) => decode(h.replace(/<(script|style|noscript|svg)[\s\S]*?<
   .split('\n').map((l) => l.replace(/[ \t ]+/g, ' ').trim()).filter(Boolean);
 const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9]/g, '');
 const titleCase = (x) => x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : x;
-const LABELS = { 'Płeć': 'plec', 'Wiek': 'wiek', 'Wielkość': 'wielkosc', 'Waga': 'waga', 'Wzrost': 'wzrost', 'Sierść': 'siersc' };
+const LABELS = { 'Płeć': 'plec', 'Wiek': 'wiek', 'Wielkość': 'wielkosc', 'Waga': 'waga', 'Wysokość w kłębie': 'wzrost', 'Wzrost': 'wzrost', 'Sierść': 'siersc', 'Status': 'status_txt' };
+const MIESIACE = { stycze: 1, luty: 2, marzec: 3, kwiecie: 4, maj: 5, czerwiec: 6, lipiec: 7, sierpie: 8, wrzesie: 9, pa: 10, listopad: 11, grudzie: 12 };
+const strip = (x) => decode(String(x).replace(/<[^>]+>/g, ' ')).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+// Struktura strony (Joomla TZ Portfolio): h2.TzArticleTitle, lista pól .tz_extrafield-item, hasło w .intro, opis w .text, galeria a[data-fancybox].
 function parseDog(h, u) {
   const m = DOG_PATH.exec(u.pathname), slug = decodeURIComponent(m[2]), id = m[3];
-  const status = m[1] === 'do-adopcji-pilne' ? 'pilne' : m[1] === 'adoptowane' ? 'adoptowany' : 'do_adopcji';
-  const lines = textLines(h);
-  const h1 = (/<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(h) || [])[1];
-  const h1t = h1 ? decode(h1.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
-  const first = h1t.split(/\s+[-–—:]\s+|[:!]/)[0].trim().split(' ')[0];
-  const name = first && norm(first) === norm(slug) ? titleCase(first) : titleCase(slug);
+  let status = m[1] === 'do-adopcji-pilne' ? 'pilne' : m[1] === 'adoptowane' ? 'adoptowany' : 'do_adopcji';
+  const title = (/<h2[^>]*class="[^"]*TzArticleTitle[^"]*"[^>]*>([\s\S]*?)<\/h2>/i.exec(h) || [])[1];
+  const name = title && strip(title) ? strip(title) : titleCase(slug);
   const fields = {};
-  for (const l of lines) { const f = /^(Płeć|Wiek|Wielkość|Waga|Wzrost|Sierść)\s*:\s*(.{1,60})$/.exec(l); if (f && !fields[LABELS[f[1]]]) fields[LABELS[f[1]]] = f[2].trim(); }
-  // opis: akapity po nagłówku psa, do początku sekcji kontaktu / zasad adopcji
-  let start = lines.findIndex((l) => h1t && l.startsWith(h1t.slice(0, 20)));
-  if (start < 0) start = lines.findIndex((l) => norm(l).startsWith(norm(name)));
-  const STOP = /(kontakt w sprawie adopcji|zasady adopcji|chcesz adoptować|zapraszamy do kontaktu|dane do wpłat|numer konta)/i;
-  const desc = [];
-  for (let i = start + 1; i < lines.length && start >= 0; i++) {
-    const l = lines[i]; if (STOP.test(l)) break;
-    if (/^(Płeć|Wiek|Wielkość|Waga|Wzrost|Sierść|Status)\s*:/.test(l) || l.length < 25) continue;
-    desc.push(l); if (desc.join('\n').length > 4000) break;
+  for (const chunk of h.split(/<li[^>]*tz_extrafield-item[^>]*>/i).slice(1)) {
+    const lab = strip((/tz_extrafield-label[^>]*>([\s\S]*?)<\/div>/i.exec(chunk) || [])[1] || '');
+    const valHtml = (/tz_extrafield-value[^>]*>([\s\S]*?)<\/div>\s*<\/li>/i.exec(chunk) || [])[1] || '';
+    const parts = [...valHtml.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((x) => strip(x[1])).filter(Boolean);
+    const val = (parts.length ? parts.join(', ') : strip(valHtml)).slice(0, 80);
+    if (LABELS[lab] && val && !fields[LABELS[lab]]) fields[LABELS[lab]] = val;
   }
+  const st = (fields.status_txt || '').toLowerCase(); delete fields.status_txt;
+  if (/pilny|pilne/.test(st)) status = 'pilne'; else if (/adoptowan/.test(st)) status = 'adoptowany'; else if (/w trakcie|zarezerw/.test(st)) status = 'w_trakcie'; else if (/do adopcji/.test(st)) status = status === 'pilne' ? 'pilne' : 'do_adopcji';
+  const intro = (/class="[^"]*\bintro\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(h) || [])[1];
+  const haslo = intro ? strip(intro).replace(new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–—:]\\s*', 'i'), '') : '';
+  // opis: akapity z bloku .text przed galerią/wideo i przed sekcją kontaktu/zasad
+  const tb = /class="[^"]*\btext\b[^"]*"[^>]*>([\s\S]*?)(?:<!--\s*JoomlaWorks|<div class="video-responsive"|$)/i.exec(h);
+  const STOP = /(kontakt w sprawie adopcji|zasady adopcji|przed adopcją obowiązuje|numer konta)/i;
+  const desc = [];
+  if (tb) for (const pm of tb[1].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) { const t = strip(pm[1]); if (!t || t.length < 3) continue; if (STOP.test(t)) break; desc.push(t); if (desc.join('\n').length > 4000) break; }
   const abs = (x) => { try { return new URL(decode(x), u).href; } catch { return ''; } };
-  const imgs = []; const re = /(?:https?:)?\/?[^"'\s()<>]*?_l\.jpe?g(?:\?[^"'\s()<>]*)?/gi; let im;
-  while ((im = re.exec(h))) { const a = abs(im[0].startsWith('//') ? 'https:' + im[0] : im[0]); if (a && SITE_HOSTS.has(new URL(a).hostname) && !imgs.includes(a)) imgs.push(a); }
-  if (!imgs.length) { const og = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i.exec(h); if (og) { const a = abs(og[1]); if (a) imgs.push(a); } }
+  const imgs = [];
+  const og = /<meta[^>]+(?:property=["']og:image["']|name=["']twitter:image["'])[^>]+content=["']([^"']+)/i.exec(h); if (og) { const a = abs(og[1]); if (a && SITE_HOSTS.has(new URL(a).hostname)) imgs.push(a); }
+  for (const g of h.matchAll(/<a[^>]+data-fancybox[^>]+href=["']([^"']+\.(?:jpe?g|png|webp))["']/gi)) { const a = abs(g[1]); if (a && SITE_HOSTS.has(new URL(a).hostname) && !imgs.includes(a)) imgs.push(a); }
+  if (imgs.length < 2) for (const g of h.matchAll(/["'(]((?:https?:)?\/?[^"'\s()<>]*?_l\.jpe?g)/gi)) { const a = abs(g[1].startsWith('//') ? 'https:' + g[1] : g[1]); if (a && SITE_HOSTS.has(new URL(a).hostname) && !imgs.includes(a)) imgs.push(a); }
   const yt = /(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([\w-]{11})/.exec(h);
-  return { url: u.origin + u.pathname.replace(/\/$/, ''), id, name, status, fields, opis: desc.join('\n\n'), zdjecia: imgs.slice(0, 20), film: yt ? 'https://www.youtube.com/watch?v=' + yt[1] : '',
-    debug: { h1: h1t, linie: lines.length, start, pol: Object.keys(fields) } };
+  const dm = /(?:poniedziałek|wtorek|środa|czwartek|piątek|sobota|niedziela),\s*(\d{1,2})\s+([a-zżźćńółęąś]+)\s+(\d{4})/i.exec(strip(h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, '')));
+  let opublikowano = null; if (dm) { const k = Object.keys(MIESIACE).find((x) => norm(dm[2]).startsWith(norm(x))); if (k) opublikowano = Date.UTC(+dm[3], MIESIACE[k] - 1, +dm[1], 10); }
+  return { url: u.origin + u.pathname.replace(/\/$/, ''), id, name, status, fields, haslo, opis: desc.join('\n\n'), zdjecia: imgs.slice(0, 24), film: yt ? 'https://www.youtube.com/watch?v=' + yt[1] : '', opublikowano,
+    debug: { pol: Object.keys(fields), zdj: imgs.length, akapity: desc.length } };
 }
 async function dogLinks() {
   const links = new Set();
-  for (const cat of ['psy-do-adopcji', 'do-adopcji-pilne']) {
-    for (let page = 1; page <= 15; page++) {
-      let h; try { h = await fetchHtml(`${SITE}/${cat}${page > 1 ? '?page=' + page : ''}`); } catch { break; }
-      const before = links.size, re = /href=["']((?:https?:\/\/(?:www\.)?schronisko-nowodwor\.com\.pl)?\/(?:psy-do-adopcji|do-adopcji-pilne)\/[^"'\/\s]+\/\d+)\/?["']/gi; let m;
-      while ((m = re.exec(h))) links.add(new URL(m[1], SITE).href);
-      if (links.size === before) break;
-      await new Promise((r) => setTimeout(r, 250));
-    }
+  for (const cat of ['psy-do-adopcji', 'do-adopcji-pilne']) for (let start = 0; start < 9 * 60; start += 9) { // lista: 9 psów na stronę, kolejne przez ?start=
+    let h; try { h = await fetchHtml(`${SITE}/${cat}${start ? '?start=' + start : ''}`); } catch { break; }
+    const before = links.size, re = /href=["']((?:https?:\/\/(?:www\.)?schronisko-nowodwor\.com\.pl)?\/(?:psy-do-adopcji|do-adopcji-pilne)\/[^"'\/\s]+\/\d+)\/?["']/gi; let m;
+    while ((m = re.exec(h))) links.add(new URL(m[1], SITE).href);
+    if (links.size === before) break;
+    await new Promise((r) => setTimeout(r, 250));
   }
-  return [...links].slice(0, 400);
+  return [...links].slice(0, 500);
 }
 const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
 fs.mkdirSync(PHOTO_DIR, { recursive: true });

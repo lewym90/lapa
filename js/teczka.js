@@ -4,6 +4,7 @@ import { list, save, remove, get } from './store.js';
 import { getName } from './auth.js';
 import { MS_DAY, fmtDate, uid } from './util.js';
 import { SITE } from './config.js';
+import { api } from './api.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
 export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
@@ -158,7 +159,7 @@ actions['dog-teksty'] = async (el) => {
     <div class="field"><label for="t_t">Gotowy tekst (możesz poprawić)</label><textarea class="textarea" id="t_t" style="min-height:220px"></textarea></div>
     <div class="btnrow"><button type="button" class="btn" id="t_c">Kopiuj</button><button type="button" class="btn ghost" id="t_s">Wyślij…</button></div>
     <div class="btnrow" style="margin-top:10px"><a class="btn ghost" id="t_wa" target="_blank" rel="noopener">WhatsApp</a><a class="btn ghost" id="t_sms">SMS</a></div></form>`, (s) => {
-    const w = s.querySelector('#t_w'), h = s.querySelector('#t_h'), t = s.querySelector('#t_t');
+    const w = s.querySelector('#t_w'), h = s.querySelector('#t_h'), t = s.querySelector('#t_t'); h.value = d.haslo || '';
     const fill = () => { t.value = TEKSTY[w.value].f(d, h.value.trim()); links(); };
     const links = () => { const e = encodeURIComponent(t.value); s.querySelector('#t_wa').href = 'https://wa.me/?text=' + e; s.querySelector('#t_sms').href = 'sms:?&body=' + e; };
     w.onchange = fill; h.oninput = fill; t.oninput = links; fill();
@@ -167,11 +168,28 @@ actions['dog-teksty'] = async (el) => {
   });
 };
 
+// ===== porównanie ze stroną schroniska (cache w telefonie, odświeżany co 6 godzin) =====
+const SK = 'lapa.site';
+export const siteCache = () => { try { return JSON.parse(localStorage.getItem(SK)) || null; } catch { return null; } };
+const idOf = (u) => (/\/(\d+)\/?$/.exec(u) || [])[1];
+export async function siteNew(force = false) {
+  const c = siteCache(); if (!force && c && Date.now() - c.ts < 6 * 3600e3) return c;
+  try { const r = await api('/import/links', { timeout: 60000 }); const links = (r.links || []).filter((u) => idOf(u)); if (links.length >= 5) { const n = { ts: Date.now(), links }; localStorage.setItem(SK, JSON.stringify(n)); return n; } } catch { /* offline */ }
+  return c;
+}
+export async function siteNewLinks() { const c = siteCache(); if (!c) return []; const have = new Set((await list('psy')).map((d) => String(d.zrodlo_id || ''))); return c.links.filter((u) => !have.has(idOf(u))); }
+actions['site-import-new'] = async (el) => {
+  const links = await siteNewLinks(); const { importOne } = await import('./screens-psy.js'); el.disabled = true; let ok = 0;
+  for (let i = 0; i < links.length; i++) { toast(`Importuję ${i + 1} z ${links.length}…`); try { await importOne(links[i]); ok++; } catch { /* kolejny */ } }
+  toast(`Zaimportowano: ${ok}`); dispatchEvent(new HashChangeEvent('hashchange'));
+};
+
 // ===== zaległości (ekran „Do zrobienia” i licznik na Starcie) =====
 export function gaps(dogs, zdrAll) {
-  const out = [], now = Date.now();
+  const out = [], now = Date.now(), sc = siteCache(), onSite = sc && sc.links.length >= 10 ? new Set(sc.links.map(idOf)) : null;
   for (const d of dogs) {
     if (!aktywny(d)) continue; const k = d.kanaly || {};
+    if (onSite && d.zrodlo_id && !onSite.has(String(d.zrodlo_id)) && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
     if (d.nowy && !d.ocena) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
     if (!hasPics(d)) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
     if (d.nowy && !(d.opis || '').trim()) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
@@ -184,12 +202,12 @@ export function gaps(dogs, zdrAll) {
   return out.sort((a, b) => b.sev - a.sev || (a.d.imie || '').localeCompare(b.d.imie || '', 'pl'));
 }
 export async function zrobic() {
-  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr);
+  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); await siteNew(); const nw = await siteNewLinks();
   const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
   return {
     tab: 'start', title: 'Do zrobienia', live: true,
-    html: html`${pageBar('Do zrobienia')}<div class="pad stack">${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
-      : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`}</div>`,
+    html: html`${pageBar('Do zrobienia')}<div class="pad stack">${nw.length ? html`<div class="card gap"><span class="rt"><b>Na stronie schroniska: ${nw.length} ${nw.length === 1 ? 'pies, którego' : 'psów, których'} nie ma w aplikacji</b><small>${nw.slice(0, 4).map((u) => decodeURIComponent(u.split('/').slice(-2)[0])).join(', ')}${nw.length > 4 ? '…' : ''}</small></span><button class="btn sm" data-act="site-import-new">Importuj</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
+      : (nw.length ? '' : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`)}</div>`,
     mount(root) { import('./photos.js').then((m) => m.hydratePhotos(root)); }
   };
 }

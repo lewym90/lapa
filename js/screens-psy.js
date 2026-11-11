@@ -218,8 +218,8 @@ export function dogFromImport(imp, old = {}) {
     imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
     status: imp.status || old.status || 'do_adopcji', opis: imp.opis || old.opis || '', zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
-    film: imp.film || old.film || '', zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
-    www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || Date.now() }
+    zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
+    haslo: imp.haslo || old.haslo || '', film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
   };
 }
 export async function importOne(url) {
