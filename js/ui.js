@@ -14,9 +14,10 @@ let sheetClose = null;
 export function openSheet(content, onMount) {
   closeSheet();
   const root = document.getElementById('sheet-root');
-  root.innerHTML = `<div class="scrim" data-sheet-close></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${content}</div>`;
+  root.innerHTML = `<div class="scrim" data-sheet-close></div><div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><button type="button" class="sheetx" data-sheet-close aria-label="Zamknij">&times;</button>${content}</div>`;
   const sheet = root.querySelector('.sheet');
   root.querySelector('.scrim').addEventListener('click', closeSheet);
+  sheet.querySelector('.sheetx').addEventListener('click', closeSheet);
   const onKey = (e) => { if (e.key === 'Escape') closeSheet(); };
   document.addEventListener('keydown', onKey);
   sheetClose = () => document.removeEventListener('keydown', onKey);

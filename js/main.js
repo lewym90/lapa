@@ -177,5 +177,6 @@ on('sync', () => paintSync(document.getElementById('sp')));
   await render();
   kick(100);
   initUpdates();
+  setTimeout(() => { if (state.loggedIn) P.refreshStale(); }, 4000);
 })();
 export { render, lock, unlock, emit, logout, raw };

@@ -40,7 +40,7 @@ function grid(dogs, walks) {
   const f = filterDogs(dogs);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
   return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3><div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
   const [dogs, walks] = await Promise.all([list('psy'), list('spacery')]);
@@ -218,7 +218,7 @@ export function dogFromImport(imp, old = {}) {
     id: old.id || (imp.id ? 'd' + imp.id : 'm' + uid()),
     imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
-    status: imp.status || old.status || 'do_adopcji', opis: imp.opis || old.opis || '', zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
+    status: imp.status || old.status || 'do_adopcji', opis: imp.opis || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), parser: 2, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
     zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
     haslo: imp.haslo || old.haslo || '',
     miejsce: old.miejsce || (/domu tymczasowym|dom tymczasowy/i.test(imp.haslo || '') ? 'dt' : /hotel/i.test(imp.haslo || '') ? 'hotelik' : undefined),
@@ -297,3 +297,15 @@ actions['dog-print'] = async (el) => {
   const done = () => { box.remove(); removeEventListener('afterprint', done); };
   addEventListener('afterprint', done); print();
 };
+
+// Jednorazowe odświeżenie psów zaimportowanych starszym parserem (błędne opisy, brak cech)
+let refreshing = false;
+export async function refreshStale() {
+  if (refreshing || !navigator.onLine) return; refreshing = true;
+  try {
+    const stale = (await list('psy')).filter((d) => d.zrodlo_url && (d.parser || 0) < 2);
+    let n = 0;
+    for (const d of stale) { try { await importOne(d.zrodlo_url); n++; } catch (e) { if (e instanceof ApiError && (e.status === 401 || e.status === 0)) break; } }
+    if (n) { toast(`Odświeżono opisy i cechy: ${n} psów`); dispatchEvent(new HashChangeEvent('hashchange')); }
+  } finally { refreshing = false; }
+}
