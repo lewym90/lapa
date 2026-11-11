@@ -10,3 +10,7 @@ W repozytorium nie ma haseł ani kluczy. Hasła wolontariusza i koordynatora są
 ## Nowa wersja
 
 Po zmianach uruchom `./bump.sh 1.1.0` (ustawia wersję w config.js, sw.js i version.json), zrób commit i push. Aplikacje u wolontariuszy zaktualizują się same po ponownym otwarciu.
+
+
+## Dokumentacja
+Stan projektu, wdrożenie, decyzje i testy: [docs/STAN.md](docs/STAN.md).
