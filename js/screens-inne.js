@@ -10,6 +10,7 @@ import { pickDog, unlockSheet, dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
+import { resetSiteStatus } from './teczka.js';
 import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
@@ -50,7 +51,7 @@ actions['walk-post'] = (el) => {
     pod: `Dziękujemy za dzisiejszy spacer! Przyszło ${'__'} osób, psy były szczęśliwe. Do zobaczenia za tydzień, PSYJACIELE!`
   };
   openSheet(`<h2>Post o spacerze</h2><form novalidate><div class="field"><label for="wk">Rodzaj</label><select class="select" id="wk"><option value="przyp">Przypomnienie</option><option value="prze">Spacery przesunięte</option><option value="odw">Odwołanie spaceru</option><option value="pod">Podsumowanie i podziękowanie</option></select></div>
-    <div class="field"><label for="wt">Tekst (możesz poprawić)</label><textarea class="textarea" id="wt" style="min-height:160px"></textarea></div>
+    <div class="field"><label for="wt">Tekst (możesz poprawić)</label><textarea class="textarea" data-nodraft id="wt" style="min-height:160px"></textarea></div>
     <div class="btnrow"><button type="button" class="btn" id="wc">Kopiuj</button><button type="button" class="btn ghost" id="ws">Wyślij…</button></div></form>`, (s) => {
     const w = s.querySelector('#wk'), x = s.querySelector('#wt'); if (el.dataset.mode) w.value = el.dataset.mode; const fill = () => { x.value = T[w.value]; }; w.onchange = fill; fill();
     s.querySelector('#wc').onclick = async () => { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch { x.select(); } };
@@ -212,7 +213,7 @@ actions['set-site'] = async () => {
   try { await api('/site/sync', { method: 'POST', body: {} }); } catch { toast('Brak połączenia z serwerem', true); return; }
   for (let i = 0; i < 120; i++) {
     await new Promise((r) => setTimeout(r, 2500)); const h = await api('/health').catch(() => null), s = h && h.site, el = document.getElementById('sitest'); if (!s) continue; if (el) el.textContent = siteText(s);
-    if (!s.running && s.t > t0) { kick(10); toast(s.ok ? (s.nowych ? `Nowych psów: ${s.nowych}` : 'Sprawdzone. Brak nowych psów') : 'Nie udało się sprawdzić strony', !s.ok); return; }
+    if (!s.running && s.t > t0) { resetSiteStatus(); kick(10); if (location.hash === '#/zrobic') dispatchEvent(new HashChangeEvent('hashchange')); toast(s.ok ? (s.nowych ? `Nowych psów: ${s.nowych}` : 'Sprawdzone. Brak nowych psów') : 'Nie udało się sprawdzić strony', !s.ok); return; }
     if (i >= 3 && !s.running && s.t === t0) { toast('Serwer sprawdzał stronę przed chwilą'); return; }
   }
 };

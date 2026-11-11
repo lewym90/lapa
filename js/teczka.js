@@ -161,7 +161,7 @@ actions['dog-teksty'] = async (el) => {
   openSheet(`<h2>Teksty: ${esc(d.imie)}</h2><form novalidate>
     ${SEL('t_w', 'Rodzaj', Object.entries(TEKSTY).map(([k, v]) => [k, v.l]), 'post')}
     <div class="field"><label for="t_h">Hasło (np. „będziesz ze mnie dumny”)</label><input class="input" id="t_h" maxlength="80" placeholder="krótkie hasło o charakterze"></div>
-    <div class="field"><label for="t_t">Gotowy tekst (możesz poprawić)</label><textarea class="textarea" id="t_t" style="min-height:220px"></textarea></div>
+    <div class="field"><label for="t_t">Gotowy tekst (możesz poprawić)</label><textarea class="textarea" data-nodraft id="t_t" style="min-height:220px"></textarea></div>
     <div class="btnrow"><button type="button" class="btn" id="t_c">Kopiuj</button><button type="button" class="btn ghost" id="t_s">Wyślij…</button></div>
     <div class="btnrow" style="margin-top:10px"><a class="btn ghost" id="t_wa" target="_blank" rel="noopener">WhatsApp</a><a class="btn ghost" id="t_sms">SMS</a></div></form>`, (s) => {
     const w = s.querySelector('#t_w'), h = s.querySelector('#t_h'), t = s.querySelector('#t_t'); h.value = d.haslo || '';
@@ -173,37 +173,21 @@ actions['dog-teksty'] = async (el) => {
   });
 };
 
-// ===== porównanie ze stroną schroniska (cache w telefonie, odświeżany co 6 godzin) =====
-// Pamięć podręczna w pamięci + IndexedDB (localStorage bywa wyłączony, np. w trybie prywatnym).
-let _site = null, _siteErr = null, _loaded = false;
-export const siteCache = () => _site;
-export const siteErr = () => _siteErr;
-export async function loadSite() { if (_loaded) return; _loaded = true; try { _site = (await db.metaGet('site')) || null; } catch { /* brak */ } }
-const idOf = (u) => (/\/(\d+)\/?$/.exec(u) || [])[1];
-export async function siteNew(force = false) {
-  await loadSite();
-  if (!force && _site && Date.now() - _site.ts < 6 * 3600e3) return _site;
-  try {
-    const r = await api('/import/links', { timeout: 60000 }); const links = (r.links || []).filter((u) => idOf(u));
-    if (links.length >= 5) { _site = { ts: Date.now(), links }; _siteErr = null; try { await db.metaSet('site', _site); } catch { /* tylko w pamięci */ } return _site; }
-    _siteErr = `Serwer znalazł na stronie tylko ${links.length} psów. Zaktualizuj serwer (komenda aktualizuj.sh).`;
-  } catch (e) { _siteErr = e.status === 404 ? 'Serwer nie ma jeszcze funkcji sprawdzania strony. Zaktualizuj serwer (komenda aktualizuj.sh).' : e.status === 0 ? 'Brak połączenia z serwerem.' : 'Błąd (' + (e.status || '?') + '): ' + (e.message || ''); }
-  return _site;
+// ===== stan automatycznego sprawdzania strony (robi je serwer 3 razy dziennie) =====
+let _st = null, _stT = 0;
+export const resetSiteStatus = () => { _stT = 0; };
+export async function siteStatus() {
+  if (_st && Date.now() - _stT < 5 * 60e3) return _st;
+  try { const h = await api('/health'); _st = (h && h.site) || null; _stT = Date.now(); } catch { /* brak sieci: zostaje poprzedni stan */ }
+  return _st;
 }
-export async function siteNewLinks() { await loadSite(); const c = siteCache(); if (!c) return []; const have = new Set((await list('psy')).map((d) => String(d.zrodlo_id || ''))); return c.links.filter((u) => !have.has(idOf(u))); }
-actions['site-retry'] = async () => { toast('Sprawdzam stronę schroniska…'); await siteNew(true); dispatchEvent(new HashChangeEvent('hashchange')); };
-actions['site-import-new'] = async (el) => {
-  const links = await siteNewLinks(); const { importOne } = await import('./screens-psy.js'); el.disabled = true; let ok = 0;
-  for (let i = 0; i < links.length; i++) { toast(`Importuję ${i + 1} z ${links.length}…`); try { await importOne(links[i]); ok++; } catch { /* kolejny */ } }
-  toast(`Zaimportowano: ${ok}`); dispatchEvent(new HashChangeEvent('hashchange'));
-};
 
 // ===== zaległości (ekran „Do zrobienia” i licznik na Starcie) =====
 export function gaps(dogs, zdrAll) {
-  const out = [], now = Date.now(), sc = siteCache(), onSite = sc && sc.links.length >= 10 ? new Set(sc.links.map(idOf)) : null;
+  const out = [], now = Date.now();
   for (const d of dogs) {
     if (!aktywny(d)) continue; const k = d.kanaly || {};
-    if (onSite && d.zrodlo_id && !onSite.has(String(d.zrodlo_id)) && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
+    if (d.poza_strona && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
     if (d.auto_dodany && Date.now() - d.auto_dodany < 5 * MS_DAY) out.push({ d, kind: 'autonowy', sev: 2, text: 'Dodany automatycznie ze strony. Sprawdź dane i miejsce pobytu', act: 'dog-miejsce' });
     if (d.nowy && !d.ocena) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
     if (!hasPics(d)) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
@@ -218,12 +202,12 @@ export function gaps(dogs, zdrAll) {
 }
 import { dzisItems, dzisCard } from './terminarz.js';
 export async function zrobic() {
-  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); await siteNew(); const nw = await siteNewLinks(), err = siteCache() ? null : siteErr();
+  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); const st = await siteStatus(), err = st && st.enabled !== false && st.ok === false ? st.blad || 'Nieznany błąd.' : null;
   const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
   return {
     tab: 'start', title: 'Dziś i do zrobienia', live: true,
-    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div><div class="sec" style="margin-top:0"><h2>Do uzupełnienia u psów</h2></div><div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Nie udało się sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="site-retry">Spróbuj</button></div>` : ''}${nw.length ? html`<div class="card gap"><span class="rt"><b>Na stronie schroniska: ${nw.length} ${nw.length === 1 ? 'pies, którego' : 'psów, których'} nie ma w aplikacji</b><small>${nw.slice(0, 4).map((u) => decodeURIComponent(u.split('/').slice(-2)[0])).join(', ')}${nw.length > 4 ? '…' : ''}</small></span><button class="btn sm" data-act="site-import-new">Importuj</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
-      : (nw.length || err ? '' : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`)}</div>`,
+    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div><div class="sec" style="margin-top:0"><h2>Do uzupełnienia u psów</h2></div><div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Serwer nie mógł sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="set-site">Sprawdź teraz</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
+      : (err ? '' : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`)}</div>`,
     mount(root) { import('./photos.js').then((m) => m.hydratePhotos(root)); }
   };
 }

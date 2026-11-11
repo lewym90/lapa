@@ -40,7 +40,7 @@ with sync_playwright() as p:
     pg.select_option('#f_t','wplata'); pg.fill('#f_k','1250,50'); pg.select_option('#f_z','licytacja'); pg.click('#ff button[type=submit]'); pg.wait_for_timeout(700)
     pg.click('[data-act=fin-add]'); pg.wait_for_selector('#ff'); pg.fill('#f_k','300'); pg.select_option('#f_c','karma'); pg.select_option('#f_p','m1'); pg.click('#ff button[type=submit]'); pg.wait_for_timeout(700)
     pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('zdrowie',{pies_id:'m1',typ:'kastracja',data:Date.now(),koszt:450,notatka:''});}"""); pg.evaluate("location.hash='#/start'"); pg.evaluate("location.hash='#/finanse'"); pg.wait_for_selector('.card'); pg.wait_for_timeout(700)
-    t=pg.inner_text('#app'); check('finanse: wpłaty', '1 250,50 zł' in t or '1 250,50 zł' in t)
+    t=pg.inner_text('#app').replace('\u00a0',' ').replace('\u202f',' '); check('finanse: wpłaty', '1250,50 zł' in t or '1 250,50 zł' in t)
     check('finanse: wydatki z leczeniem (750)', '750,00 zł' in t); check('finanse: saldo 500,50', '500,50 zł' in t); check('finanse: koszt na psa Nimus', 'Nimus' in t)
     pg.screenshot(path='f_fin.png',full_page=True)
     ctx2,pg2=newpage(b,{'width':390,'height':844}); login(pg2,'wolontariusz-haslo-1','Basia'); pg2.wait_for_timeout(2500)

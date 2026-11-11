@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.2, 2026-11-11)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.3, 2026-11-11)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -38,3 +38,12 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 
 ## Testy
 W katalogu `tests/`: skrypty Playwright (`e*.py`) i test serwera (`s1.mjs`, atrapa strony schroniska). Używają lokalnego serwera API na porcie 18999 i statycznego na 8000 (`python3 -m http.server 8000` w katalogu repo). `tests/restart_api.sh` uruchamia czysty serwer testowy (kopiuje serwer do /tmp/t). Testy zależą od stanu: przed każdym uruchomieniem restartować API z czystą bazą. Znany nieszkodliwy błąd w e5: „finanse: wpłaty” (zapis liczby z separatorem tysięcy).
+
+
+## Audyt 1.8.3 (2026-11-11)
+- Plakat / karta psa do druku: podgląd pełnoekranowy (`printPreview` w ui.js) z przyciskami Zamknij i Drukuj (samo `print()` w PWA na telefonie nie działało).
+- Szkice formularzy: pola z `data-nodraft` (wygenerowane teksty postów) nie są zapamiętywane, bo nadpisywały odświeżony post.
+- Serwer: nagłówki CORS także przy błędach (błąd importu nie udaje już „brak połączenia"), zapis klienta wygrywa z wpisem `strona`, znacznik `poza_strona` (pies zniknął ze strony), czyszczenie historii >365 dni. Wymaga aktualizacji serwera (komenda w aktualizuj.sh z hashem commitu).
+- Klient: status strony z `/health` (bez własnego sprawdzania), usunięte martwe fragmenty.
+- Testy: tests/e*.py zaktualizowane do nowego menu; `s1.mjs` test serwera.
+- Nie sprawdzone na prawdziwym telefonie: drukowanie z iOS (podgląd działa, samo okno druku zależy od systemu).

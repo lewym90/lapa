@@ -1,5 +1,5 @@
 // Zaginione psy: karta alarmowa, tekst posta z aktualizacjami, plakat do wydruku.
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, safeUrl, confirmSheet, plusBtn } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, safeUrl, confirmSheet, plusBtn, printPreview } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { getName } from './auth.js';
 import { fmtDate } from './util.js';
@@ -53,7 +53,7 @@ async function form(z, dogs) {
 actions['zag-open'] = async (el) => {
   const z = await get('zaginiecia', el.dataset.id); if (!z) return;
   openSheet(`<h2>${esc(z.imie)}${aktywne(z) ? '' : ' (znaleziony)'}</h2><p class="sub" style="margin:0 0 8px">Zaginął(a) ${esc(fmtDate(z.kiedy))}${z.gdzie ? ' · ' + esc(z.gdzie) : ''}</p>
-    <div class="field"><label for="z_pt">Gotowy post (możesz poprawić)</label><textarea class="textarea" id="z_pt" style="min-height:200px"></textarea></div>
+    <div class="field"><label for="z_pt">Gotowy post (możesz poprawić)</label><textarea class="textarea" data-nodraft id="z_pt" style="min-height:200px"></textarea></div>
     <div class="btnrow"><button class="btn" id="z_c">Kopiuj</button><button class="btn ghost" id="z_s">Wyślij…</button></div>
     <div class="btnrow" style="margin-top:8px"><button class="btn ghost" id="z_pl">Plakat do wydruku</button><a class="btn ghost" id="z_wa" target="_blank" rel="noopener">WhatsApp</a></div>
     ${aktywne(z) ? `<div class="field" style="margin-top:14px"><label for="z_u">Aktualizacja (np. widziany w Wólce)</label><input class="input" id="z_u" maxlength="200"><button class="btn ghost block sm" style="margin-top:6px" id="z_ua">Dodaj aktualizację do posta</button></div>
@@ -62,7 +62,7 @@ actions['zag-open'] = async (el) => {
     const t = s.querySelector('#z_pt'); t.value = postZ(z); const wa = () => { s.querySelector('#z_wa').href = 'https://wa.me/?text=' + encodeURIComponent(t.value); }; wa(); t.oninput = wa;
     s.querySelector('#z_c').onclick = async () => { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { t.select(); } };
     s.querySelector('#z_s').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: t.value }); } catch {} } else { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch {} } };
-    s.querySelector('#z_pl').onclick = () => plakat(z);
+    s.querySelector('#z_pl').onclick = () => { closeSheet(); plakat(z); };
     s.querySelector('#z_ua')?.addEventListener('click', async () => { const v = s.querySelector('#z_u').value.trim(); if (!v) return; await save('zaginiecia', { ...z, akt: [...(z.akt || []), { ts: Date.now(), text: v, autor: getName() }] }); closeSheet(); actions['zag-open'](el); });
     s.querySelector('#z_f')?.addEventListener('click', async () => {
       await save('zaginiecia', { ...z, status: 'znaleziony', znaleziony_ts: Date.now() });
@@ -75,8 +75,7 @@ actions['zag-open'] = async (el) => {
 };
 async function plakat(z) {
   const d = z.pies_id ? await get('psy', z.pies_id) : null; const pic = d && (d.zdjecia || [])[0];
-  const box = document.createElement('div'); box.className = 'printonly';
-  box.innerHTML = `<div style="font-family:Arial,sans-serif;text-align:center;padding:10mm;max-width:190mm;margin:auto;color:#111">
+  const inner = `<div style="font-family:Arial,sans-serif;text-align:center;padding:10mm;max-width:190mm;margin:auto;color:#111">
     <div style="font-size:72px;font-weight:900;color:#b00020;letter-spacing:.04em">ZAGINĄŁ PIES</div>
     <div style="font-size:54px;font-weight:800;margin:6px 0">${esc(String(z.imie).toUpperCase())}</div>
     ${pic && safeUrl(pic) ? `<img src="${esc(safeUrl(pic))}" referrerpolicy="no-referrer" style="width:100%;max-height:300px;object-fit:cover;border-radius:10px;margin:8px 0">` : ''}
@@ -85,8 +84,6 @@ async function plakat(z) {
     <div style="font-size:21px;margin:14px 0;font-weight:700">${esc(z.rada || 'Nie goń. Zwab jedzeniem, zrób zdjęcie i zadzwoń.')}</div>
     <div style="font-size:46px;font-weight:900;border:6px solid #b00020;border-radius:12px;padding:10px;margin-top:10px">${esc(z.kontakt || KONTAKT_DOM)}</div>
     <div style="font-size:15px;margin-top:10px;color:#444">Wolontariat Schroniska dla Psów w Nowodworze</div></div>`;
-  document.body.appendChild(box);
-  const im = box.querySelector('img'); if (im && !im.complete) await Promise.race([new Promise((r) => { im.onload = im.onerror = r; }), new Promise((r) => setTimeout(r, 4000))]);
-  const done = () => { box.remove(); removeEventListener('afterprint', done); }; addEventListener('afterprint', done); print();
+  await printPreview(inner, 'Plakat');
 }
 export async function aktywneLiczba() { return (await list('zaginiecia')).filter(aktywne).length; }

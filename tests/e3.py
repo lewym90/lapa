@@ -47,7 +47,7 @@ with sync_playwright() as p:
     check('zaległość: brak zdjęć', 'Brak zdjęć' in t)
     pg.screenshot(path='n_zrobic.png',full_page=True)
     pg.evaluate("location.hash='#/start'"); pg.wait_for_selector('.tile'); pg.wait_for_timeout(500)
-    check('start: kafel Do zrobienia z licznikiem', 'Do zrobienia' in pg.inner_text('.tiles') and pg.locator('.tile .badge').count()>=1)
+    check('start: kafel Do zrobienia z licznikiem', 'do zrobienia' in pg.inner_text('.tiles') and pg.locator('.tile .badge').count()>=1)
     pg.screenshot(path='n_start.png')
     # teksty
     pg.evaluate("location.hash='#/psy'"); pg.wait_for_selector('.dcard'); pg.click('.dcard'); pg.wait_for_selector('[data-act=dog-teksty]'); pg.click('[data-act=dog-teksty]'); pg.wait_for_selector('#t_t')
@@ -59,7 +59,7 @@ with sync_playwright() as p:
     pg.screenshot(path='n_teksty.png'); pg.keyboard.press('Escape')
     # wydarzenia bez zapisów
     pg.evaluate("location.hash='#/wydarzenia'"); pg.wait_for_selector('.ev.walk'); pg.wait_for_timeout(400)
-    t=pg.inner_text('#app'); check('wydarzenia: brak zapisów', 'Zgłoś udział' not in t and 'zapisał' not in t and 'Otwarty dla wszystkich' in t)
+    t=pg.inner_text('#app'); check('wydarzenia: brak zapisów', 'Zgłoś udział' not in t and 'zapisał' not in t and 'Sobotnie spacery' in t)
     pg.click('[data-act=walk-post]'); pg.wait_for_selector('#wt'); check('post o spacerze', 'PSYpominamy' in pg.input_value('#wt')); pg.keyboard.press('Escape')
     pg.screenshot(path='n_wyd.png',full_page=True)
     # import łączy po imieniu

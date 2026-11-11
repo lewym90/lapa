@@ -94,7 +94,7 @@ function readJson(req) {
 }
 const COL_RE = /^[a-z][a-z0-9_]{0,39}$/, ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const isPrivate = (col) => col.startsWith('p_');
-const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',').pop().trim();
 
 
 // ---------- import ze strony schroniska (tylko ta jedna domena, tylko adresy psów) ----------
@@ -257,6 +257,15 @@ async function syncSite(reason = 'auto') {
       } catch (e) { res.nieudanych++; console.error('Sprawdzanie strony, pies', link, e.message); }
       await sleep(400);
     }
+    if (!info.partial && res.nieudanych <= Math.max(3, links.length * 0.25)) { // pies, którego nie ma już na liście strony: znacznik „poza_strona” (alert „adoptowany?”), znika, gdy wróci
+      const ids = new Set(links.map((l) => /\/(\d+)\/?$/.exec(l)?.[1]).filter(Boolean)), now = Date.now();
+      for (const x of db.prepare("SELECT * FROM records WHERE col='psy' AND deleted=0").all()) {
+        const d = JSON.parse(x.data); if (!d.zrodlo_id) continue;
+        const gone = !ids.has(String(d.zrodlo_id)) && d.status !== 'adoptowany' && d.miejsce !== 'adoptowany';
+        if (gone && !d.poza_strona) d.poza_strona = now; else if (!gone && d.poza_strona) delete d.poza_strona; else continue;
+        hist.run(x.col, x.id, x.data, x.updated_at, x.deleted, x.by, now); put.run('psy', x.id, JSON.stringify(d), now, 0, 'strona');
+      }
+    }
     if (res.nieudanych > Math.max(3, links.length * 0.25)) { res.ok = false; res.blad = `Nie udało się odczytać ${res.nieudanych} z ${links.length} stron psów. Strona mogła zmienić układ.`; }
   } catch (e) { res.ok = false; res.blad = e.message; console.error('Sprawdzanie strony nie powiodło się:', e.message); }
   siteSt = { ...siteSt, ...res, slot: siteSt.slot, reason }; saveSiteSt(); return siteSt;
@@ -266,6 +275,7 @@ setInterval(() => {
   if (SYNC_HOURS.includes(w.hour) && siteSt.slot !== slot && !siteSt.running) { siteSt.slot = slot; syncSite('auto').catch((e) => console.error(e)); }
 }, 60e3).unref();
 setTimeout(() => { if (Date.now() - (siteSt.t || 0) > 8 * 3600e3) syncSite('start').catch((e) => console.error(e)); }, 120e3).unref(); // po restarcie nadrabia zaległe sprawdzenie
+setInterval(() => { try { db.prepare('DELETE FROM history WHERE replaced_at < ?').run(Date.now() - 365 * 86400e3); } catch (e) { console.error('Czyszczenie historii:', e.message); } }, 24 * 3600e3).unref(); // historia wersji rekordów: rok
 setTimeout(runBackup, 5000).unref(); setInterval(runBackup, 30 * 60e3).unref();
 function readRaw(req, max) {
   return new Promise((resolve, reject) => {
@@ -275,10 +285,13 @@ function readRaw(req, max) {
   });
 }
 
-async function handle(req, res) {
+function corsFor(req) {
   const origin = req.headers.origin;
-  const cors = origin && ORIGINS.includes(origin)
+  return origin && ORIGINS.includes(origin)
     ? { 'access-control-allow-origin': origin, vary: 'Origin', 'access-control-allow-headers': 'authorization,content-type,x-active', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-max-age': '600' } : {};
+}
+async function handle(req, res) {
+  const cors = corsFor(req);
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
   const send2 = (c, o) => send(res, c, o, cors);
   const url = new URL(req.url, 'http://x');
@@ -341,7 +354,7 @@ async function handle(req, res) {
         const json = JSON.stringify(c.data ?? {});
         if (json.length > MAX_RECORD) { results.push({ ...r, status: 'too_big' }); continue; }
         const ts = Math.min(Math.floor(c.updated_at), now + 5 * 60e3), old = get.get(c.col, c.id);
-        if (old && old.updated_at > ts) { results.push({ ...r, status: 'stale' }); continue; }
+        if (old && old.updated_at > ts && old.by !== 'strona') { results.push({ ...r, status: 'stale' }); continue; } // zmiana wolontariusza wygrywa z automatycznym zapisem ze strony (strona i tak wróci przy następnym sprawdzeniu)
         if (old) hist.run(old.col, old.id, old.data, old.updated_at, old.deleted, old.by, now);
         put.run(c.col, c.id, json, ts, c.deleted ? 1 : 0, String(c.by || '').slice(0, 60));
         results.push({ ...r, status: 'ok' });
@@ -394,6 +407,6 @@ if (!process.env.LAPA_NO_LISTEN) http.createServer((req, res) => {
   handle(req, res).catch((e) => {
     const code = [400, 413, 422, 502].includes(e.code) ? e.code : 500;
     if (code === 500) console.error(new Date().toISOString(), e);
-    if (!res.headersSent) send(res, code, { error: code === 500 ? 'Błąd serwera' : e.message });
+    if (!res.headersSent) send(res, code, { error: code === 500 ? 'Błąd serwera' : e.message }, corsFor(req));
   });
 }).listen(PORT, HOST, () => console.log(`ŁAPA nasłuchuje na ${HOST}:${PORT}`));

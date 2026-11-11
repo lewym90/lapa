@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
 import { api, ApiError } from './api.js';
@@ -301,19 +301,14 @@ actions['dog-share'] = async (el) => {
 };
 actions['dog-print'] = async (el) => {
   const d = await get('psy', el.dataset.id); const pics = (d.zdjecia || []).slice(0, 4);
-  const box = document.createElement('div'); box.className = 'printonly';
-  box.innerHTML = `<div style="font-family:Georgia,serif;color:#173B32;padding:8mm;max-width:190mm;margin:auto">
+  const inner = `<div style="font-family:Georgia,serif;color:#173B32;padding:8mm;max-width:190mm;margin:auto">
     <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #B18A52;padding-bottom:6px"><b style="font-size:30px;letter-spacing:.06em">ŁAPA</b><span style="font-size:11px;letter-spacing:.3em;color:#B18A52">NOWODWÓR</span></div>
     <h1 style="font-size:44px;margin:14px 0 2px">${esc(d.imie)} ${sexSymbol(d.plec)}</h1>
     <div style="font:14px Arial,sans-serif;color:#444;margin-bottom:10px">${esc([d.wiek, d.wielkosc, d.waga && 'waga ' + d.waga, d.wzrost && 'wzrost ' + d.wzrost, d.siersc && 'sierść: ' + d.siersc, STATUS[d.status]].filter(Boolean).join('  ·  '))}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${pics.map((u) => `<img src="${esc(safeUrl(u))}" referrerpolicy="no-referrer" style="width:100%;height:220px;object-fit:cover;border-radius:8px">`).join('')}</div>
     <p style="font:15px/1.5 Arial,sans-serif;color:#222;white-space:pre-line;margin:14px 0">${esc(d.opis || '')}</p>
     <div style="font:13px Arial,sans-serif;border-top:1px solid #ccc;padding-top:8px;color:#333">Więcej o ${esc(d.imie)} i zasady adopcji: ${esc(d.zrodlo_url || SITE)}<br>Wolontariat schroniska dla psów w Nowodworze · schronisko-nowodwor.com.pl</div></div>`;
-  document.body.appendChild(box);
-  const imgs = [...box.querySelectorAll('img')];
-  await Promise.race([Promise.all(imgs.map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; })))), new Promise((r) => setTimeout(r, 4000))]);
-  const done = () => { box.remove(); removeEventListener('afterprint', done); };
-  addEventListener('afterprint', done); print();
+  await printPreview(inner, 'Karta psa');
 };
 
 // Jednorazowe odświeżenie psów zaimportowanych starszym parserem (błędne opisy, brak cech)

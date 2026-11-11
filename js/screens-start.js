@@ -1,7 +1,7 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, safeUrl, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
-import { gaps, siteNew, siteNewLinks } from './teczka.js';
+import { gaps } from './teczka.js';
 import { zalegle } from './adopcje.js';
 import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
@@ -11,15 +11,12 @@ const seenK = 'lapa.kseen';
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 
 export async function start() {
-  const [dogs, walks, tasks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('moje_zadania'), list('komunikaty'), list('zdrowie')]);
-  siteNew().catch(() => {}); const siteN = (await siteNewLinks()).length; const todo = gaps(dogs, zdr), adLate = await zalegle(), lost = await aktywneLiczba();
+  const [dogs, walks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('komunikaty'), list('zdrowie')]);
+  const todo = gaps(dogs, zdr), adLate = await zalegle(), lost = await aktywneLiczba();
   const dog = dogOfDay(dogs); const dzis = await dzisItems();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
-  const open = tasks.filter((t) => !t.done).sort((a, b) => (a.termin || 9e15) - (b.termin || 9e15));
-  const doneToday = tasks.filter((t) => t.done && t.doneAt && startOfDay(t.doneAt) === startOfDay(Date.now()));
-  const shown = [...open.slice(0, 3), ...doneToday.slice(0, 1)];
   const now = Date.now();
 
   const hero = dog
@@ -37,7 +34,7 @@ export async function start() {
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="tiles">
-      <a class="tile green" href="#/zrobic">${todo.length + siteN + dzisCount(dzis) ? html`<span class="badge">${todo.length + siteN + dzisCount(dzis)}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Dziś i do zrobienia</span>${icon('arrow', 't-arr')}</a>
+      <a class="tile green" href="#/zrobic">${todo.length + dzisCount(dzis) ? html`<span class="badge">${todo.length + dzisCount(dzis)}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Dziś i do zrobienia</span>${icon('arrow', 't-arr')}</a>
       <a class="tile terra" href="#/pomoc">${helpDogs.length ? html`<span class="badge">${helpDogs.length}</span>` : ''}${icon('medic', 't-ico')}<span class="t-lbl">Psy potrzebujące pomocy</span>${icon('arrow', 't-arr')}</a>
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
       <a class="tile green" href="#/brama" style="grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:12px">${icon('walk', 't-ico')}<span class="t-lbl">Brama: wydaj / zwróć psa na spacer</span>${icon('arrow', 't-arr')}</a>

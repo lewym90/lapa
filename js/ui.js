@@ -31,7 +31,7 @@ export function openSheet(content, onMount) {
 // ===== Szkice: wpisany tekst nie ginie po zminimalizowaniu aplikacji, telefonie, przeładowaniu =====
 let draft = null; // { key, sheet, submitted, timer }
 const DRAFT_TTL = 3 * 24 * 3600e3;
-const fieldsOf = (sh) => [...sh.querySelectorAll('input[id],textarea[id],select[id]')].filter((e) => !['password', 'file', 'button', 'submit'].includes(e.type));
+const fieldsOf = (sh) => [...sh.querySelectorAll('input[id],textarea[id],select[id]')].filter((e) => !e.hasAttribute('data-nodraft') && !['password', 'file', 'button', 'submit'].includes(e.type));
 function collect(sh) { const v = {}; for (const e of fieldsOf(sh)) { const x = e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? '1' : '') : e.value; if (x) v[e.id] = x; } return v; }
 function saveDraft(flush) {
   if (!draft || draft.submitted) return; const { key, sheet } = draft; if (!sheet.isConnected) return;
@@ -132,3 +132,18 @@ export const pageBar = (title, { back = true, right = '' } = {}) => html`<header
 </header>`;
 export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" data-act="${act}" aria-label="${label}">${icon('plus')}</button>`;
 actions.back = () => { if (history.length > 1) history.back(); else location.hash = '#/start'; };
+
+// Podgląd do wydruku: pełnoekranowa nakładka z przyciskami (print() samo w PWA na telefonie bywa bez efektu)
+export async function printPreview(inner, title = 'Do wydruku') {
+  document.querySelector('.ppv')?.remove();
+  const box = document.createElement('div'); box.className = 'ppv';
+  box.innerHTML = `<div class="ppv-bar"><button class="btn ghost" data-ppv="x">Zamknij</button><b>${esc(title)}</b><button class="btn gold" data-ppv="p">Drukuj</button></div><div class="ppv-page printonly">${inner}</div>`;
+  document.body.appendChild(box);
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ppv]'); if (!b) return;
+    if (b.dataset.ppv === 'x') box.remove();
+    else { try { window.print(); } catch { toast('Drukowanie niedostępne. Zrób zrzut ekranu lub użyj Udostępnij w przeglądarce', true); } }
+  });
+  const imgs = [...box.querySelectorAll('img')];
+  await Promise.race([Promise.all(imgs.map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; })))), new Promise((r) => setTimeout(r, 4000))]);
+}
