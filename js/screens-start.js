@@ -3,6 +3,7 @@ import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { gaps } from './teczka.js';
 import { zalegle } from './adopcje.js';
+import { aktywneLiczba } from './zaginiecia.js';
 import { greeting, dogOfDay, dogNeeds, fmtShort, startOfDay, NEED_LABELS, fmtDate } from './util.js';
 
 const seenK = 'lapa.kseen';
@@ -10,7 +11,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 
 export async function start() {
   const [dogs, walks, tasks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('moje_zadania'), list('komunikaty'), list('zdrowie')]);
-  const todo = gaps(dogs, zdr), adLate = await zalegle();
+  const todo = gaps(dogs, zdr), adLate = await zalegle(), lost = await aktywneLiczba();
   const dog = dogOfDay(dogs);
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
@@ -39,6 +40,7 @@ export async function start() {
       <a class="tile terra" href="#/pomoc">${helpDogs.length ? html`<span class="badge">${helpDogs.length}</span>` : ''}${icon('medic', 't-ico')}<span class="t-lbl">Psy potrzebujące pomocy</span>${icon('arrow', 't-arr')}</a>
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
     </div>
+    ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px"><section class="card" aria-label="Moje zadania">
       <div class="card-head"><h3>${icon('check')} Moje zadania</h3><a class="link" href="#/zadania">Zobacz wszystkie ${icon('arrow')}</a></div>
