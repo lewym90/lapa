@@ -3,6 +3,7 @@ import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { gaps, siteNew, siteNewLinks } from './teczka.js';
 import { zalegle } from './adopcje.js';
+import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
 import { greeting, dogOfDay, dogNeeds, fmtShort, startOfDay, NEED_LABELS, fmtDate } from './util.js';
 
@@ -12,7 +13,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 export async function start() {
   const [dogs, walks, tasks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('moje_zadania'), list('komunikaty'), list('zdrowie')]);
   siteNew().catch(() => {}); const siteN = (await siteNewLinks()).length; const todo = gaps(dogs, zdr), adLate = await zalegle(), lost = await aktywneLiczba();
-  const dog = dogOfDay(dogs);
+  const dog = dogOfDay(dogs); const dzis = await dzisItems();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
@@ -36,17 +37,14 @@ export async function start() {
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="tiles">
-      <a class="tile green" href="#/zrobic">${todo.length + siteN ? html`<span class="badge">${todo.length + siteN}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Do zrobienia</span>${icon('arrow', 't-arr')}</a>
+      <a class="tile green" href="#/zrobic">${todo.length + siteN + dzisCount(dzis) ? html`<span class="badge">${todo.length + siteN + dzisCount(dzis)}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Dziś i do zrobienia</span>${icon('arrow', 't-arr')}</a>
       <a class="tile terra" href="#/pomoc">${helpDogs.length ? html`<span class="badge">${helpDogs.length}</span>` : ''}${icon('medic', 't-ico')}<span class="t-lbl">Psy potrzebujące pomocy</span>${icon('arrow', 't-arr')}</a>
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
       <a class="tile green" href="#/brama" style="grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:12px">${icon('walk', 't-ico')}<span class="t-lbl">Brama: wydaj / zwróć psa na spacer</span>${icon('arrow', 't-arr')}</a>
     </div>
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
-    <div class="pad" style="margin-top:16px"><section class="card" aria-label="Moje zadania">
-      <div class="card-head"><h3>${icon('check')} Moje zadania <small style="font-weight:400;font-size:12px;color:var(--muted,#6b6f66)">prywatne, tylko na tym telefonie</small></h3><a class="link" href="#/zadania">Zobacz wszystkie ${icon('arrow')}</a></div>
-      ${shown.length ? shown.map((t) => taskRow(t)) : html`<p class="sub" style="margin:8px 0 4px">Nic na dziś. Dodaj zadanie przyciskiem <b>+</b> albo zacznij od spaceru.</p>`}
-    </section></div>
+    <div class="pad" style="margin-top:16px">${dzisCard(dzis)}</div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>
       <div class="pad stack">${helpDogs.slice(0, 3).map((d) => html`<a class="row card" style="border:0" href="#/psy/${d.id}"><span class="avatar sm">${dogImg(d.zdjecia?.[0], d.imie)}</span>
         <span class="rt"><b>${d.imie}</b><small>${[d.status === 'pilne' ? 'Pilny przypadek' : '', ...dogNeeds(d, walks).slice(0, 2).map((k) => NEED_LABELS[k])].filter(Boolean).join(' · ')}</small></span>${icon('chev')}</a>`)}</div>` : ''}`

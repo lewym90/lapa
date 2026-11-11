@@ -244,12 +244,13 @@ export function gaps(dogs, zdrAll) {
   }
   return out.sort((a, b) => b.sev - a.sev || (a.d.imie || '').localeCompare(b.d.imie || '', 'pl'));
 }
+import { dzisItems, dzisCard } from './terminarz.js';
 export async function zrobic() {
   const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); await siteNew(); const nw = await siteNewLinks(), err = siteCache() ? null : siteErr();
   const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
   return {
-    tab: 'start', title: 'Do zrobienia', live: true,
-    html: html`${pageBar('Do zrobienia')}<div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Nie udało się sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="site-retry">Spróbuj</button></div>` : ''}${nw.length ? html`<div class="card gap"><span class="rt"><b>Na stronie schroniska: ${nw.length} ${nw.length === 1 ? 'pies, którego' : 'psów, których'} nie ma w aplikacji</b><small>${nw.slice(0, 4).map((u) => decodeURIComponent(u.split('/').slice(-2)[0])).join(', ')}${nw.length > 4 ? '…' : ''}</small></span><button class="btn sm" data-act="site-import-new">Importuj</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
+    tab: 'start', title: 'Dziś i do zrobienia', live: true,
+    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div><div class="sec" style="margin-top:0"><h2>Do uzupełnienia u psów</h2></div><div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Nie udało się sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="site-retry">Spróbuj</button></div>` : ''}${nw.length ? html`<div class="card gap"><span class="rt"><b>Na stronie schroniska: ${nw.length} ${nw.length === 1 ? 'pies, którego' : 'psów, których'} nie ma w aplikacji</b><small>${nw.slice(0, 4).map((u) => decodeURIComponent(u.split('/').slice(-2)[0])).join(', ')}${nw.length > 4 ? '…' : ''}</small></span><button class="btn sm" data-act="site-import-new">Importuj</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
       : (nw.length || err ? '' : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`)}</div>`,
     mount(root) { import('./photos.js').then((m) => m.hydratePhotos(root)); }
   };

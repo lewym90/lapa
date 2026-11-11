@@ -45,13 +45,14 @@ actions['walk-post'] = (el) => {
   const t = +el.dataset.t, dd = fmtDayLong(t);
   const T = {
     przyp: `PSYpominamy! W ${dd} o godz. ${fmtTime(t)} spacery w schronisku w Nowodworze. Przyjedź pod bramę, zabierz psa na spacer. Nie trzeba się zapisywać, smycze i obroże są na miejscu. Pieski czekają!`,
+    prze: `PSYpominamy! Spacery w schronisku w Nowodworze są PRZESUNIĘTE: ${dd} o godz. ${fmtTime(t)}. Przyjedź pod bramę, zabierz psa na spacer. Pieski czekają!`,
     odw: `PSYpominamy, że jutrzejsze SPACERY w schronisku są ODWOŁANE. Pieski ZAPRASZAJĄ Was na kolejną sobotę!`,
     pod: `Dziękujemy za dzisiejszy spacer! Przyszło ${'__'} osób, psy były szczęśliwe. Do zobaczenia za tydzień, PSYJACIELE!`
   };
-  openSheet(`<h2>Post o spacerze</h2><form novalidate><div class="field"><label for="wk">Rodzaj</label><select class="select" id="wk"><option value="przyp">Przypomnienie</option><option value="odw">Odwołanie spaceru</option><option value="pod">Podsumowanie i podziękowanie</option></select></div>
+  openSheet(`<h2>Post o spacerze</h2><form novalidate><div class="field"><label for="wk">Rodzaj</label><select class="select" id="wk"><option value="przyp">Przypomnienie</option><option value="prze">Spacery przesunięte</option><option value="odw">Odwołanie spaceru</option><option value="pod">Podsumowanie i podziękowanie</option></select></div>
     <div class="field"><label for="wt">Tekst (możesz poprawić)</label><textarea class="textarea" id="wt" style="min-height:160px"></textarea></div>
     <div class="btnrow"><button type="button" class="btn" id="wc">Kopiuj</button><button type="button" class="btn ghost" id="ws">Wyślij…</button></div></form>`, (s) => {
-    const w = s.querySelector('#wk'), x = s.querySelector('#wt'); const fill = () => { x.value = T[w.value]; }; w.onchange = fill; fill();
+    const w = s.querySelector('#wk'), x = s.querySelector('#wt'); if (el.dataset.mode) w.value = el.dataset.mode; const fill = () => { x.value = T[w.value]; }; w.onchange = fill; fill();
     s.querySelector('#wc').onclick = async () => { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch { x.select(); } };
     s.querySelector('#ws').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: x.value }); } catch {} } else { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch {} } };
   });

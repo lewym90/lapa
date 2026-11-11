@@ -15,6 +15,7 @@ import * as P from './screens-psy.js';
 import * as W from './screens-spacer.js';
 import * as B from './brama.js';
 import * as X from './screens-inne.js';
+import * as TM from './terminarz.js';
 
 const app = document.getElementById('app');
 
@@ -23,15 +24,15 @@ const routes = [
   [/^\/?$/, () => S.start()], [/^\/start$/, () => S.start()],
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
-  [/^\/wydarzenia$/, () => X.events()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => S.tasks()], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
-const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
+const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
 
 // Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
-const MAIN = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['brama', 'Brama (spacery)', 'walk'], ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc i potrzeby', 'heart']];
-const REST = [['spacer', 'Spacer osobisty', 'walk'], ['zadania', 'Moje zadania', 'check'], ['transport', 'Transport', 'truck'], ['zrobic', 'Do zrobienia', 'check'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']];
+const MAIN = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['brama', 'Brama (spacery)', 'walk'], ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc i potrzeby', 'heart']];
+const REST = [['spacer', 'Spacer osobisty', 'walk'], ['zadania', 'Tylko moje wpisy', 'check'], ['transport', 'Transport', 'truck'], ['zrobic', 'Do zrobienia', 'check'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']];
 function side() {
   const seg = (location.hash.replace(/^#\//, '').split('/')[0] || 'start'), on = (k) => (seg === k || (k === 'spacer' && seg === 'raport')) ? ' on' : '';
   const a = (x) => `<a class="sl${on(x[0])}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`;
@@ -81,7 +82,7 @@ on('change', () => {
     render(true);
   }, 250);
 });
-on('auth', () => { if (!state.loggedIn || !getName()) render(); else render(true); });
+on('auth', () => { if (!state.loggedIn || !getName()) render(); else { render(true); setTimeout(() => TM.poranny(), 2500); } });
 on('authlost', () => { toast('Sesja wygasła – zaloguj się ponownie', true); });
 
 // ---------- logowanie ----------
@@ -142,8 +143,8 @@ actions.menu = () => {
   el.innerHTML = `<div class="scrim"></div><nav aria-label="Menu">
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
     <a href="#/start">${icon('home').s}Start</a><a href="#/psy">${icon('paw').s}Psy</a>
-    <a href="#/brama">${icon('walk').s}Brama (spacery)</a><a href="#/spacer">${icon('walk').s}Spacer osobisty</a><a href="#/zadania">${icon('check').s}Moje zadania</a>
-    <a href="#/wydarzenia">${icon('calendar').s}Wydarzenia i sobotnie spacery</a><a href="#/transport">${icon('truck').s}Transport</a>
+    <a href="#/brama">${icon('walk').s}Brama (spacery)</a><a href="#/spacer">${icon('walk').s}Spacer osobisty</a><a href="#/zadania">${icon('check').s}Tylko moje wpisy</a>
+    <a href="#/wydarzenia">${icon('calendar').s}Terminarz i sobotnie spacery</a><a href="#/transport">${icon('truck').s}Transport</a>
     <a href="#/zrobic">${icon('check').s}Do zrobienia</a><a href="#/adopcje">${icon('heart').s}Adopcje</a><a href="#/dt">${icon('pin').s}Domy tymczasowe</a><a href="#/zaginiecia">${icon('alert').s}Zaginięcia</a><a href="#/finanse">${icon('box').s}Finanse</a>
     <a href="#/pomoc">${icon('heart').s}Pomoc i potrzeby</a><a href="#/ustawienia">${icon('sliders').s}Ustawienia</a>
     <a href="#/dziekujemy">${icon('gift').s}Dziękujemy</a>
@@ -161,8 +162,8 @@ actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
   <button class="act" data-act="a-walk">${icon('walk').s}Spacer osobisty<small>GPS, notatki, zdjęcia</small></button>
   <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
   <button class="act" data-act="a-photo">${icon('camera').s}Dodaj zdjęcie<small>Do karty wybranego psa</small></button>
-  <button class="act" data-act="a-task">${icon('check').s}Dodaj zadanie<small>Tylko dla Ciebie</small></button>
-  <button class="act" data-act="a-event">${icon('calendar').s}Dodaj wydarzenie<small>Widzą je wszyscy</small></button>
+  <button class="act" data-act="a-task">${icon('check').s}Przypomnienie dla siebie<small>Widzisz tylko Ty, np. lek, zadanie</small></button>
+  <button class="act" data-act="a-event">${icon('calendar').s}Wpis w terminarzu dla wszystkich<small>Można się zgłaszać</small></button>
   <button class="act" data-act="a-trans">${icon('truck').s}Zgłoś transport<small>Szukam kierowcy</small></button>
   <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button>
   <button class="act" data-act="a-dog">${icon('paw').s}Dodaj psa<small>Import ze strony schroniska lub ręcznie</small></button></div>`);
@@ -171,8 +172,8 @@ actions['a-brama'] = () => { closeSheet(); location.hash = '#/brama'; };
 actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
 actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };
 actions['a-photo'] = () => { closeSheet(); P.pickDog((d) => P.addPhoto(d.id)); };
-actions['a-task'] = () => { closeSheet(); S.taskForm(); };
-actions['a-event'] = () => { closeSheet(); X.eventForm(); };
+actions['a-task'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'ja' }); };
+actions['a-event'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'wszyscy' }); };
 actions['a-trans'] = () => { closeSheet(); X.transForm(); };
 actions['a-need'] = () => { closeSheet(); X.needForm(); };
 actions['a-dog'] = () => { closeSheet(); P.addDogSheet(); };
@@ -193,5 +194,6 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   kick(100);
   initUpdates();
   setTimeout(() => { if (state.loggedIn) P.refreshStale(); }, 4000);
+  setTimeout(() => TM.poranny(), 3000);
 })();
 export { render, lock, unlock, emit, logout, raw };

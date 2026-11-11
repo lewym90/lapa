@@ -373,3 +373,5 @@ button.chip{cursor:pointer}
 
 .side{display:none}
 @media (min-width:860px){.side{display:flex}}
+
+.ev.walk .wbtns{display:flex;gap:8px;width:100%;margin-top:6px}.ev.walk .wbtns .btn,.ev.walk .zg .btn{flex:1;min-width:0;padding-left:8px;padding-right:8px}.ev.walk .zg>div:last-child{display:flex;gap:8px}
