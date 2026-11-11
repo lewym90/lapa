@@ -5,9 +5,9 @@ set -euo pipefail
 APP=/opt/lapa; RAW="https://raw.githubusercontent.com/lewym90/lapa/main/server"
 cd "$APP"
 cp lapa-server.mjs lapa-server.mjs.bak
-curl -fsSL "$RAW/lapa-server.mjs" -o lapa-server.mjs.new
-LAPA_NO_LISTEN=1 DB_FILE=/tmp/lapa-check.db PASS_VOLUNTEER_HASH=scrypt\$16384\$aa\$bb PASS_COORDINATOR_HASH=scrypt\$16384\$aa\$cc "$APP/node/bin/node" --disable-warning=ExperimentalWarning --check lapa-server.mjs.new
-mv lapa-server.mjs.new lapa-server.mjs
+curl -fsSL "$RAW/lapa-server.mjs" -o lapa-server.new.mjs
+LAPA_NO_LISTEN=1 DB_FILE=/tmp/lapa-check.db PASS_VOLUNTEER_HASH=scrypt\$16384\$aa\$bb PASS_COORDINATOR_HASH=scrypt\$16384\$aa\$cc "$APP/node/bin/node" --disable-warning=ExperimentalWarning --check lapa-server.new.mjs
+mv lapa-server.new.mjs lapa-server.mjs
 systemctl restart lapa
 sleep 2
 if curl -fsS -m 5 http://127.0.0.1:8797/health >/dev/null; then echo "GOTOWE: serwer ŁAPY zaktualizowany i działa."; rm -f lapa-server.mjs.bak
