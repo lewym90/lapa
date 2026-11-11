@@ -28,6 +28,20 @@ const routes = [
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
+
+// Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
+const MAIN = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['brama', 'Brama (spacery)', 'walk'], ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc i potrzeby', 'heart']];
+const REST = [['spacer', 'Spacer osobisty', 'walk'], ['zadania', 'Moje zadania', 'check'], ['transport', 'Transport', 'truck'], ['zrobic', 'Do zrobienia', 'check'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']];
+function side() {
+  const seg = (location.hash.replace(/^#\//, '').split('/')[0] || 'start'), on = (k) => (seg === k || (k === 'spacer' && seg === 'raport')) ? ' on' : '';
+  const a = (x) => `<a class="sl${on(x[0])}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`;
+  return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
+    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
+    <button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>
+    <div class="sgrp">${MAIN.map(a).join('')}</div><div class="slab">Praca w schronisku</div><div class="sgrp">${REST.map(a).join('')}</div>
+    <div style="flex:1"></div><span class="syncpill" id="sp2" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span><div class="sver">ŁAPA ${VERSION}</div></aside>`;
+}
+
 function nav(tab) {
   const t = (x) => x ? `<a class="tab ${tab === x[0] ? 'on' : ''}" href="#/${x[0]}" ${tab === x[0] ? 'aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`
     : `<button class="plus" data-act="add" aria-label="Dodaj">${icon('plus').s}</button>`;
@@ -47,7 +61,8 @@ async function render(keepScroll = false) {
   } catch (e) { console.error(e); view = { html: html`<div class="empty"><h3>Coś poszło nie tak</h3><p>${e.message}</p><a class="btn gold" href="#/start">Wróć na Start</a></div>`, tab: 'start' }; }
   if (id !== renderId) return;
   current = view;
-  app.innerHTML = `<div class="shell">${view.nav === false ? '' : nav(view.tab)}<main class="main" ${view.nav === false ? 'style="padding-bottom:40px"' : ''}>${view.html.s}</main></div>`;
+  app.innerHTML = `<div class="shell">${side()}${view.nav === false ? '' : nav(view.tab)}<main class="main" ${view.nav === false ? 'style="padding-bottom:40px"' : ''}>${view.html.s}</main></div>`;
+  paintSync(document.getElementById('sp2'));
   view.mount?.(app);
   scrollTo(0, y);
   document.title = (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
@@ -167,7 +182,7 @@ function paintSync(el) {
   const s = syncStatus; el.className = 'syncpill ' + (s.state === 'offline' || s.state === 'error' ? 'off' : s.state === 'busy' || s.pending ? 'wait' : '');
   el.querySelector('span').textContent = s.state === 'offline' ? 'Offline – zapisane w telefonie' : s.state === 'error' ? 'Błąd synchronizacji' : s.pending ? `Do wysłania: ${s.pending}` : s.state === 'busy' ? 'Synchronizuję…' : 'Wszystko zapisane';
 }
-on('sync', () => paintSync(document.getElementById('sp')));
+on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.getElementById('sp2')); });
 
 // ---------- start ----------
 (async function boot() {
