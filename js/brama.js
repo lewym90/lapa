@@ -1,8 +1,8 @@
 // Tryb „Brama”: sobotni spacer-masówka. Jedno dotknięcie = pies wydany, jedno = zwrócony. Godziny zapisują się same.
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar } from './ui.js';
-import { list, save, get } from './store.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { list, save, get, remove } from './store.js';
 import { getName } from './auth.js';
-import { uid, hhmm } from './util.js';
+import { uid, fmtTime as hhmm } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 import { miejsce, aktywny } from './teczka.js';
@@ -91,8 +91,9 @@ actions['br-info'] = async (el) => {
     <form id="bf"><div class="field"><label for="bo">Kto szedł (imię lub telefon)</label><input class="input" id="bo" maxlength="80" value="${esc(w.osoba || '')}"></div>
     <div class="field"><label>Jak poszło</label><div style="display:flex;flex-wrap:wrap;gap:8px">${TAGI.map((t) => `<button type="button" class="chip${sel.has(t) ? ' dark' : ''}" data-tag="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>
     <div class="field"><label for="bn">Uwagi</label><textarea class="textarea" id="bn" maxlength="600">${esc(w.notatka || '')}</textarea></div>
-    ${w.end ? '' : '<p class="hint">Godzina zwrotu zapisze się po naciśnięciu „Zwróć”.</p>'}<button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
+    ${w.end ? '' : '<p class="hint">Godzina zwrotu zapisze się po naciśnięciu „Zwróć”.</p>'}<button class="btn block" type="submit">Zapisz</button><button class="btn ghost block" type="button" id="bdel" style="margin-top:10px;color:var(--terra-d)">Usuń ten wpis (pomyłka)</button></form>`, (s) => {
     s.querySelectorAll('[data-tag]').forEach((b) => b.addEventListener('click', () => { const t = b.dataset.tag; sel.has(t) ? sel.delete(t) : sel.add(t); b.classList.toggle('dark'); }));
+    s.querySelector('#bdel').onclick = async () => { if (await confirmSheet('Usunąć wpis?', `Spacer psa ${w.pies_imie} zniknie z historii.`, 'Usuń', true)) { await remove('spacery', w.id); closeSheet(); toast('Usunięto'); rerender(); } };
     s.querySelector('#bf').addEventListener('submit', async (e) => {
       e.preventDefault(); const cur = await get('spacery', w.id);
       cur.osoba = s.querySelector('#bo').value.trim(); cur.tagi = [...sel]; cur.notatka = s.querySelector('#bn').value.trim();

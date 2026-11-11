@@ -127,8 +127,9 @@ actions['dog-walks'] = async (el) => {
 };
 actions['dog-obs'] = async (el) => {
   const obs = (await list('obserwacje')).filter((o) => o.pies_id === el.dataset.id).sort((a, b) => b.ts - a.ts);
-  openSheet(`<h2>Notatki wolontariuszy</h2>${obs.length ? obs.map((o) => `<div class="obs"><div class="oh"><span>${esc(o.autor || '')}${o.typ ? ' · ' + esc(o.typ) : ''}</span><span>${esc(fmtShort(o.ts))}</span></div><div style="white-space:pre-line">${esc(o.tekst)}</div></div>`).join('') : '<p class="hint" style="font-size:15px">Jeszcze brak notatek.</p>'}<button class="btn block" style="margin-top:16px" data-act="dog-obs-add" data-id="${esc(el.dataset.id)}">${icon('pencil').s} Dodaj obserwację</button>`);
+  openSheet(`<h2>Notatki wolontariuszy</h2>${obs.length ? obs.map((o) => `<div class="obs"><div class="oh"><span>${esc(o.autor || '')}${o.typ ? ' · ' + esc(o.typ) : ''}</span><span>${esc(fmtShort(o.ts))} <button class="iconbtn" style="width:28px;height:28px;color:var(--terra-d)" data-act="obs-del" data-id="${esc(o.id || '')}" aria-label="Usuń">${icon('trash').s}</button></span></div><div style="white-space:pre-line">${esc(o.tekst)}</div></div>`).join('') : '<p class="hint" style="font-size:15px">Jeszcze brak notatek.</p>'}<button class="btn block" style="margin-top:16px" data-act="dog-obs-add" data-id="${esc(el.dataset.id)}">${icon('pencil').s} Dodaj obserwację</button>`);
 };
+actions['obs-del'] = async (el) => { if (!el.dataset.id) return; if (await confirmSheet('Usunąć notatkę?', 'Zniknie u wszystkich wolontariuszy.', 'Usuń', true)) { await remove('obserwacje', el.dataset.id); toast('Usunięto'); closeSheet(); } };
 actions['dog-obs-add'] = (el) => obsForm(el.dataset.id);
 export function obsForm(dogId) {
   openSheet(`<h2>Nowa obserwacja</h2><p class="hint" style="margin:0 0 14px">Zapisz to, co zauważyłeś(-aś). To obserwacja, nie diagnoza. Zalecenia medyczne zatwierdza lekarz weterynarii.</p>
