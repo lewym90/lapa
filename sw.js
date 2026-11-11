@@ -1,12 +1,12 @@
 /* ŁAPA – service worker (praca offline).
    Po każdej zmianie plików zwiększ numer w VERSION, aby wymusić aktualizację. */
-const VERSION = 'lapa-v1.0.0';
+const VERSION = 'lapa-v1.0.1';
 const IMG_CACHE = 'lapa-img-v1';
 const IMG_MAX = 220;
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/bus.js', 'js/ui-core.js', 'js/config.js', 'js/db.js', 'js/store.js', 'js/api.js', 'js/auth.js', 'js/sync.js', 'js/ui.js', 'js/util.js', 'js/icons.js',
-  'js/tekst.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/screens-inne.js',
+  'js/tekst.js', 'js/update.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/screens-inne.js',
   'fonts/inter-latin.woff2', 'fonts/inter-latin-ext.woff2',
   'fonts/playfair-latin-normal.woff2', 'fonts/playfair-latin-ext-normal.woff2',
   'fonts/playfair-latin-italic.woff2', 'fonts/playfair-latin-ext-italic.woff2',
@@ -52,13 +52,14 @@ self.addEventListener('fetch', (e) => {
 
   // Nawigacja: sieć najpierw (świeża wersja), w razie braku – zapisana powłoka aplikacji.
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((res) => {
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then((res) => {
       const copy = res.clone(); caches.open(VERSION).then((c) => c.put('index.html', copy)); return res;
     }).catch(() => caches.match('index.html').then((r) => r || caches.match('./'))));
     return;
   }
   // Pliki aplikacji: sieć najpierw (żeby po aktualizacji nie było starych skryptów), w razie braku – cache.
-  e.respondWith(fetch(req).then((res) => {
+  if (url.pathname.endsWith('/version.json')) return; // zawsze z sieci
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then((res) => {
     if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
     return res;
   }).catch(() => caches.match(req)));

@@ -2,6 +2,7 @@ import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, b
 import { list, save, remove, get } from './store.js';
 import { state, getName, setName, lock, logout } from './auth.js';
 import { SITE, VERSION } from './config.js';
+import { checkUpdate } from './update.js';
 import { status as syncStatus, kick } from './sync.js';
 import * as db from './db.js';
 import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS, uid } from './util.js';
@@ -184,12 +185,13 @@ export async function settings() {
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button><button class="btn ghost" data-act="set-resync">Pobierz dane od nowa</button></div></section>
       <section class="card"><h3>Kopia zapasowa</h3><p class="sub" style="margin:2px 0 12px">Plik z danymi widocznymi na tym telefonie${state.coordinator ? ' (razem z danymi osobowymi, trzymaj go bezpiecznie)' : ''}.</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-export">${icon('download')} Zapisz kopię</button><button class="btn ghost" data-act="set-import">${icon('upload')} Wczytaj kopię</button></div></section>
-      <section class="card"><h3>O aplikacji</h3><p class="sub" style="margin:2px 0 12px">ŁAPA — Nowodwór ${VERSION}. Aplikacja dla wolontariuszy, bezpłatna i bez reklam.</p><a class="btn ghost block" href="#/dziekujemy">${icon('gift')} Dziękujemy</a></section>
+      <section class="card"><h3>O aplikacji</h3><p class="sub" style="margin:2px 0 12px">ŁAPA — Nowodwór, wersja <b>${VERSION}</b>. Aplikacja dla wolontariuszy, bezpłatna i bez reklam. Nowe wersje instalują się same po ponownym otwarciu aplikacji.</p><div class="btnrow"><button class="btn ghost" data-act="set-update">${icon('refresh')} Sprawdź aktualizację</button><a class="btn ghost" href="#/dziekujemy">${icon('gift')} Dziękujemy</a></div></section>
       <button class="btn line block" data-act="set-logout">${icon('logout')} Wyloguj z tego telefonu</button></div>`,
     mount(root) { root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
   };
 }
 actions['set-lock'] = async () => { await lock(); toast('Dane osobowe zablokowane'); };
+actions['set-update'] = () => { toast('Sprawdzam…'); checkUpdate({ manual: true }); };
 actions['set-sync'] = () => { kick(10); toast('Synchronizuję…'); };
 actions['set-resync'] = async () => { await db.metaSet('cursor', 0); await db.metaSet('cursor_private', 0); kick(10); toast('Pobieram wszystko od nowa…'); };
 actions['set-export'] = async () => {
