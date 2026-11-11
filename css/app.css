@@ -41,6 +41,8 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;line-height:1.15}
 .brand-word{font-family:var(--serif);font-weight:700;font-size:25px;letter-spacing:.06em;color:var(--ivory);line-height:1}
 .brand-sub{font-size:8.5px;letter-spacing:.34em;color:var(--gold-l);font-weight:600;margin-top:3px;display:block}
 .iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--ivory);position:relative}
+.plusbtn{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--green-dd);background:linear-gradient(145deg,var(--gold-l),var(--gold));box-shadow:0 4px 14px rgba(0,0,0,.35),0 0 0 3px rgba(177,138,82,.25);font-size:30px}
+.plusbtn .ico{font-size:30px;stroke-width:3}.plusbtn:active{transform:scale(.94)}
 .iconbtn:active{background:rgba(244,240,231,.1)}
 .iconbtn .dot{position:absolute;top:9px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--terra);border:2px solid var(--green)}
 .ico{width:1em;height:1em;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -296,6 +298,9 @@ button.chip{cursor:pointer}
 .drawer a,.drawer button.mi{display:flex;align-items:center;gap:14px;padding:14px 12px;border-radius:14px;color:var(--ivory);text-decoration:none;font-size:16px;font-weight:500;min-height:52px;text-align:left}
 .drawer a:active,.drawer button.mi:active{background:rgba(244,240,231,.1)}
 .drawer a .ico,.drawer button.mi .ico{font-size:24px;color:var(--gold-l)}
+.drawer a.on{background:rgba(177,138,82,.2);color:var(--gold-l)}
+.drawer .slab{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sage);padding:14px 12px 4px}
+.drawer a{min-height:46px;padding:10px 12px}
 .drawer .who2{padding:6px 12px 18px;border-bottom:1px solid var(--line-l);margin-bottom:8px}
 .drawer .who2 b{font-family:var(--serif);font-size:22px;display:block}
 .drawer .who2 span{font-size:13px;color:var(--sage)}

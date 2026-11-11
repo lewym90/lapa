@@ -98,22 +98,32 @@ const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAd
 
 
 // ---------- import ze strony schroniska (tylko ta jedna domena, tylko adresy psów) ----------
-const SITE_HOSTS = new Set(['www.schronisko-nowodwor.com.pl', 'schronisko-nowodwor.com.pl']);
-const SITE = 'https://www.schronisko-nowodwor.com.pl';
+const SITE = process.env.LAPA_TEST_SITE || 'https://www.schronisko-nowodwor.com.pl'; // zmienna tylko do testów
+const SITE_HOSTS = new Set(['www.schronisko-nowodwor.com.pl', 'schronisko-nowodwor.com.pl', new URL(SITE).hostname]);
+const SITE_PROTO = new URL(SITE).protocol;
 const DOG_PATH = /^\/(psy-do-adopcji|do-adopcji-pilne|adoptowane)\/([^/?#]+)\/(\d+)\/?$/;
 const UA = { 'user-agent': 'LAPA-Nowodwor/1.0 (aplikacja wolontariuszy schroniska)', accept: 'text/html,application/xhtml+xml' };
 const htmlCache = new Map();
-async function fetchHtml(urlStr) {
-  const hit = htmlCache.get(urlStr); if (hit && Date.now() - hit.t < 10 * 60e3) return hit.v;
+const FAST = !!process.env.LAPA_TEST_FAST; // tylko testy
+const sleep = (ms) => new Promise((r) => setTimeout(r, FAST ? 0 : ms));
+async function fetchHtml(urlStr, fresh = false) {
+  if (fresh) { // automatyczne sprawdzanie: bez pamięci podręcznej, z ponowieniami przy chwilowych błędach
+    let last; for (let i = 0; i < 3; i++) { try { return await fetchHtml1(urlStr, true); } catch (e) { last = e; if (e.status404) throw e; await sleep(1500 * (i + 1)); } }
+    throw last;
+  }
+  return fetchHtml1(urlStr, false);
+}
+async function fetchHtml1(urlStr, fresh) {
+  const hit = !fresh && htmlCache.get(urlStr); if (hit && Date.now() - hit.t < 10 * 60e3) return hit.v;
   let u = new URL(urlStr);
   for (let i = 0; i < 3; i++) {
-    if (u.protocol !== 'https:' || !SITE_HOSTS.has(u.hostname)) throw Object.assign(new Error('Niedozwolony adres'), { code: 422 });
+    if (u.protocol !== SITE_PROTO || !SITE_HOSTS.has(u.hostname)) throw Object.assign(new Error('Niedozwolony adres'), { code: 422 });
     const res = await fetch(u, { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(12000) });
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) { u = new URL(res.headers.get('location'), u); continue; }
-    if (!res.ok) throw Object.assign(new Error(res.status === 404 ? 'Nie ma takiej strony na stronie schroniska' : 'Strona schroniska odpowiedziała błędem ' + res.status), { code: 502 });
+    if (!res.ok) throw Object.assign(new Error(res.status === 404 ? 'Nie ma takiej strony na stronie schroniska' : 'Strona schroniska odpowiedziała błędem ' + res.status), { code: 502, status404: res.status === 404 });
     const t = await res.text();
     if (t.length > 2_500_000) throw Object.assign(new Error('Strona jest zbyt duża'), { code: 502 });
-    htmlCache.set(urlStr, { t: Date.now(), v: t }); if (htmlCache.size > 200) htmlCache.delete(htmlCache.keys().next().value);
+    if (!fresh) htmlCache.set(urlStr, { t: Date.now(), v: t }); if (htmlCache.size > 200) htmlCache.delete(htmlCache.keys().next().value);
     return t;
   }
   throw Object.assign(new Error('Zbyt wiele przekierowań'), { code: 502 });
@@ -163,14 +173,14 @@ function parseDog(h, u) {
   return { url: u.origin + u.pathname.replace(/\/$/, ''), id, name, status, fields, haslo, opis: desc.join('\n\n'), zdjecia: imgs.slice(0, 24), film: yt ? 'https://www.youtube.com/watch?v=' + yt[1] : '', opublikowano,
     debug: { pol: Object.keys(fields), zdj: imgs.length, akapity: desc.length } };
 }
-async function dogLinks() {
+async function dogLinks(fresh = false, info = {}) {
   const links = new Set();
   for (const cat of ['psy-do-adopcji', 'do-adopcji-pilne']) for (let start = 0; start < 9 * 60; start += 9) { // lista: 9 psów na stronę, kolejne przez ?start=
-    let h; try { h = await fetchHtml(`${SITE}/${cat}${start ? '?start=' + start : ''}`); } catch { break; }
+    let h; try { h = await fetchHtml(`${SITE}/${cat}${start ? '?start=' + start : ''}`, fresh); } catch (e) { if (start === 0 && fresh) throw e; if (!e.status404) info.partial = true; break; }
     const before = links.size, re = /href=["']((?:https?:\/\/(?:www\.)?schronisko-nowodwor\.com\.pl)?\/(?:psy-do-adopcji|do-adopcji-pilne)\/[^"'\/\s]+\/\d+)\/?["']/gi; let m;
     while ((m = re.exec(h))) links.add(new URL(m[1], SITE).href);
     if (links.size === before) break;
-    await new Promise((r) => setTimeout(r, 250));
+    await sleep(fresh ? 500 : 250);
   }
   return [...links].slice(0, 500);
 }
@@ -197,6 +207,65 @@ function runBackup() {
     lastBackup = { t: Date.now(), ok: true };
   } catch (e) { lastBackup = { t: Date.now(), ok: false }; console.error('Kopia zapasowa nie powiodła się:', e.message); }
 }
+
+// ===== Automatyczne sprawdzanie strony schroniska (3 razy dziennie): nowe psy i zmiany opisów, zdjęć, statusu =====
+let merge = null;
+try { merge = await import('./dogmerge.mjs'); } catch { console.error('Brak pliku dogmerge.mjs: automatyczne sprawdzanie strony wyłączone (uruchom aktualizuj.sh).'); }
+const STATUS_FILE = path.join(path.dirname(DB_FILE), 'site-status.json');
+let siteSt = { t: 0, ok: null, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', slot: '', nazwy: [] };
+try { Object.assign(siteSt, JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8')), { running: false }); } catch { /* pierwszy start */ }
+const saveSiteSt = () => { try { fs.writeFileSync(STATUS_FILE, JSON.stringify({ ...siteSt, running: false })); } catch { /* nie krytyczne */ } };
+const warsaw = () => {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).formatToParts(new Date());
+  const g = (t) => p.find((x) => x.type === t).value; return { day: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour') % 24 };
+};
+const SYNC_HOURS = (process.env.SITE_SYNC_HOURS || '3,11,17').split(',').map(Number);
+const cmpDog = (o) => JSON.stringify(o, (k, v) => (k === 'zaimportowano' || k === 'ts' ? undefined : v));
+async function syncSite(reason = 'auto') {
+  if (!merge) { siteSt = { ...siteSt, t: Date.now(), ok: false, blad: 'Serwer nie ma pliku dogmerge.mjs. Uruchom aktualizację serwera.' }; saveSiteSt(); return siteSt; }
+  if (siteSt.running) return siteSt;
+  siteSt.running = true;
+  const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', nazwy: [], pominietych: 0, nieudanych: 0 };
+  try {
+    runBackup(); // kopia bazy tuż przed zmianami
+    const info = {}, links = await dogLinks(true, info);
+    const getRow = db.prepare("SELECT * FROM records WHERE col='psy' AND id=?");
+    const allDogs = db.prepare("SELECT id,data,deleted FROM records WHERE col='psy'").all().map((r) => ({ id: r.id, deleted: !!r.deleted, d: JSON.parse(r.data) }));
+    const known = allDogs.filter((x) => !x.deleted && x.d.zrodlo_id).length;
+    res.razem = links.length;
+    if (links.length < 20 || (known >= 20 && links.length < known * (info.partial ? 0.85 : 0.6))) throw new Error(`Na liście strony znalazłem tylko ${links.length} psów (w aplikacji jest ${known}). Nie zmieniam nic, bo to wygląda na błąd strony albo zmianę jej układu.`);
+    const hist = db.prepare('INSERT INTO history(col,id,data,updated_at,deleted,by,replaced_at) VALUES(?,?,?,?,?,?,?)');
+    const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
+    for (const link of links) {
+      try {
+        const u = new URL(link), h = await fetchHtml(u.origin + u.pathname, true), imp = parseDog(h, new URL(u.origin + u.pathname));
+        const sensowny = imp.name && imp.id && (imp.opis || imp.zdjecia.length || Object.keys(imp.fields).length);
+        if (!sensowny) { res.nieudanych++; continue; }
+        let row = getRow.get('d' + imp.id), old = {};
+        if (row) { if (row.deleted) { res.pominietych++; continue; } old = JSON.parse(row.data); }
+        else { // pies dodany wcześniej ręcznie (jeszcze bez strony): łączymy po imieniu
+          const same = allDogs.find((x) => !x.deleted && !x.d.zrodlo_id && (x.d.imie || '').trim().toLowerCase() === imp.name.trim().toLowerCase());
+          if (same) { row = getRow.get(same.id); old = same.d; }
+        }
+        const dog = merge.dogFromImport(imp, old);
+        if (!old.id) dog.auto_dodany = Date.now();
+        if (old.id && cmpDog(dog) === cmpDog(old)) continue;
+        const now = Date.now();
+        if (row) hist.run(row.col, row.id, row.data, row.updated_at, row.deleted, row.by, now);
+        put.run('psy', dog.id, JSON.stringify(dog), now, 0, 'strona');
+        if (old.id) res.zmienionych++; else { res.nowych++; res.nazwy.push(dog.imie); }
+      } catch (e) { res.nieudanych++; console.error('Sprawdzanie strony, pies', link, e.message); }
+      await sleep(400);
+    }
+    if (res.nieudanych > Math.max(3, links.length * 0.25)) { res.ok = false; res.blad = `Nie udało się odczytać ${res.nieudanych} z ${links.length} stron psów. Strona mogła zmienić układ.`; }
+  } catch (e) { res.ok = false; res.blad = e.message; console.error('Sprawdzanie strony nie powiodło się:', e.message); }
+  siteSt = { ...siteSt, ...res, slot: siteSt.slot, reason }; saveSiteSt(); return siteSt;
+}
+setInterval(() => {
+  const w = warsaw(), slot = `${w.day}-${w.hour}`;
+  if (SYNC_HOURS.includes(w.hour) && siteSt.slot !== slot && !siteSt.running) { siteSt.slot = slot; syncSite('auto').catch((e) => console.error(e)); }
+}, 60e3).unref();
+setTimeout(() => { if (Date.now() - (siteSt.t || 0) > 8 * 3600e3) syncSite('start').catch((e) => console.error(e)); }, 120e3).unref(); // po restarcie nadrabia zaległe sprawdzenie
 setTimeout(runBackup, 5000).unref(); setInterval(runBackup, 30 * 60e3).unref();
 function readRaw(req, max) {
   return new Promise((resolve, reject) => {
@@ -215,7 +284,7 @@ async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname.replace(/\/+$/, '') || '/';
 
-  if (p === '/health') return send2(200, { ok: true, backup: lastBackup });
+  if (p === '/health') return send2(200, { ok: true, backup: lastBackup, site: { t: siteSt.t, ok: siteSt.ok, running: siteSt.running, nowych: siteSt.nowych, zmienionych: siteSt.zmienionych, razem: siteSt.razem, blad: siteSt.blad, nazwy: siteSt.nazwy, enabled: !!merge } });
 
   if (p === '/auth/login' && req.method === 'POST') {
     const ip = clientIp(req), wait = blocked(ip);
@@ -300,6 +369,7 @@ async function handle(req, res) {
     const h = await fetchHtml(u.origin + u.pathname);
     return send2(200, parseDog(h, new URL(u.origin + u.pathname)));
   }
+  if (p === '/site/sync' && req.method === 'POST') { if (!siteSt.running && Date.now() - (siteSt.t || 0) > (FAST ? 0 : 20e3)) syncSite('reczne').catch((e) => console.error(e)); return send2(200, { ok: true, started: true }); }
   if (p === '/import/links' && req.method === 'GET') return send2(200, { links: await dogLinks() });
 
   // POST /photo/:id (JPEG ≤ 1,5 MB), GET /photo/:id

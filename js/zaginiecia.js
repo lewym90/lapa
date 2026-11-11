@@ -1,5 +1,5 @@
 // Zaginione psy: karta alarmowa, tekst posta z aktualizacjami, plakat do wydruku.
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, safeUrl, confirmSheet } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, safeUrl, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { getName } from './auth.js';
 import { fmtDate } from './util.js';
@@ -21,7 +21,7 @@ export async function zaginiecia() {
   const a = zs.filter(aktywne).sort((x, y) => y.kiedy - x.kiedy), f = zs.filter((z) => !aktywne(z)).sort((x, y) => y.znaleziony_ts - x.znaleziony_ts);
   const card = (z) => html`<div class="card gap"><button class="gi" data-act="zag-open" data-id="${z.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp">${byId[z.pies_id] ? dogThumb(byId[z.pies_id]) : icon('paw')}</span><span class="rt"><b>${z.imie}</b><small>${aktywne(z) ? 'Zaginął(a) ' + fmtDate(z.kiedy) + (z.ostatnio ? ' · ' + z.ostatnio : '') : 'Znaleziony(a) ' + fmtDate(z.znaleziony_ts)}</small></span></button></div>`;
   return { tab: 'start', title: 'Zaginięcia', live: true,
-    html: html`${pageBar('Zaginięcia', { right: html`<button class="iconbtn" data-act="zag-new" aria-label="Zgłoś zaginięcie">${icon('plus')}</button>` })}
+    html: html`${pageBar('Zaginięcia', { right: html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` })}
     <div class="pad stack">${a.length ? a.map(card) : html`<div class="empty">${icon('check')}<h3>Nikt nie jest teraz poszukiwany</h3><p>Zgłoś zaginięcie przyciskiem +. Aplikacja przygotuje post i plakat.</p></div>`}
     ${f.length ? html`<h3 style="color:var(--sage);margin:16px 0 0">Odnalezione</h3>${f.slice(0, 10).map(card)}` : ''}</div>`,
     mount(r) { hydratePhotos(r); } };

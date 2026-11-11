@@ -25,21 +25,28 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
 
 // Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
-const MAIN = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['brama', 'Brama (spacery)', 'walk'], ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc i potrzeby', 'heart']];
-const REST = [['spacer', 'Spacer osobisty', 'walk'], ['zadania', 'Tylko moje wpisy', 'check'], ['transport', 'Transport', 'truck'], ['zrobic', 'Do zrobienia', 'check'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']];
+// Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
+const MENU = [
+  ['Dziś', [['start', 'Start', 'home'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
+  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z psem (GPS)', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
+  ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
+  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box']]],
+  ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
+];
+const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`).join('')).join('');
+const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
+const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (k === 'terminarz' && seg === 'wydarzenia'); };
 function side() {
-  const seg = (location.hash.replace(/^#\//, '').split('/')[0] || 'start'), on = (k) => (seg === k || (k === 'spacer' && seg === 'raport')) ? ' on' : '';
-  const a = (x) => `<a class="sl${on(x[0])}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`;
   return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
     <button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>
-    <div class="sgrp">${MAIN.map(a).join('')}</div><div class="slab">Praca w schronisku</div><div class="sgrp">${REST.map(a).join('')}</div>
+    ${menuHtml('sl', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp2" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span><div class="sver">ŁAPA ${VERSION}</div></aside>`;
 }
 
@@ -142,12 +149,7 @@ actions.menu = () => {
   const el = document.createElement('div'); el.className = 'drawer';
   el.innerHTML = `<div class="scrim"></div><nav aria-label="Menu">
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
-    <a href="#/start">${icon('home').s}Start</a><a href="#/psy">${icon('paw').s}Psy</a>
-    <a href="#/brama">${icon('walk').s}Brama (spacery)</a><a href="#/spacer">${icon('walk').s}Spacer osobisty</a><a href="#/zadania">${icon('check').s}Tylko moje wpisy</a>
-    <a href="#/wydarzenia">${icon('calendar').s}Terminarz i sobotnie spacery</a><a href="#/transport">${icon('truck').s}Transport</a>
-    <a href="#/zrobic">${icon('check').s}Do zrobienia</a><a href="#/adopcje">${icon('heart').s}Adopcje</a><a href="#/dt">${icon('pin').s}Domy tymczasowe</a><a href="#/zaginiecia">${icon('alert').s}Zaginięcia</a><a href="#/finanse">${icon('box').s}Finanse</a>
-    <a href="#/pomoc">${icon('heart').s}Pomoc i potrzeby</a><a href="#/ustawienia">${icon('sliders').s}Ustawienia</a>
-    <a href="#/dziekujemy">${icon('gift').s}Dziękujemy</a>
+    ${menuHtml('', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
     <div style="font-size:12px;color:var(--sage);padding:0 12px">ŁAPA ${VERSION}</div></nav>`;
   document.body.appendChild(el);

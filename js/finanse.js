@@ -1,5 +1,5 @@
 // Finanse: wpłaty i wydatki, koszty leczenia z teczek psów, podsumowania i eksport do sprawozdania. Tylko koordynator.
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove } from './store.js';
 import { state, getName } from './auth.js';
 import { fmtDate } from './util.js';
@@ -24,7 +24,7 @@ export async function finanse() {
   const bySrc = {}; wp.forEach((x) => { bySrc[x.zrodlo] = (bySrc[x.zrodlo] || 0) + x.kwota; });
   const recent = [...fin].sort((a, b) => b.data - a.data).slice(0, 25);
   return { tab: 'start', title: 'Finanse', live: true,
-    html: html`${pageBar('Finanse', { right: html`<button class="iconbtn" data-act="fin-add" aria-label="Dodaj">${icon('plus')}</button>` })}
+    html: html`${pageBar('Finanse', { right: html`${plusBtn('fin-add', 'Dodaj')}` })}
     <div class="fchips">${[rok - 1, rok].map((y) => html`<button class="chip dark ${rok === y ? 'on' : ''}" data-act="fin-rok" data-y="${y}">${y}</button>`)}</div>
     <div class="pad stack"><section class="card"><h3>Rok ${rok}</h3><p style="margin:6px 0">Wpłaty: <b>${zl(przych)}</b><br>Wydatki: <b>${zl(wyd)}</b><br>Saldo: <b style="color:${przych - wyd < 0 ? 'var(--terra-d)' : 'var(--green)'}">${zl(przych - wyd)}</b></p>
       <p class="hint" style="margin:0">Wydatki zawierają koszty z teczek zdrowia psów (${zl(sum(zk, 'koszt'))}).</p></section>

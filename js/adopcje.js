@@ -1,5 +1,5 @@
 // Droga adopcji i domy tymczasowe: dane osobowe, tylko po odblokowaniu hasłem koordynatora (kolekcje p_*).
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { MS_DAY, fmtDate, uid } from './util.js';
@@ -95,7 +95,7 @@ export async function adopcje() {
   const late = all.filter((a) => AKTYWNE.includes(etapOf(a)) && a.nastepny && a.nastepny < now).length;
   return {
     tab: 'start', title: 'Adopcje', live: true,
-    html: html`${pageBar('Adopcje', { right: html`<button class="iconbtn" data-act="ad-new" aria-label="Dodaj">${icon('plus')}</button>` })}
+    html: html`${pageBar('Adopcje', { right: html`${plusBtn('ad-new', 'Dodaj')}` })}
     <div class="fchips">${[['aktywne', 'W toku'], ['moje', 'Moje'], ['zakonczone', 'Zakończone'], ['wszystkie', 'Wszystkie']].map(([k, l]) => html`<button class="chip dark ${fAd === k ? 'on' : ''}" data-act="ad-filter" data-k="${k}">${l}</button>`)}</div>
     <div class="pad stack">${late ? html`<p class="hint" style="color:var(--gold-l);margin:0">Zaległe kroki: ${late}</p>` : ''}
     ${items.length ? items.map((a) => { const d = byId[a.pies_id], over = a.nastepny && a.nastepny < now && AKTYWNE.includes(etapOf(a)); return html`<div class="card gap"><button class="gi" data-act="adopcja-open" data-id="${a.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp">${d ? dogThumb(d) : ''}</span><span class="rt"><b>${a.imie} · ${d?.imie || '?'}</b><small>${ETAP[etapOf(a)]}${a.prowadzi ? ' · ' + a.prowadzi : ''}</small><small style="${over ? 'color:var(--terra-d);font-weight:600' : ''}">${a.nastepny ? (over ? 'Zaległe: ' : '') + (a.nastepny_opis || 'Następny krok') + ' · ' + fmtDate(a.nastepny) : 'Brak ustalonego kroku'}</small></span></button></div>`; })
@@ -119,7 +119,7 @@ export async function dt() {
   const rows = people.sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   return {
     tab: 'start', title: 'Domy tymczasowe', live: true,
-    html: html`${pageBar('Domy tymczasowe', { right: html`<button class="iconbtn" data-act="dt-add" aria-label="Dodaj">${icon('plus')}</button>` })}
+    html: html`${pageBar('Domy tymczasowe', { right: html`${plusBtn('dt-add', 'Dodaj')}` })}
     <div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Pies jest przypisany do opiekuna, gdy w jego karcie wybierzesz miejsce „W domu tymczasowym” i wpiszesz to samo imię opiekuna.</p>
     ${rows.length ? rows.map((p) => { const l = living(p), free = Math.max(0, (+p.pojemnosc || 1) - l.length); return html`<div class="card"><button class="rowbtn" data-act="dt-open" data-id="${p.id}" style="width:100%;text-align:left;background:none;border:0;padding:0"><b>${p.imie}</b> <span class="chip ${free && p.dostepny !== false ? '' : 'outline'}">${p.dostepny === false ? 'Niedostępny' : free ? 'Wolne miejsca: ' + free : 'Komplet'}</span>
       <div class="hint">${[p.miasto, (p.umie || []).map((k) => (UMIE.find((x) => x[0] === k) || [])[1]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</div>

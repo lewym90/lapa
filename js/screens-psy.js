@@ -6,7 +6,6 @@ import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { dogBlock } from './adopcje.js';
-import { ocenaZOpisu } from './teczka.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -212,29 +211,8 @@ export function dogForm(d = {}) {
 actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
 
 // ========== import ze strony schroniska ==========
-const normPlec = (t = '') => (/suk|samic|dziewcz/i.test(t) ? 'suka' : /pies|samiec|piesek|chłop/i.test(t) ? 'samiec' : '');
-const czysc = (x = '') => String(x).replace(/&nbsp;|\u00a0/gi, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-// Strona nie ma pola „miejsce”: jedynym sygnałem jest hasło (np. „ADINA - w domu tymczasowym 🏠”). Ręcznie ustawione miejsce nie jest nadpisywane.
-function miejsceZHasla(haslo, old) {
-  const z = /domu tymczasow|dom tymczasow/i.test(haslo) ? 'dt' : /hotelik/i.test(haslo) ? 'hotelik' : null;
-  if (old.miejsce && !old.miejsce_auto) return {};
-  if (z) return { miejsce: z, miejsce_auto: true };
-  return old.miejsce_auto ? { miejsce: 'schronisko', miejsce_auto: true } : {};
-}
-export function dogFromImport(imp, old = {}) {
-  const f = imp.fields || {}; const haslo = czysc(imp.haslo || old.haslo || '');
-  return {
-    ...old,
-    id: old.id || (imp.id ? 'd' + imp.id : 'm' + uid()),
-    imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
-    waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
-    opis: imp.opis || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), parser: 3, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
-    zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
-    haslo, status: /procesie adopcji/i.test(haslo) ? 'w_trakcie' : (imp.status === 'w_trakcie' ? 'do_adopcji' : imp.status) || old.status || 'do_adopcji',
-    ...miejsceZHasla(haslo, old),
-    ocena: old.ocena && !old.ocena.auto ? old.ocena : ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
-  };
-}
+import { dogFromImport, czysc } from './dogmerge.js';
+export { dogFromImport };
 export async function importOne(url) {
   const imp = await api('/import?url=' + encodeURIComponent(url));
   if (!imp.name) throw new Error('Nie udało się odczytać imienia psa z tej strony.');

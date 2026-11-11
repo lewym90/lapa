@@ -43,6 +43,7 @@ say "Node: $($NODE -v)"
 
 # 3) Pliki serwera
 for f in lapa-server.mjs hash-password.mjs; do curl -fsSL "$RAW/$f" -o "$APP/$f" || die "pobieranie $f"; done
+curl -fsSL "${RAW%/server}/js/dogmerge.js" -o "$APP/dogmerge.mjs" || die "pobieranie dogmerge.js"
 
 # 4) Hasła (pytane tylko przy pierwszej instalacji; zmiana później: bash $APP/zmien-haslo.sh)
 cat > "$APP/zmien-haslo.sh" <<'Z'

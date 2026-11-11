@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, brandBar, confirmSheet, statusChip, safeUrl } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, brandBar, confirmSheet, statusChip, safeUrl, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, setName, lock, logout } from './auth.js';
 import { SITE, VERSION } from './config.js';
@@ -27,7 +27,7 @@ export async function events() {
   let lastDay = '';
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
-    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1><button class="iconbtn" data-act="a-event" aria-label="Dodaj wydarzenie">${icon('plus')}</button></header>
+    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1>${plusBtn('a-event', 'Dodaj wydarzenie')}</header>
     <div class="fchips">${[['wszystko', 'Wszystkie'], ['moje', 'Tylko moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
     ${evFilter === 'moje' ? html`<p class="hint" style="padding:0 20px;margin:0 0 8px">Wydarzenia, które dodałeś(-aś) albo w których bierzesz udział, i transporty, które wieziesz.</p>` : ''}
     ${items.length ? items.map((i) => { const dk = dayKey(i.t), head = dk !== lastDay ? (lastDay = dk, html`<div class="day">${fmtDayLong(i.t)}</div>`) : ''; const p = dayParts(i.t);
@@ -91,7 +91,7 @@ export async function transport() {
   const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${x.pies_imie || 'Pies'}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : x.status === 'przypisany' ? '' : 'gold'}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}</button>`;
   return {
     tab: 'start', title: 'Transport',
-    html: html`${pageBar('Transport', { right: html`<button class="iconbtn" data-act="a-trans" aria-label="Zgłoś transport">${icon('plus')}</button>` })}
+    html: html`${pageBar('Transport', { right: html`${plusBtn('a-trans', 'Zgłoś transport')}` })}
     <div class="pad stack">${act.length ? act.map(row) : html`<div class="empty">${icon('truck')}<h3>Brak aktywnych transportów</h3><p>Gdy pies potrzebuje przewozu (do lekarza, domu tymczasowego, adopcji), zgłoś to tutaj. Wolontariusze z samochodem zobaczą prośbę.</p><button class="btn gold" data-act="a-trans">Zgłoś transport</button></div>`}
     ${old.length ? html`<h2 style="font-size:20px;color:var(--gold-l);margin-top:8px">Zakończone</h2>${old.map(row)}` : ''}</div>`
   };
@@ -197,13 +197,25 @@ export async function settings() {
         ${state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora</button>`}</section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button><button class="btn ghost" data-act="set-resync">Pobierz dane od nowa</button></div></section>
+      <section class="card"><h3>Strona schroniska</h3><p class="sub" style="margin:2px 0 12px" id="sitest">Sprawdzam…</p>
+        <div class="btnrow"><button class="btn ghost" data-act="set-site">${icon('refresh')} Sprawdź stronę teraz</button></div></section>
       <section class="card"><h3>Kopia zapasowa</h3><p class="sub" style="margin:2px 0 8px" id="bkst">Kopie na serwerze: sprawdzam…</p><p class="sub" style="margin:2px 0 12px">Plik z danymi widocznymi na tym telefonie${state.coordinator ? ' (razem z danymi osobowymi, trzymaj go bezpiecznie)' : ''}.</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-export">${icon('download')} Zapisz kopię</button><button class="btn ghost" data-act="set-import">${icon('upload')} Wczytaj kopię</button></div></section>
       <section class="card"><h3>O aplikacji</h3><p class="sub" style="margin:2px 0 12px">ŁAPA — Nowodwór, wersja <b>${VERSION}</b>. Aplikacja dla wolontariuszy, bezpłatna i bez reklam. Nowe wersje instalują się same po ponownym otwarciu aplikacji.</p><div class="btnrow"><button class="btn ghost" data-act="set-update">${icon('refresh')} Sprawdź aktualizację</button><a class="btn ghost" href="#/dziekujemy">${icon('gift')} Dziękujemy</a></div></section>
       <button class="btn line block" data-act="set-logout">${icon('logout')} Wyloguj z tego telefonu</button></div>`,
-    mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
+    mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#sitest').textContent = siteText(h && h.site); root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
   };
 }
+const siteText = (s) => !s ? 'Serwer nie ma jeszcze automatycznego sprawdzania strony. Zaktualizuj serwer.' : s.enabled === false ? 'Serwer nie ma pliku do sprawdzania strony. Zaktualizuj serwer.' : s.running ? 'Sprawdzam stronę teraz…' : !s.t ? 'Serwer sprawdza stronę 3 razy dziennie (3:00, 11:00, 17:00). Pierwsze sprawdzenie nastąpi zaraz po aktualizacji serwera.' : s.ok ? `Serwer sprawdza stronę 3 razy dziennie. Ostatnio: ${fmtDate(s.t)} ${fmtTime(s.t)}. Psów na stronie: ${s.razem}, nowych: ${s.nowych}, zmienionych: ${s.zmienionych}.${s.nazwy && s.nazwy.length ? ' Nowe: ' + s.nazwy.join(', ') + '.' : ''}` : `Ostatnie sprawdzenie strony (${fmtDate(s.t)} ${fmtTime(s.t)}) nie udało się: ${s.blad}`;
+actions['set-site'] = async () => {
+  const h0 = await api('/health').catch(() => null), t0 = (h0 && h0.site && h0.site.t) || 0; toast('Sprawdzam stronę schroniska…');
+  try { await api('/site/sync', { method: 'POST', body: {} }); } catch { toast('Brak połączenia z serwerem', true); return; }
+  for (let i = 0; i < 120; i++) {
+    await new Promise((r) => setTimeout(r, 2500)); const h = await api('/health').catch(() => null), s = h && h.site, el = document.getElementById('sitest'); if (!s) continue; if (el) el.textContent = siteText(s);
+    if (!s.running && s.t > t0) { kick(10); toast(s.ok ? (s.nowych ? `Nowych psów: ${s.nowych}` : 'Sprawdzone. Brak nowych psów') : 'Nie udało się sprawdzić strony', !s.ok); return; }
+    if (i >= 3 && !s.running && s.t === t0) { toast('Serwer sprawdzał stronę przed chwilą'); return; }
+  }
+};
 actions['set-lock'] = async () => { await lock(); toast('Dane osobowe zablokowane'); };
 actions['set-update'] = () => { toast('Sprawdzam…'); checkUpdate({ manual: true }); };
 actions['set-sync'] = () => { kick(10); toast('Synchronizuję…'); };

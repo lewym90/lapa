@@ -67,37 +67,8 @@ actions['dog-miejsce'] = async (el) => {
 // ===== ocena zachowania =====
 // Automatyczna ocena z opisu ze strony: proste reguły słów kluczowych (bez AI), liczone po fragmentach zdań.
 // Zawsze do sprawdzenia przez wolontariusza. „Nie” ustawiamy tylko przy jednoznacznym zdaniu, w razie wątpliwości „ostrożnie”.
-const KAT = {
-  ludzie: /człowiek|\bludzi|\bludzie|opiekun|obcych ludzi|obcy(?! pies|ch psów)|przytula|głask|pieszcz|kontakt z (?:człowiek|ludź)/,
-  dzieci: /\bdzieci\b|dziećmi|dzieciom|z dzieckiem|dzieci[eę]/,
-  psy: /psami|innych psów|obcych psów|inne psy|innymi psami|innych piesk|innymi pieskami|towarzystw\w+ (?:innych )?psów|suczk|samc|psiak|relacj\w+ z psami|kontakt\w* z psami/,
-  koty: /\bkot/,
-  smycz: /smycz|spacer/
-};
-const NEGATED_BAD = /\bnie jest agresywn\w*|\bnie bywa agresywn\w*|\bnie jest do (?:nich|niego|niej) agresywn\w*|\bnie ma agresji|bez agresji|\bnie jest (?:dla nich )?niebezpieczn\w*|\bnie atakuje|\bnie narzuca się|\bnie gryzie|\bnie warczy|\bnie szczeka|\bnie zaczepia|\bnie boi się|\bnie budzą w niej|\bnie ma problemu|bez problemu|\bnie sprawia problem\w*|\bnie ciągnie|\bnie jest problem\w*|\bnie stanowi problem\w*|\bnie wadzi/g;
-const POS = /lubi|uwielbia|chętnie|dobrze|przyjazn\w*|towarzysk\w*|kontaktow\w*|zgodn\w*|akceptuje|wzorowo|pięknie|ładnie|łagodn\w*|przytula|potrafi|grzeczn\w*|ufn\w*|radosn\w*|wesoł\w*|szuka kontaktu|dogaduje się|pozytyw/;
-const NEG = /agresywn\w*|\bnie toleruje|\bnie dogaduje się|\bnie nadaje się|\bnie akceptuje|\bnie lubi (?:towarzystwa|innych|obcych|dzieci|kotów|psów|ludzi|dotyku)|\bnie przepada za|atakuje|rzuca się na|\bnie polecamy|wykluczon\w*|bez dzieci|bez zwierząt/;
-const CAU = /boi się|się boi|obawia się|lęk\w*|nieśmiał\w*|zdystansowan\w*|z dystansem|ostrożn\w*|wycofu\w*|wycofan\w*|selektywn\w*|dominuj\w*|odburkn\w*|ostrzegawczo|stopniowo|płochliw\w*|podejrzliw\w*|nieufn\w*|ciągnie na smyczy|ciągnie(?! na wolnym)|unika kontaktu|natarczyw\w*/;
-const NEU = /neutraln\w*|obojętn\w*|ignoruje|\bnie interesuj\w*|\bnie zwraca uwagi|\bnie reaguje/;
-export function ocenaZOpisu(opis) {
-  const text = String(opis || '').replace(/\s+/g, ' ').trim(); if (text.length < 40) return undefined;
-  const clauses = text.split(/(?<=[.!?])\s+/).flatMap((z) => z.split(/;|:|,| - | – |\) |\s(?:ale|jednak|natomiast|choć|chociaż)\s/)).map((x) => x.toLowerCase());
-  const o = {}; const lek = [];
-  for (const [k, re] of Object.entries(KAT)) {
-    const ss = clauses.filter((x) => re.test(x)); if (!ss.length) continue;
-    let pos = 0, neg = 0, cau = 0, neu = 0;
-    for (const x of ss) {
-      let y = x.replace(NEGATED_BAD, ' pozytyw ');
-      if (k !== 'dzieci') y = y.replace(/(?:z|bez) dzieci\w*|dzieci\w* wykluczon\w*/g, ' ');
-      const hasNeg = NEG.test(y); if (hasNeg) neg++; if (CAU.test(y)) cau++; if (NEU.test(y)) neu++; if (POS.test(y.replace(new RegExp(NEG.source, 'g'), ' '))) pos++;
-    }
-    o[k] = neg && !pos ? 'nie' : neg || cau ? 'ostroznie' : neu && !pos ? 'neutral' : pos ? 'ok' : neu ? 'neutral' : '';
-    if (!o[k]) delete o[k];
-  }
-  for (const x of clauses) if (/lęk|boi się|się boi|obawia/.test(x) && !/nie boi się|nie ma problemu z lękiem|nie budzą/.test(x)) lek.push(x.replace(/\.$/, ''));
-  const n = { ...o, lek: lek.slice(0, 2).join('. ').slice(0, 200), auto: true, autor: 'z opisu', ts: Date.now() };
-  return Object.keys(o).length || n.lek ? n : undefined;
-}
+import { ocenaZOpisu } from './dogmerge.js';
+export { ocenaZOpisu };
 export function opisZOceny(d, o) {
   const w = d.plec === 'suka' ? { on: 'Ona', ma: 'Jest', ltr: 'Lubi' } : { on: 'On', ma: 'Jest', ltr: 'Lubi' };
   const t = {
@@ -233,6 +204,7 @@ export function gaps(dogs, zdrAll) {
   for (const d of dogs) {
     if (!aktywny(d)) continue; const k = d.kanaly || {};
     if (onSite && d.zrodlo_id && !onSite.has(String(d.zrodlo_id)) && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
+    if (d.auto_dodany && Date.now() - d.auto_dodany < 5 * MS_DAY) out.push({ d, kind: 'autonowy', sev: 2, text: 'Dodany automatycznie ze strony. Sprawdź dane i miejsce pobytu', act: 'dog-miejsce' });
     if (d.nowy && !d.ocena) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
     if (!hasPics(d)) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
     if (d.nowy && !(d.opis || '').trim()) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });

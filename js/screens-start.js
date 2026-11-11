@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, safeUrl } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, safeUrl, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { gaps, siteNew, siteNewLinks } from './teczka.js';
@@ -67,7 +67,7 @@ export async function tasks() {
   const done = all.filter((t) => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0)).slice(0, 15);
   return {
     tab: 'start', title: 'Moje zadania',
-    html: html`${pageBar('Moje zadania', { right: html`<button class="iconbtn" data-act="a-task" aria-label="Dodaj zadanie">${icon('plus')}</button>` })}
+    html: html`${pageBar('Moje zadania', { right: html`${plusBtn('a-task', 'Dodaj zadanie')}` })}
     <div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Te zadania widzisz tylko Ty, na tym telefonie.</p>
     <section class="card">${open.length ? open.map((t) => html`${taskRow(t)}`) : html`<p class="sub" style="margin:4px 0">Brak otwartych zadań.</p>`}</section>
     ${done.length ? html`<h2 style="font-size:20px;color:var(--gold-l)">Ostatnio zrobione</h2><section class="card">${done.map((t) => html`${taskRow(t)}`)}</section>` : ''}</div>`

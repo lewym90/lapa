@@ -130,4 +130,5 @@ export const pageBar = (title, { back = true, right = '' } = {}) => html`<header
   <h1 style="font-size:22px;font-weight:500;text-align:center;flex:1;padding:0 6px">${title}</h1>
   <span style="min-width:44px;display:flex;justify-content:flex-end">${right}</span>
 </header>`;
+export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" data-act="${act}" aria-label="${label}">${icon('plus')}</button>`;
 actions.back = () => { if (history.length > 1) history.back(); else location.hash = '#/start'; };
