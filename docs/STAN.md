@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.1, 2026-11-11)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.2, 2026-11-11)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 

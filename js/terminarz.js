@@ -121,7 +121,10 @@ export async function wydarzenia(opts = {}) {
     <div class="pad" style="display:flex;gap:8px;margin-bottom:6px">${raw(tb('sob', 'Sobotnie spacery') + tb('ter', 'Terminarz'))}</div>${raw(body)}`
   };
 }
-actions['tm-tab'] = (el) => { tab = el.dataset.t; rerender(); };
+export const curTab = () => tab;
+// Przełączenie zakładki zawsze przechodzi na ogólny adres #/wydarzenia (adresy #/sobotnie i #/zadania ustawiają zakładkę na sztywno i cofałyby wybór przy odświeżeniu).
+const stay = () => { if (location.hash !== '#/wydarzenia') location.hash = '#/wydarzenia'; else rerender(); };
+actions['tm-tab'] = (el) => { tab = el.dataset.t; stay(); };
 
 async function sobView(zg) {
   const L = await soboty(10);
@@ -192,7 +195,7 @@ async function terView(zg) {
   if (!rows.length && !over.length && !undated.length) out += `<div class="empty">${icon('calendar').s}<h3>Pusto</h3><p>Dodaj wpis przyciskiem + u góry: wydarzenie dla wszystkich albo przypomnienie tylko dla siebie.</p></div>`;
   return out;
 }
-actions['tm-filt'] = (el) => { filt = el.dataset.k; rerender(); };
+actions['tm-filt'] = (el) => { filt = el.dataset.k; stay(); };
 actions['tm-done'] = async (el) => {
   const e = await get('terminarz', el.dataset.id); if (!e) return; const t = +el.dataset.t;
   if (e.powtarzaj && e.powtarzaj.jedn) { e.zr = { ...(e.zr || {}) }; const k = dayKey(t); if (e.zr[k]) delete e.zr[k]; else e.zr[k] = Date.now(); } else e.zrobione = !e.zrobione;

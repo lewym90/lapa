@@ -41,7 +41,7 @@ const MENU = [
 ];
 const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
-const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (k === 'terminarz' && seg === 'wydarzenia'); };
+const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
   return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
