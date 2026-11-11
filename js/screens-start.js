@@ -1,11 +1,11 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, safeUrl, plusBtn } from './ui.js';
+import { html, icon, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { gaps } from './teczka.js';
 import { zalegle } from './adopcje.js';
 import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
-import { greeting, dogOfDay, dogNeeds, fmtShort, startOfDay, NEED_LABELS, fmtDate } from './util.js';
+import { greeting, dogOfDay, dogNeeds, fmtShort, NEED_LABELS, fmtDate } from './util.js';
 
 const seenK = 'lapa.kseen';
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };

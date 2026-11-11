@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.3, 2026-11-11)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.4, 2026-11-11)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -47,3 +47,6 @@ W katalogu `tests/`: skrypty Playwright (`e*.py`) i test serwera (`s1.mjs`, atra
 - Klient: status strony z `/health` (bez własnego sprawdzania), usunięte martwe fragmenty.
 - Testy: tests/e*.py zaktualizowane do nowego menu; `s1.mjs` test serwera.
 - Nie sprawdzone na prawdziwym telefonie: drukowanie z iOS (podgląd działa, samo okno druku zależy od systemu).
+
+## 1.8.4 (2026-11-11)
+Dokończenie audytu: usunięte nieużywane importy, etykiety dostępności pól wyszukiwania i imienia, większe pola dotyku linków, szkic formularza zapamiętywany po tytule i początkowej zawartości, fokus na oknie po otwarciu, bez `aria-live` na całej aplikacji. Błędy 500 w konsoli audit_ui.py pochodzą z braku sieci w piaskownicy (serwer testowy nie dociera do strony schroniska).

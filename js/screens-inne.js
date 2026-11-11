@@ -1,13 +1,12 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, brandBar, confirmSheet, statusChip, safeUrl, plusBtn } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, setName, lock, logout } from './auth.js';
-import { SITE, VERSION } from './config.js';
+import { VERSION } from './config.js';
 import { checkUpdate } from './update.js';
 import { status as syncStatus, kick } from './sync.js';
 import * as db from './db.js';
-import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS, uid } from './util.js';
-import { pickDog, unlockSheet, dogThumb } from './screens-psy.js';
-import { hydratePhotos } from './photos.js';
+import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS } from './util.js';
+import { pickDog, dogThumb } from './screens-psy.js';
 import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
 import { resetSiteStatus } from './teczka.js';
@@ -193,7 +192,7 @@ export async function settings() {
     tab: 'start', title: 'Ustawienia', live: false,
     html: html`${pageBar('Ustawienia')}<div class="pad stack">
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Podpisuje Twoje wpisy, spacery i zgłoszenia.</p>
-        <form id="sn" class="field" style="margin:0"><input class="input" id="sni" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
+        <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       <section class="card"><h3>${icon('lock')} Dane osobowe</h3><p class="sub" style="margin:2px 0 12px">${state.coordinator ? 'Odblokowane hasłem koordynatora. Zablokują się same po godzinie bez używania aplikacji.' : 'Zablokowane. Numery telefonów i dane osób zainteresowanych adopcją widzi tylko koordynator.'}</p>
         ${state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora</button>`}</section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>

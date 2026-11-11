@@ -2,8 +2,8 @@
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
-import { MS_DAY, fmtDate, uid } from './util.js';
-import { unlockSheet, dogThumb } from './screens-psy.js';
+import { MS_DAY, fmtDate } from './util.js';
+import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 
 export const ETAPY = [

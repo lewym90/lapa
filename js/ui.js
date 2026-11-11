@@ -24,6 +24,7 @@ export function openSheet(content, onMount) {
   sheetClose = () => document.removeEventListener('keydown', onKey);
   document.body.style.overflow = 'hidden';
   onMount?.(sheet);
+  sheet.setAttribute('tabindex', '-1'); try { sheet.focus({ preventScroll: true }); } catch {}
   draftsFor(sheet);
   return sheet;
 }
@@ -41,7 +42,8 @@ function saveDraft(flush) {
 async function draftsFor(sheet) {
   const h2 = sheet.querySelector('h2'); const fs = fieldsOf(sheet);
   if (!h2 || !fs.length || sheet.querySelector('input[type=password]')) { draft = null; return; }
-  const key = 'draft:' + h2.textContent.trim().slice(0, 80);
+  const init = fs.map((e) => e.id + '=' + (e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? 1 : 0) : e.value)).join('|'); let hh = 0; for (const ch of init) hh = (hh * 31 + ch.charCodeAt(0)) | 0;
+  const key = 'draft:' + h2.textContent.trim().slice(0, 80) + ':' + (hh >>> 0).toString(36);
   draft = { key, sheet, submitted: false };
   let saved = null; try { saved = await metaGet(key); } catch {}
   if (saved && Date.now() - saved.t < DRAFT_TTL && sheet.isConnected) {

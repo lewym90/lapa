@@ -1,6 +1,6 @@
 // Zdjęcia zrobione w aplikacji: zapis w telefonie od razu, wysyłka na serwer w tle, wyświetlanie także offline.
 import * as db from './db.js';
-import { api, getToken, ApiError } from './api.js';
+import { getToken, ApiError } from './api.js';
 import { API } from './config.js';
 import { uid, compressImage } from './util.js';
 

@@ -5,7 +5,6 @@ import { getName } from './auth.js';
 import { MS_DAY, fmtDate, uid } from './util.js';
 import { SITE } from './config.js';
 import { api } from './api.js';
-import * as db from './db.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
 export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];

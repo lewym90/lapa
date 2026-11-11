@@ -1,9 +1,9 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
 import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
-import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
+import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, uid } from './util.js';
 import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photos.js';
 import { dogBlock } from './adopcje.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
@@ -241,7 +241,7 @@ export function dogForm(d = {}) {
 actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
 
 // ========== import ze strony schroniska ==========
-import { dogFromImport, czysc } from './dogmerge.js';
+import { dogFromImport } from './dogmerge.js';
 export { dogFromImport };
 export async function importOne(url) {
   const imp = await api('/import?url=' + encodeURIComponent(url));

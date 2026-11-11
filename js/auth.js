@@ -1,4 +1,4 @@
-import { api, getToken, setToken, markActive, lastActivity, ApiError } from './api.js';
+import { api, getToken, setToken, markActive, ApiError } from './api.js';
 import { COORD_IDLE_MS } from './config.js';
 import { emit } from './bus.js';
 import * as db from './db.js';

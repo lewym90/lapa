@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
 import { list, save, get, remove } from './store.js';
 import { getName } from './auth.js';
 import { fmtDate, fmtTime, hhmm, minutesText, ago, distanceKm, uid } from './util.js';
@@ -29,7 +29,7 @@ export async function pick() {
   return {
     tab: 'start', nav: false, title: 'Spacer', live: false,
     html: html`${pageBar('Spacer')}<div class="pad"><h2 style="font-size:28px;font-weight:500;margin:6px 0 14px">Z kim idziesz na spacer?</h2>
-      <div class="search">${icon('search')}<input id="wq" type="search" placeholder="Szukaj psa po imieniu" autocomplete="off"></div>
+      <div class="search">${icon('search')}<input id="wq" aria-label="Szukaj psa po imieniu" type="search" placeholder="Szukaj psa po imieniu" autocomplete="off"></div>
       <label class="chip dark" style="margin:14px 0 6px;cursor:pointer"><input type="checkbox" id="gps" style="accent-color:var(--gold);width:18px;height:18px"> Mierz dystans (GPS). Ekran musi być włączony</label></div>
       <div class="pad stack" id="wl" style="margin-top:8px">${dogs.length ? '' : html`<div class="empty">${icon('paw')}<h3>Nie ma jeszcze psów</h3><a class="btn gold" href="#/psy" data-act="a-dog">Dodaj psa</a></div>`}</div>`,
     mount(root) {

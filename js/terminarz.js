@@ -59,7 +59,6 @@ export async function soboty(n = 10) {
   for (const r of recs) if (r.extra) out.push({ id: r.id, dk: r.id, orig: r.start, start: r.start, status: r.status || 'odbedzie', powod: r.powod || '', notatka: r.notatka || '', rec: true, extra: true, key: evKey('walk', r.id) });
   return out.filter((x) => x.start >= today).sort((a, b) => a.start - b.start);
 }
-const stLabel = { odbedzie: 'Odbędzie się', odwolany: 'ODWOŁANY' };
 
 // ===== dane na dziś (Start, Do zrobienia, komunikat poranny) =====
 export async function dzisItems() {

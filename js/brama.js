@@ -56,7 +56,7 @@ export async function brama() {
     html: html`${pageBar('Brama – spacery')}<div class="pad">
       <p class="sub" style="margin:4px 0 12px">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}, <b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z ${s.lista.length} psów. Bez spaceru: <b>${nieWyd.length}</b>.</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size) + tb('out', 'Poza', s.out.size) + tb('wrocily', 'Wróciły', s.wrocily.length))}</div>
-      <div class="search">${icon('search')}<input id="bq" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div></div>
+      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div></div>
       <div class="pad stack" id="bl" style="margin-top:8px">${raw(body)}</div>
       <div class="pad" style="margin-top:12px"><button class="btn ghost block" data-act="br-sum">Podsumowanie dnia (post)</button><p class="hint" style="margin-top:8px">Dla psa, który wyszedł z wolontariuszem na dłuższy spacer z notatkami i zdjęciami, użyj <a href="#/spacer">spaceru osobistego</a>.</p></div>`,
     mount(root) {

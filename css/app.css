@@ -95,7 +95,7 @@ h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;line-height:1.15}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
 .card-head h3{display:flex;align-items:center;gap:10px}
 .card-head h3 .ico{font-size:24px;color:var(--green)}
-.link{color:var(--gold);font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:4px;text-decoration:none}
+.link{color:var(--gold);font-weight:600;font-size:13.5px;min-height:36px;display:inline-flex;align-items:center;gap:4px;text-decoration:none}
 .sec{margin:22px 20px 10px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .sec h2{font-size:24px;font-weight:500}
 .sec .link{color:var(--gold-l)}
@@ -167,6 +167,7 @@ button.chip{cursor:pointer}
 
 /* arkusz (okno od dołu) */
 #sheet-root .scrim{position:fixed;inset:0;background:rgba(5,16,12,.6);z-index:50;animation:fade .2s both}
+#sheet-root .sheet:focus{outline:none}
 #sheet-root .sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;max-height:calc(100dvh - var(--sat,0px) - 64px);overflow:auto;background:var(--ivory);color:var(--graphite);border-radius:26px 26px 0 0;padding:10px 20px calc(var(--sab) + 22px);width:min(100%,640px);margin:0 auto;animation:up .28s cubic-bezier(.2,.8,.2,1) both;box-shadow:var(--sh-lg)}
 .sheet .grab{width:44px;height:5px;border-radius:3px;background:rgba(37,41,37,.2);margin:4px auto 14px}
 .sheet h2{font-size:26px;margin-bottom:6px}
