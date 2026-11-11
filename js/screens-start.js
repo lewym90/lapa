@@ -1,13 +1,15 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, safeUrl } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
+import { gaps } from './teczka.js';
 import { greeting, dogOfDay, dogNeeds, fmtShort, startOfDay, NEED_LABELS, fmtDate } from './util.js';
 
 const seenK = 'lapa.kseen';
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
 
 export async function start() {
-  const [dogs, walks, tasks, kom] = await Promise.all([list('psy'), list('spacery'), list('moje_zadania'), list('komunikaty')]);
+  const [dogs, walks, tasks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('moje_zadania'), list('komunikaty'), list('zdrowie')]);
+  const todo = gaps(dogs, zdr);
   const dog = dogOfDay(dogs);
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
@@ -32,7 +34,7 @@ export async function start() {
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="tiles">
-      <a class="tile green" href="#/wydarzenia">${icon('walk', 't-ico')}<span class="t-lbl">Sobotnie spacery</span>${icon('arrow', 't-arr')}</a>
+      <a class="tile green" href="#/zrobic">${todo.length ? html`<span class="badge">${todo.length}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Do zrobienia</span>${icon('arrow', 't-arr')}</a>
       <a class="tile terra" href="#/pomoc">${helpDogs.length ? html`<span class="badge">${helpDogs.length}</span>` : ''}${icon('medic', 't-ico')}<span class="t-lbl">Psy potrzebujące pomocy</span>${icon('arrow', 't-arr')}</a>
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
     </div>

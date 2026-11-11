@@ -16,11 +16,11 @@ const names = (a) => (a.length <= 3 ? a.join(', ') : a.slice(0, 3).join(', ') + 
 // ================= wydarzenia =================
 let evFilter = 'wszystko';
 export async function events() {
-  const [ev, ud, tr] = await Promise.all([list('wydarzenia'), list('udzialy'), list('transporty')]);
+  const [ev, tr] = await Promise.all([list('wydarzenia'), list('transporty')]);
   const me = getName(), today = startOfDay(Date.now());
-  const sats = nextSaturdays(4).map((t) => { const k = dayKey(t), who = ud.filter((u) => u.dzien === k).map((u) => u.imie); return { kind: 'walk', t, k, who, mine: who.includes(me) }; });
+  const sats = nextSaturdays(4).map((t) => ({ kind: 'walk', t, k: dayKey(t) }));
   const items = [...sats, ...ev.filter((e) => e.start >= today).map((e) => ({ kind: 'ev', t: e.start, e })), ...tr.filter((x) => x.kiedy >= today && x.status !== 'anulowany' && x.status !== 'zrealizowany').map((x) => ({ kind: 'tr', t: x.kiedy, x }))]
-    .filter((i) => evFilter === 'wszystko' || (i.kind === 'walk' && i.mine) || (i.kind === 'ev' && i.e.autor === me) || (i.kind === 'tr' && (i.x.kierowca === me || i.x.autor === me)))
+    .filter((i) => evFilter === 'wszystko' || (i.kind === 'ev' && i.e.autor === me) || (i.kind === 'tr' && (i.x.kierowca === me || i.x.autor === me)))
     .sort((a, b) => a.t - b.t);
   let lastDay = '';
   return {
@@ -28,20 +28,30 @@ export async function events() {
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1><button class="iconbtn" data-act="a-event" aria-label="Dodaj wydarzenie">${icon('plus')}</button></header>
     <div class="fchips">${[['wszystko', 'Wszystko'], ['moje', 'Moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
     ${items.length ? items.map((i) => { const dk = dayKey(i.t), head = dk !== lastDay ? (lastDay = dk, html`<div class="day">${fmtDayLong(i.t)}</div>`) : ''; const p = dayParts(i.t);
-      if (i.kind === 'walk') return html`${head}<div class="ev walk"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Sobotni spacer ze schroniska</b><span>Nowodwór · godz. ${fmtTime(i.t)}</span>${i.who.length ? html`<span class="who">${icon('check')} ${names(i.who)}</span>` : html`<span class="who" style="color:#6b736a;font-weight:400">Jeszcze nikt się nie zapisał</span>`}</div>
-        <button class="btn sm ${i.mine ? 'ghost' : ''}" data-act="walk-join" data-k="${i.k}" aria-pressed="${i.mine}">${i.mine ? html`${icon('check')} Zapisano` : html`Zgłoś udział`}</button></div>`;
+      if (i.kind === 'walk') return html`${head}<div class="ev walk"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Sobotni spacer ze schroniska</b><span>Otwarty dla wszystkich · godz. ${fmtTime(i.t)} pod bramą</span></div>
+        <button class="btn sm ghost" data-act="walk-post" data-k="${i.k}" data-t="${i.t}">Post: przypomnienie lub odwołanie</button></div>`;
       if (i.kind === 'tr') return html`${head}<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Transport: ${i.x.pies_imie || 'pies'}</b><span>${i.x.skad} → ${i.x.dokad}</span><span class="who">${i.x.kierowca ? 'Kierowca: ' + i.x.kierowca : 'Szukamy kierowcy'}</span></div>${icon('chev')}</a>`;
       return html`${head}<button class="ev" style="width:100%;text-align:left" data-act="ev-open" data-id="${i.e.id}"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>${i.e.tytul}</b><span>${[fmtTime(i.e.start) !== '00:00' ? 'godz. ' + fmtTime(i.e.start) : '', i.e.miejsce].filter(Boolean).join(' · ')}</span></div>${icon('chev')}</button>`; })
       : html`<div class="empty">${icon('calendar')}<h3>Brak wydarzeń</h3><p>Dodaj wydarzenie przyciskiem +.</p></div>`}
-    <p class="hint" style="text-align:center;margin:18px 20px;color:var(--sage)">Zasady spacerów: <a href="${SITE}/regulamin-spacerow-z-psami" target="_blank" rel="noopener" style="color:var(--gold-l)">regulamin na stronie schroniska</a></p>`
+`
   };
 }
 actions['ev-filter'] = (el) => { evFilter = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 function needName() { if (getName()) return true; toast('Najpierw wpisz imię w ustawieniach', true); return false; }
-actions['walk-join'] = async (el) => {
-  if (!needName()) return; const k = el.dataset.k, id = `s_${k}_${slug(getName())}`;
-  const ex = await get('udzialy', id);
-  if (ex) { await remove('udzialy', id); toast('Wypisano z tego spaceru'); } else { await save('udzialy', { id, dzien: k, imie: getName() }); toast('Zapisano na spacer. Do zobaczenia!'); }
+actions['walk-post'] = (el) => {
+  const t = +el.dataset.t, dd = fmtDayLong(t);
+  const T = {
+    przyp: `PSYpominamy! W ${dd} o godz. ${fmtTime(t)} spacery w schronisku w Nowodworze. Przyjedź pod bramę, zabierz psa na spacer. Nie trzeba się zapisywać, smycze i obroże są na miejscu. Pieski czekają!`,
+    odw: `PSYpominamy, że jutrzejsze SPACERY w schronisku są ODWOŁANE. Pieski ZAPRASZAJĄ Was na kolejną sobotę!`,
+    pod: `Dziękujemy za dzisiejszy spacer! Przyszło ${'__'} osób, psy były szczęśliwe. Do zobaczenia za tydzień, PSYJACIELE!`
+  };
+  openSheet(`<h2>Post o spacerze</h2><form novalidate><div class="field"><label for="wk">Rodzaj</label><select class="select" id="wk"><option value="przyp">Przypomnienie</option><option value="odw">Odwołanie spaceru</option><option value="pod">Podsumowanie i podziękowanie</option></select></div>
+    <div class="field"><label for="wt">Tekst (możesz poprawić)</label><textarea class="textarea" id="wt" style="min-height:160px"></textarea></div>
+    <div class="btnrow"><button type="button" class="btn" id="wc">Kopiuj</button><button type="button" class="btn ghost" id="ws">Wyślij…</button></div></form>`, (s) => {
+    const w = s.querySelector('#wk'), x = s.querySelector('#wt'); const fill = () => { x.value = T[w.value]; }; w.onchange = fill; fill();
+    s.querySelector('#wc').onclick = async () => { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch { x.select(); } };
+    s.querySelector('#ws').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: x.value }); } catch {} } else { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch {} } };
+  });
 };
 actions['ev-open'] = async (el) => {
   const e = await get('wydarzenia', el.dataset.id); if (!e) return;

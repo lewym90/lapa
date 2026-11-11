@@ -343,3 +343,16 @@ button.chip{cursor:pointer}
 .ev.walk{flex-wrap:wrap}
 .ev.walk .btn{flex:1 0 100%;order:3;margin-top:2px}
 .day::first-letter{text-transform:uppercase}
+
+.steps{display:flex;flex-wrap:wrap;gap:6px;padding:10px 2px 4px}
+.steps span{font-size:12px;padding:5px 10px;border-radius:999px;background:#e6e1d5;color:#5b625a}
+.steps span.ok{background:var(--green);color:var(--ivory)}
+.check{display:flex;align-items:center;gap:10px;padding:10px 2px;font-size:15px}
+.check input{width:20px;height:20px;accent-color:var(--green)}
+.gap{display:flex;align-items:center;gap:12px;padding:12px}
+.gap .gi{display:flex;align-items:center;gap:12px;flex:1;min-width:0;color:var(--graphite);text-decoration:none}
+.gap .gp{width:52px;height:52px;border-radius:50%;overflow:hidden;flex:none;background:#cfd8cb}
+.gap .gp img{width:100%;height:100%;object-fit:cover}
+.gap .gp .nophoto{width:100%;height:100%;display:grid;place-items:center}
+.gap .rt{display:flex;flex-direction:column;min-width:0}
+.gap .rt small{color:#5b625a;font-size:13px}

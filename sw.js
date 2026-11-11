@@ -1,12 +1,12 @@
 /* ŁAPA – service worker (praca offline).
    Po każdej zmianie plików zwiększ numer w VERSION, aby wymusić aktualizację. */
-const VERSION = 'lapa-v1.0.2';
+const VERSION = 'lapa-v1.1.0';
 const IMG_CACHE = 'lapa-img-v1';
 const IMG_MAX = 220;
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/bus.js', 'js/ui-core.js', 'js/config.js', 'js/db.js', 'js/store.js', 'js/api.js', 'js/auth.js', 'js/sync.js', 'js/ui.js', 'js/util.js', 'js/icons.js',
-  'js/tekst.js', 'js/update.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/screens-inne.js',
+  'js/tekst.js', 'js/update.js', 'js/teczka.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/screens-inne.js',
   'fonts/inter-latin.woff2', 'fonts/inter-latin-ext.woff2',
   'fonts/playfair-latin-normal.woff2', 'fonts/playfair-latin-ext-normal.woff2',
   'fonts/playfair-latin-italic.woff2', 'fonts/playfair-latin-ext-italic.woff2',

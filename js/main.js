@@ -6,6 +6,7 @@ import { ApiError } from './api.js';
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions } from './ui.js';
 import { VERSION } from './config.js';
 import { initUpdates } from './update.js';
+import * as T from './teczka.js';
 import * as S from './screens-start.js';
 import * as P from './screens-psy.js';
 import * as W from './screens-spacer.js';
@@ -19,7 +20,7 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/wydarzenia$/, () => X.events()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => S.tasks()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => S.tasks()], [/^\/zrobic$/, () => T.zrobic()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Wydarzenia', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
@@ -135,14 +136,16 @@ actions.menu = () => {
 };
 actions.bell = () => S.komunikatySheet();
 actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
-  <button class="act primary" data-act="a-walk">${icon('walk').s}Rozpocznij spacer<small>Zapisze się w historii psa</small></button>
+  <button class="act primary" data-act="a-newdog">${icon('paw').s}Nowy pies w schronisku<small>Przyjęcie, ocena, sesja, publikacja</small></button>
+  <button class="act" data-act="a-walk">${icon('walk').s}Rozpocznij spacer<small>Zapisze się w historii psa</small></button>
   <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
   <button class="act" data-act="a-photo">${icon('camera').s}Dodaj zdjęcie<small>Do karty wybranego psa</small></button>
   <button class="act" data-act="a-task">${icon('check').s}Dodaj zadanie<small>Tylko dla Ciebie</small></button>
   <button class="act" data-act="a-event">${icon('calendar').s}Dodaj wydarzenie<small>Widzą je wszyscy</small></button>
   <button class="act" data-act="a-trans">${icon('truck').s}Zgłoś transport<small>Szukam kierowcy</small></button>
   <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button>
-  <button class="act" data-act="a-dog">${icon('paw').s}Dodaj psa<small>Import ze strony schroniska</small></button></div>`);
+  <button class="act" data-act="a-dog">${icon('paw').s}Dodaj psa<small>Import ze strony schroniska lub ręcznie</small></button></div>`);
+actions['a-newdog'] = () => { closeSheet(); T.nowyPies(); };
 actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
 actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };
 actions['a-photo'] = () => { closeSheet(); P.pickDog((d) => P.addPhoto(d.id)); };

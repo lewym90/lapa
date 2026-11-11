@@ -5,6 +5,7 @@ import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
+import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -20,12 +21,13 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['pilne', 'Pilne'], ['do_adopcji', 'Do adopcji'], ['dt', 'W domu tymczasowym'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+const FILTERS = [['aktywne', 'Aktywne'], ['nowe', 'Nowe, do publikacji'], ['pilne', 'Pilne'], ['do_adopcji', 'Do adopcji'], ['dt', 'W domu tymczasowym'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
 function filterDogs(dogs) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
-    if (ff === 'aktywne') return d.status !== 'adoptowany';
+    if (ff === 'aktywne') return aktywny(d);
+    if (ff === 'nowe') return aktywny(d) && d.nowy && etap(d).done < etap(d).total;
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'wszystkie') return true;
     return d.status === ff;
@@ -35,8 +37,8 @@ function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); 
 function grid(dogs, walks) {
   const f = filterDogs(dogs);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${d.status && d.status !== 'schronisko' ? statusChip(d.status) : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3><div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3><div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
   const [dogs, walks] = await Promise.all([list('psy'), list('spacery')]);
@@ -75,7 +77,7 @@ export async function pickDog(cb) {
 
 // ========== karta psa ==========
 export async function card(id) {
-  const [d, walks, obsAll] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje')]);
+  const [d, walks, obsAll, zdr] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje'), zdrowieDla(id)]);
   if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
   const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start);
   const km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
@@ -94,6 +96,7 @@ export async function card(id) {
       <div class="chips">${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
       <div class="rows">
+        ${teczkaRows(d, zdr)}
         <button class="row" data-act="dog-walks" data-id="${id}">${icon('paw')}<span class="rt"><b>Historia spacerów</b><small>${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' | ' + km.toFixed(1).replace('.', ',') + ' km' : ''}${mine[0] ? ' | ostatni ' + ago(mine[0].start) : ''}</small></span>${icon('chev')}</button>
         <button class="row" data-act="dog-obs" data-id="${id}">${icon('heart')}<span class="rt"><b>Notatki wolontariuszy</b><small>${obs.length} ${plural(obs.length, 'obserwacja', 'obserwacje', 'obserwacji')}${obs[0] ? ' | ostatnia ' + ago(obs[0].ts) : ''}</small></span>${icon('chev')}</button>
         <button class="row" data-act="dog-needs" data-id="${id}">${icon('medic')}<span class="rt"><b>Czego potrzebuje</b><small>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : 'Nic pilnego. Kliknij, żeby zgłosić potrzebę'}</small></span>${icon('chev')}</button>
@@ -232,14 +235,19 @@ export function dogFromImport(imp, old = {}) {
     imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
     status: imp.status || old.status || 'do_adopcji', opis: imp.opis || old.opis || '', zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
-    film: imp.film || old.film || '', zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now()
+    film: imp.film || old.film || '', zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
+    www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || Date.now() }
   };
 }
 export async function importOne(url) {
   const imp = await api('/import?url=' + encodeURIComponent(url));
   if (!imp.name) throw new Error('Nie udało się odczytać imienia psa z tej strony.');
   const id = imp.id ? 'd' + imp.id : null;
-  const old = (id && (await get('psy', id))) || {};
+  let old = (id && (await get('psy', id))) || {};
+  if (!old.id) { // pies dodany wcześniej ręcznie (np. przyjęty, jeszcze bez strony) – połącz po imieniu
+    const same = (await list('psy')).find((x) => !x.zrodlo_id && (x.imie || '').trim().toLowerCase() === (imp.name || '').trim().toLowerCase());
+    if (same) old = same;
+  }
   const dog = dogFromImport(imp, old);
   await save('psy', dog);
   return { dog, updated: !!old.id };

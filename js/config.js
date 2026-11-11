@@ -1,4 +1,4 @@
-export const VERSION = '1.0.2';
+export const VERSION = '1.1.0';
 const q = new URLSearchParams(location.search);
 const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
 // Adres serwera. Parametr ?api= działa tylko na localhost (do testów).
