@@ -6,6 +6,7 @@ import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { dogBlock } from './adopcje.js';
+import { ocenaZOpisu } from './teczka.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -86,15 +87,15 @@ export async function card(id) {
   const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks);
   const adBlock = state.coordinator ? await dogBlock(id) : null;
   return {
-    tab: 'psy', nav: false, title: d.imie, live: true,
-    html: html`<section class="dogtop"><div class="bar"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
+    tab: 'psy', title: d.imie, live: true,
+    html: html`<section class="dogtop"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
         <span style="display:flex;gap:8px"><button class="iconbtn" data-act="dog-fav" data-id="${id}" aria-pressed="${isFav}" aria-label="Ulubiony">${raw(icon('heart').s.replace('class="ico', isFav ? 'style="fill:var(--terra);stroke:var(--terra)" class="ico' : 'class="ico'))}</button>
         <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
       <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
       ${pics.length > 1 ? html`<div class="dots" id="dots">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
     <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>
       <div class="meta">${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
-      <div class="chips">${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
+      <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
       <div class="rows">
         ${teczkaRows(d, zdr)}
@@ -219,7 +220,9 @@ export function dogFromImport(imp, old = {}) {
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
     status: imp.status || old.status || 'do_adopcji', opis: imp.opis || old.opis || '', zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
     zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
-    haslo: imp.haslo || old.haslo || '', film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
+    haslo: imp.haslo || old.haslo || '',
+    miejsce: old.miejsce || (/domu tymczasowym|dom tymczasowy/i.test(imp.haslo || '') ? 'dt' : /hotel/i.test(imp.haslo || '') ? 'hotelik' : undefined),
+    ocena: old.ocena && !old.ocena.auto ? old.ocena : ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
   };
 }
 export async function importOne(url) {

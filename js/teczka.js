@@ -40,7 +40,7 @@ export function teczkaRows(d, zdr) {
   return html`
     <button class="row" data-act="dog-miejsce" data-id="${d.id}">${icon('pin')}<span class="rt"><b>${(MIEJSCA.find((x) => x[0] === m) || [])[1]}${d.opiekun ? ' · ' + d.opiekun : ''}</b><small>${d.data_przyjecia ? 'Od ' + fmtDate(d.data_przyjecia) + (dni !== null ? ` · ${dni} ${plural(dni, 'dzień', 'dni', 'dni')} w schronisku` : '') : 'Dodaj datę przyjęcia, czip i opiekuna'}${d.chip ? ' · czip ' + d.chip : ''}</small></span>${icon('chev')}</button>
     ${d.nowy && e.done < e.total ? html`<div class="steps" aria-label="Postęp nowego psa">${e.steps.map(([l, ok]) => html`<span class="${ok ? 'ok' : ''}">${ok ? '✓ ' : ''}${l}</span>`)}</div>` : ''}
-    <button class="row" data-act="dog-ocena" data-id="${d.id}">${icon('heart')}<span class="rt"><b>Ocena zachowania</b><small>${d.ocena ? OCENA_POLA.filter(([p]) => d.ocena[p]).map(([p, l]) => l.replace('Do ', '').replace('Na ', '') + ': ' + (OCENA_LBL[d.ocena[p]] || '').toLowerCase()).join(' · ') || 'Zapisana' : 'Jeszcze nie oceniony. Kliknij, żeby ocenić po spacerze'}</small></span>${icon('chev')}</button>
+    <button class="row" data-act="dog-ocena" data-id="${d.id}">${icon('heart')}<span class="rt"><b>Ocena zachowania${d.ocena && d.ocena.auto ? ' (z opisu, sprawdź)' : ''}</b><small>${d.ocena ? OCENA_POLA.filter(([p]) => d.ocena[p]).map(([p, l]) => l.replace('Do ', '').replace('Na ', '') + ': ' + (OCENA_LBL[d.ocena[p]] || '').toLowerCase()).join(' · ') || 'Zapisana' : 'W opisie brak informacji. Kliknij, żeby ocenić po spacerze'}</small></span>${icon('chev')}</button>
     <button class="row" data-act="dog-zdrowie" data-id="${d.id}">${icon('medic')}<span class="rt"><b>Zdrowie i zabiegi</b><small>${zdr.length ? zdr.length + ' ' + plural(zdr.length, 'wpis', 'wpisy', 'wpisów') + (due.length ? ' · do zrobienia: ' + due.map((z) => TYP[z.typ]).join(', ') : '') : 'Szczepienia, kastracja, leki, koszty'}</small></span>${icon('chev')}</button>
     <button class="row" data-act="dog-kanaly" data-id="${d.id}">${icon('share')}<span class="rt"><b>Gdzie jest ogłoszony</b><small>${nKan ? KANALY.filter(([x]) => k[x]).map(([, l]) => l.split(' ')[0]).join(', ') : 'Nigdzie'}${nKan < KANALY.length ? ' · brakuje: ' + KANALY.filter(([x]) => !k[x]).map(([, l]) => l.split(' ')[0]).slice(0, 3).join(', ') + (KANALY.length - nKan > 3 ? '…' : '') : ''}</small></span>${icon('chev')}</button>
     <button class="row" data-act="dog-teksty" data-id="${d.id}">${icon('pencil')}<span class="rt"><b>Teksty do postów</b><small>Album, post, „zróbmy hałas”, dom tymczasowy, SMS</small></span>${icon('chev')}</button>`;
@@ -65,6 +65,27 @@ actions['dog-miejsce'] = async (el) => {
 };
 
 // ===== ocena zachowania =====
+// Automatyczna ocena z opisu ze strony: proste reguły słów kluczowych (bez AI). Zawsze do sprawdzenia przez wolontariusza.
+const KAT = { ludzie: /człowiek|ludzi|ludzie|opiekun|obcy|obcych|przytula|głask|pieszcz/, dzieci: /dzieci|dziecko|dzieck/, psy: /psami|psów|psy\b|psem|pieski|pieskami|suczk|samc|innych psów/, koty: /\bkot/, smycz: /smycz/ };
+const POS = /lubi|uwielbia|chętnie|dobrze|przyjazn|towarzysk|kontaktow|zgodn|akceptuje|wzorowo|pięknie|ładnie|łagodn|przytula|potrafi|bez problemu|nie ma problemu|nie sprawia problem|nie ciągnie|grzeczn|ufn|radosn|wesoł/;
+const NEG = /agresyw|nie toleruje|nie dogaduje|nie nadaje się|gryzie|atakuje|nie akceptuje|niebezpieczn|nie lubi|warczy|rzuca się|nie polecamy|wykluczon/;
+const CAU = /boi się|się boi|lęk|nieśmiał|zdystansowan|ostrożn|wycofan|selektywn|dominuj|szczeka na|stopniowo|płochliw|podejrzliw|nieufn|ciągnie na smyczy|ciągnie\b(?! na wolnym)/;
+const NEU = /neutraln|obojętn|ignoruje|nie interesuj|nie zwraca uwagi/;
+export function ocenaZOpisu(opis) {
+  const text = String(opis || '').trim(); if (text.length < 40) return undefined;
+  const sent = text.split(/(?<=[.!?])\s+|\n+/).map((x) => x.toLowerCase());
+  const o = {}; const lek = [];
+  for (const [k, re] of Object.entries(KAT)) {
+    const ss = sent.filter((x) => re.test(x)); if (!ss.length) continue;
+    let pos = 0, neg = 0, cau = 0, neu = 0;
+    for (const x of ss) { const y = x.replace(/nie ciągnie|bez problemu|nie ma problemu|nie sprawia problem|nie budzą w niej panicznego lęku|nie boi się|nie jest dla niej problem/g, ' pozytyw '); if (NEG.test(y)) neg++; if (CAU.test(y)) cau++; if (NEU.test(y)) neu++; if (POS.test(y) || /pozytyw/.test(y)) pos++; }
+    o[k] = neg ? 'nie' : cau ? 'ostroznie' : neu && !pos ? 'neutral' : pos ? 'ok' : neu ? 'neutral' : '';
+    if (!o[k]) delete o[k];
+  }
+  for (const x of sent) if (/lęk|boi się|się boi|obawia/.test(x) && !/nie boi się|nie ma problemu z lękiem|nie budzą/.test(x)) lek.push(x.replace(/\.$/, '')); 
+  const n = { ...o, lek: lek.slice(0, 2).join('. ').slice(0, 200), auto: true, autor: 'z opisu', ts: Date.now() };
+  return Object.keys(o).length || n.lek ? n : undefined;
+}
 export function opisZOceny(d, o) {
   const w = d.plec === 'suka' ? { on: 'Ona', ma: 'Jest', ltr: 'Lubi' } : { on: 'On', ma: 'Jest', ltr: 'Lubi' };
   const t = {
@@ -81,7 +102,7 @@ export function opisZOceny(d, o) {
 }
 actions['dog-ocena'] = async (el) => {
   const d = await get('psy', el.dataset.id), o = d.ocena || {};
-  openSheet(`<h2>Ocena: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Wypełnij po spacerze, wszystko jest opcjonalne. Z tego powstanie rzetelny opis do ogłoszenia.</p><form id="of" novalidate>
+  openSheet(`<h2>Ocena: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">${o.auto ? 'Wstępnie uzupełnione automatycznie z opisu na stronie. Sprawdź i popraw po spacerze.' : 'Wypełnij po spacerze, wszystko jest opcjonalne. Z tego powstanie rzetelny opis do ogłoszenia.'}</p><form id="of" novalidate>
     ${OCENA_POLA.map(([p, l]) => SEL('o_' + p, l, OCENA_OPC, o[p] || '')).join('')}
     <div class="field"><label for="o_lek">Lęki, trudności (opcjonalnie)</label><input class="input" id="o_lek" maxlength="200" placeholder="np. boi się hałasu, nie lubi być dotykany po głowie" value="${esc(o.lek || '')}"></div>
     <div class="field"><label for="o_n">Twoje obserwacje (opcjonalnie)</label><textarea class="textarea" id="o_n" maxlength="800">${esc(o.notatka || '')}</textarea></div>

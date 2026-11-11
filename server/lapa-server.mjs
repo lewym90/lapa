@@ -144,10 +144,11 @@ function parseDog(h, u) {
   }
   const st = (fields.status_txt || '').toLowerCase(); delete fields.status_txt;
   if (/pilny|pilne/.test(st)) status = 'pilne'; else if (/adoptowan/.test(st)) status = 'adoptowany'; else if (/w trakcie|zarezerw/.test(st)) status = 'w_trakcie'; else if (/do adopcji/.test(st)) status = status === 'pilne' ? 'pilne' : 'do_adopcji';
-  const intro = (/class="[^"]*\bintro\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(h) || [])[1];
+  const body = h.slice(Math.max(0, h.search(/TzArticleTitle/)));
+  const intro = (/class="[^"]*\bintro\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(body) || [])[1];
   const haslo = intro ? strip(intro).replace(new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–—:]\\s*', 'i'), '') : '';
   // opis: akapity z bloku .text przed galerią/wideo i przed sekcją kontaktu/zasad
-  const tb = /class="[^"]*\btext\b[^"]*"[^>]*>([\s\S]*?)(?:<!--\s*JoomlaWorks|<div class="video-responsive"|$)/i.exec(h);
+  const tb = /class="[^"]*\bcol-[^"]*\btext\b[^"]*"[^>]*>([\s\S]*?)(?:<!--\s*JoomlaWorks|<div class="video-responsive"|$)/i.exec(body);
   const STOP = /(kontakt w sprawie adopcji|zasady adopcji|przed adopcją obowiązuje|numer konta)/i;
   const desc = [];
   if (tb) for (const pm of tb[1].matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) { const t = strip(pm[1]); if (!t || t.length < 3) continue; if (STOP.test(t)) break; desc.push(t); if (desc.join('\n').length > 4000) break; }
