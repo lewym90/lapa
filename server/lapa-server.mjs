@@ -176,6 +176,28 @@ async function dogLinks() {
 }
 const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
+// ===== Kopie zapasowe: baza co 30 minut (VACUUM INTO), zdjęcia kopiowane przyrostowo =====
+const BACKUP_DIR = path.join(path.dirname(DB_FILE), 'backups');
+fs.mkdirSync(BACKUP_DIR, { recursive: true });
+let lastBackup = { t: 0, ok: null };
+const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\..*/, '').replace('T', '-');
+function runBackup() {
+  try {
+    const f = path.join(BACKUP_DIR, `lapa-${stamp(new Date())}.db`);
+    if (!fs.existsSync(f)) db.exec(`VACUUM INTO '${f.replace(/'/g, "''")}'`);
+    const pc = path.join(BACKUP_DIR, 'photos'); fs.mkdirSync(pc, { recursive: true });
+    for (const n of fs.readdirSync(PHOTO_DIR)) { const to = path.join(pc, n); if (!fs.existsSync(to)) fs.copyFileSync(path.join(PHOTO_DIR, n), to); }
+    // retencja: wszystko z 48 godzin, potem po jednej kopii na dobę przez 60 dni
+    const now = Date.now(), seenDay = new Set();
+    for (const n of fs.readdirSync(BACKUP_DIR).filter((x) => /^lapa-\d{8}-\d{6}\.db$/.test(x)).sort().reverse()) {
+      const m = /^lapa-(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.db$/.exec(n), t = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]), day = n.slice(5, 13);
+      if (now - t < 48 * 3600e3) continue;
+      if (now - t > 60 * 86400e3 || seenDay.has(day)) fs.unlinkSync(path.join(BACKUP_DIR, n)); else seenDay.add(day);
+    }
+    lastBackup = { t: Date.now(), ok: true };
+  } catch (e) { lastBackup = { t: Date.now(), ok: false }; console.error('Kopia zapasowa nie powiodła się:', e.message); }
+}
+setTimeout(runBackup, 5000).unref(); setInterval(runBackup, 30 * 60e3).unref();
 function readRaw(req, max) {
   return new Promise((resolve, reject) => {
     let n = 0; const c = [];
@@ -193,7 +215,7 @@ async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const p = url.pathname.replace(/\/+$/, '') || '/';
 
-  if (p === '/health') return send2(200, { ok: true });
+  if (p === '/health') return send2(200, { ok: true, backup: lastBackup });
 
   if (p === '/auth/login' && req.method === 'POST') {
     const ip = clientIp(req), wait = blocked(ip);

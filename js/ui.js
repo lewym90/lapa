@@ -1,5 +1,6 @@
 import { html, raw, esc, safeUrl } from './ui-core.js';
 import { icon } from './icons.js';
+import { metaGet, metaSet } from './db.js';
 export { html, raw, esc, safeUrl, icon };
 
 let toastT;
@@ -23,9 +24,48 @@ export function openSheet(content, onMount) {
   sheetClose = () => document.removeEventListener('keydown', onKey);
   document.body.style.overflow = 'hidden';
   onMount?.(sheet);
+  draftsFor(sheet);
   return sheet;
 }
+
+// ===== Szkice: wpisany tekst nie ginie po zminimalizowaniu aplikacji, telefonie, przeładowaniu =====
+let draft = null; // { key, sheet, submitted, timer }
+const DRAFT_TTL = 3 * 24 * 3600e3;
+const fieldsOf = (sh) => [...sh.querySelectorAll('input[id],textarea[id],select[id]')].filter((e) => !['password', 'file', 'button', 'submit'].includes(e.type));
+function collect(sh) { const v = {}; for (const e of fieldsOf(sh)) { const x = e.type === 'checkbox' || e.type === 'radio' ? (e.checked ? '1' : '') : e.value; if (x) v[e.id] = x; } return v; }
+function saveDraft(flush) {
+  if (!draft || draft.submitted) return; const { key, sheet } = draft; if (!sheet.isConnected) return;
+  const v = collect(sheet); if (!Object.keys(v).length) { metaSet(key, null).catch(() => {}); return; }
+  metaSet(key, { v, t: Date.now() }).catch(() => {}); void flush;
+}
+async function draftsFor(sheet) {
+  const h2 = sheet.querySelector('h2'); const fs = fieldsOf(sheet);
+  if (!h2 || !fs.length || sheet.querySelector('input[type=password]')) { draft = null; return; }
+  const key = 'draft:' + h2.textContent.trim().slice(0, 80);
+  draft = { key, sheet, submitted: false };
+  let saved = null; try { saved = await metaGet(key); } catch {}
+  if (saved && Date.now() - saved.t < DRAFT_TTL && sheet.isConnected) {
+    let n = 0; for (const e of fs) { const x = saved.v[e.id]; if (x === undefined) continue; if (e.type === 'checkbox' || e.type === 'radio') e.checked = !!x; else e.value = x; n++; }
+    if (n) {
+      const b = document.createElement('div'); b.className = 'hint'; b.style.cssText = 'background:rgba(177,138,82,.16);border-radius:12px;padding:8px 12px;margin:0 0 12px;display:flex;gap:10px;align-items:center;justify-content:space-between';
+      b.innerHTML = '<span>Przywrócono niedokończony wpis.</span><button type="button" class="link" style="white-space:nowrap">Wyczyść</button>'; h2.after(b);
+      b.querySelector('button').onclick = () => { for (const e of fs) { if (e.type === 'checkbox' || e.type === 'radio') e.checked = false; else if (e.tagName !== 'SELECT') e.value = ''; } metaSet(key, null).catch(() => {}); b.remove(); };
+    }
+  }
+  const sched = () => { draft.submitted = false; clearTimeout(draft.timer); draft.timer = setTimeout(() => saveDraft(), 350); };
+  sheet.addEventListener('input', sched); sheet.addEventListener('change', sched);
+  sheet.addEventListener('submit', () => { if (draft) { draft.submitted = true; clearTimeout(draft.timer); } }, true);
+}
+const flushDraft = () => { if (draft) { clearTimeout(draft.timer); draft.submitted = false; saveDraft(true); } };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushDraft(); });
+addEventListener('pagehide', flushDraft);
+
+// ===== Ekran nie gaśnie, gdy aplikacja jest otwarta =====
+let wl = null;
+async function wake() { try { if (document.visibilityState === 'visible' && 'wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; }); } } catch { wl = null; } }
+document.addEventListener('visibilitychange', wake); addEventListener('pointerdown', wake, { passive: true }); wake();
 export function closeSheet() {
+  if (draft) { clearTimeout(draft.timer); if (draft.submitted) metaSet(draft.key, null).catch(() => {}); else saveDraft(); draft = null; }
   const root = document.getElementById('sheet-root');
   if (root.firstChild) root.innerHTML = '';
   sheetClose?.(); sheetClose = null;

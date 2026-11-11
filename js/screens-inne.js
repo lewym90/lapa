@@ -9,6 +9,8 @@ import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfD
 import { pickDog, unlockSheet, dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 import { PODZIEKOWANIE } from './tekst.js';
+import { api } from './api.js';
+import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
 const names = (a) => (a.length <= 3 ? a.join(', ') : a.slice(0, 3).join(', ') + ' +' + (a.length - 3));
@@ -16,23 +18,23 @@ const names = (a) => (a.length <= 3 ? a.join(', ') : a.slice(0, 3).join(', ') + 
 // ================= wydarzenia =================
 let evFilter = 'wszystko';
 export async function events() {
-  const [ev, tr] = await Promise.all([list('wydarzenia'), list('transporty')]);
+  const [ev, tr, zg] = await Promise.all([list('wydarzenia'), list('transporty'), zgloszenia()]);
   const me = getName(), today = startOfDay(Date.now());
   const sats = nextSaturdays(4).map((t) => ({ kind: 'walk', t, k: dayKey(t) }));
   const items = [...sats, ...ev.filter((e) => e.start >= today).map((e) => ({ kind: 'ev', t: e.start, e })), ...tr.filter((x) => x.kiedy >= today && x.status !== 'anulowany' && x.status !== 'zrealizowany').map((x) => ({ kind: 'tr', t: x.kiedy, x }))]
-    .filter((i) => evFilter === 'wszystko' || (i.kind === 'ev' && i.e.autor === me) || (i.kind === 'tr' && (i.x.kierowca === me || i.x.autor === me)))
+    .filter((i) => evFilter === 'wszystko' || (i.kind === 'ev' && (i.e.autor === me || forKey(zg, evKey('ev', i.e.id)).some((z) => z.imie === me && z.status === 'tak'))) || (i.kind === 'walk' && forKey(zg, evKey('walk', i.k)).some((z) => z.imie === me && z.status === 'tak')) || (i.kind === 'tr' && (i.x.kierowca === me || i.x.autor === me)))
     .sort((a, b) => a.t - b.t);
   let lastDay = '';
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1><button class="iconbtn" data-act="a-event" aria-label="Dodaj wydarzenie">${icon('plus')}</button></header>
     <div class="fchips">${[['wszystko', 'Wszystkie'], ['moje', 'Tylko moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
-    ${evFilter === 'moje' ? html`<p class="hint" style="padding:0 20px;margin:0 0 8px">Wydarzenia, które dodałeś(-aś), i transporty, które wieziesz.</p>` : ''}
+    ${evFilter === 'moje' ? html`<p class="hint" style="padding:0 20px;margin:0 0 8px">Wydarzenia, które dodałeś(-aś) albo w których bierzesz udział, i transporty, które wieziesz.</p>` : ''}
     ${items.length ? items.map((i) => { const dk = dayKey(i.t), head = dk !== lastDay ? (lastDay = dk, html`<div class="day">${fmtDayLong(i.t)}</div>`) : ''; const p = dayParts(i.t);
       if (i.kind === 'walk') return html`${head}<div class="ev walk"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Sobotni spacer ze schroniska</b><span>Otwarty dla wszystkich · godz. ${fmtTime(i.t)} pod bramą</span></div>
-        <button class="btn sm ghost" data-act="walk-post" data-k="${i.k}" data-t="${i.t}">Post: przypomnienie lub odwołanie</button></div>`;
+        <button class="btn sm ghost" data-act="walk-post" data-k="${i.k}" data-t="${i.t}">Post: przypomnienie lub odwołanie</button>${udzialBlock(zg, evKey('walk', i.k), 'walk', 'Sobotni spacer, ' + fmtDayLong(i.t))}</div>`;
       if (i.kind === 'tr') return html`${head}<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Transport: ${i.x.pies_imie || 'pies'}</b><span>${i.x.skad} → ${i.x.dokad}</span><span class="who">${i.x.kierowca ? 'Kierowca: ' + i.x.kierowca : 'Szukamy kierowcy'}</span></div>${icon('chev')}</a>`;
-      return html`${head}<button class="ev" style="width:100%;text-align:left" data-act="ev-open" data-id="${i.e.id}"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>${i.e.tytul}</b><span>${[fmtTime(i.e.start) !== '00:00' ? 'godz. ' + fmtTime(i.e.start) : '', i.e.miejsce].filter(Boolean).join(' · ')}</span></div>${icon('chev')}</button>`; })
+      return html`${head}<button class="ev" style="width:100%;text-align:left" data-act="ev-open" data-id="${i.e.id}"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>${i.e.tytul}</b><span>${[fmtTime(i.e.start) !== '00:00' ? 'godz. ' + fmtTime(i.e.start) : '', i.e.miejsce].filter(Boolean).join(' · ')}</span>${(() => { const t = forKey(zg, evKey('ev', i.e.id)).filter((z) => z.status === 'tak'); return t.length ? html`<span class="who">Zgłosili się (${t.length}): ${t.map((z) => z.imie).join(', ')}</span>` : html`<span class="who">Nikt się jeszcze nie zgłosił</span>`; })()}</div>${icon('chev')}</button>`; })
       : html`<div class="empty">${icon('calendar')}<h3>Brak wydarzeń</h3><p>Dodaj wydarzenie przyciskiem +.</p></div>`}
 `
   };
@@ -57,8 +59,9 @@ actions['walk-post'] = (el) => {
 actions['ev-open'] = async (el) => {
   const e = await get('wydarzenia', el.dataset.id); if (!e) return;
   openSheet(`<h2>${esc(e.tytul)}</h2><p class="sub" style="margin:0 0 8px">${esc(fmtDayLong(e.start))}${fmtTime(e.start) !== '00:00' ? ', godz. ' + esc(fmtTime(e.start)) : ''}${e.miejsce ? ' · ' + esc(e.miejsce) : ''}</p>
-    ${e.opis ? `<div class="notebox">${esc(e.opis)}</div>` : ''}<p class="hint" style="margin-top:10px">Dodał(a): ${esc(e.autor || '')}</p>
+    ${e.opis ? `<div class="notebox">${esc(e.opis)}</div>` : ''}<div id="zgbox"></div><p class="hint" style="margin-top:10px">Dodał(a): ${esc(e.autor || '')}</p>
     ${e.autor === getName() || state.coordinator ? `<button class="btn ghost block" style="color:var(--terra-d);margin-top:10px" id="ed">${icon('trash').s} Usuń wydarzenie</button>` : ''}`, (s) => {
+    zgloszenia().then((all) => { s.querySelector('#zgbox').innerHTML = udzialBlock(all, evKey('ev', e.id), 'ev', e.tytul).s; });
     s.querySelector('#ed')?.addEventListener('click', async () => { await remove('wydarzenia', e.id); closeSheet(); toast('Usunięto'); });
   });
 };
@@ -193,11 +196,11 @@ export async function settings() {
         ${state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora</button>`}</section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button><button class="btn ghost" data-act="set-resync">Pobierz dane od nowa</button></div></section>
-      <section class="card"><h3>Kopia zapasowa</h3><p class="sub" style="margin:2px 0 12px">Plik z danymi widocznymi na tym telefonie${state.coordinator ? ' (razem z danymi osobowymi, trzymaj go bezpiecznie)' : ''}.</p>
+      <section class="card"><h3>Kopia zapasowa</h3><p class="sub" style="margin:2px 0 8px" id="bkst">Kopie na serwerze: sprawdzam…</p><p class="sub" style="margin:2px 0 12px">Plik z danymi widocznymi na tym telefonie${state.coordinator ? ' (razem z danymi osobowymi, trzymaj go bezpiecznie)' : ''}.</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-export">${icon('download')} Zapisz kopię</button><button class="btn ghost" data-act="set-import">${icon('upload')} Wczytaj kopię</button></div></section>
       <section class="card"><h3>O aplikacji</h3><p class="sub" style="margin:2px 0 12px">ŁAPA — Nowodwór, wersja <b>${VERSION}</b>. Aplikacja dla wolontariuszy, bezpłatna i bez reklam. Nowe wersje instalują się same po ponownym otwarciu aplikacji.</p><div class="btnrow"><button class="btn ghost" data-act="set-update">${icon('refresh')} Sprawdź aktualizację</button><a class="btn ghost" href="#/dziekujemy">${icon('gift')} Dziękujemy</a></div></section>
       <button class="btn line block" data-act="set-logout">${icon('logout')} Wyloguj z tego telefonu</button></div>`,
-    mount(root) { root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
+    mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
   };
 }
 actions['set-lock'] = async () => { await lock(); toast('Dane osobowe zablokowane'); };
