@@ -4,14 +4,14 @@ import { state, getName, unlock } from './auth.js';
 import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, MS_DAY, uid } from './util.js';
-import { addPhotoFile, hydratePhotos } from './photos.js';
+import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photos.js';
 import { dogBlock } from './adopcje.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const favs = () => new Set(lsGet('lapa.fav', []));
-const dogPics = (d) => [...(d.zdjecia || []).map((u) => ({ url: u })), ...(d.moje_zdjecia || []).map((id) => ({ id }))];
+const dogPics = (d) => { const all = [...(d.zdjecia || []).map((u) => ({ url: u })), ...(d.moje_zdjecia || []).map((id) => ({ id }))]; const i = d.glowne ? all.findIndex((p) => p.id === d.glowne) : -1; if (i > 0) all.unshift(all.splice(i, 1)[0]); return all; }; // „główne” zdjęcie wybrane w sesji jest pierwsze
 const picImg = (p, alt, cls = '') => (p.url ? dogImg(p.url, alt, cls) : raw(`<img class="${esc(cls)}" data-photo="${esc(p.id)}" alt="${esc(alt)}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">`));
 export const dogThumb = (d) => {
   const p = dogPics(d)[0];
@@ -107,7 +107,7 @@ export async function card(id) {
       ${state.coordinator ? adBlock
         : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div>`}
       <div class="btnrow" style="margin-top:20px"><button class="btn block" data-act="dog-obs-add" data-id="${id}">${icon('pencil')} Zapisz obserwację</button></div>
-      <div class="btnrow" style="margin-top:10px"><a class="btn ghost" href="#/spacer/${id}">${icon('walk')} Rozpocznij spacer</a><button class="btn ghost" data-act="dog-photo" data-id="${id}">${icon('camera')} Dodaj zdjęcie</button></div>
+      <div class="btnrow" style="margin-top:10px"><a class="btn ghost" href="#/spacer/${id}">${icon('walk')} Rozpocznij spacer</a><button class="btn ghost" data-act="dog-photo" data-id="${id}">${icon('camera')} Zdjęcia / sesja</button></div>
       <div class="btnrow" style="margin-top:10px"><button class="btn ghost" data-act="dog-print" data-id="${id}">${icon('download')} Karta do wysłania (PDF)</button><button class="btn ghost" data-act="dog-edit" data-id="${id}">${icon('pencil')} Edytuj</button></div>
       <p class="hint" style="margin:18px 0 0;text-align:center">${d.zrodlo_url ? 'Dane ze strony schroniska' + (d.zaimportowano ? ' · ' + fmtDate(d.zaimportowano) : '') : 'Dodano ręcznie'}${d.zrodlo_url ? ' · ' : ''}${d.zrodlo_url ? html`<button class="link" style="color:var(--green)" data-act="dog-refresh" data-id="${id}">odśwież</button>` : ''}</p>
     </section>`,
@@ -146,17 +146,47 @@ export function obsForm(dogId) {
     s.querySelector('#otx').focus();
   });
 }
-export function addPhoto(dogId) {
-  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
-  inp.onchange = async () => {
-    const d = await get('psy', dogId); if (!d) return;
-    try {
-      d.moje_zdjecia ||= [];
-      for (const f of inp.files) d.moje_zdjecia.push(await addPhotoFile(f));
-      await save('psy', d); toast(inp.files.length > 1 ? 'Zdjęcia dodane' : 'Zdjęcie dodane');
-    } catch (e) { toast(e.message, true); }
-  };
-  inp.click();
+// ========== zdjęcia i sesja zdjęciowa (wiele plików naraz, także z aparatu przez komputer) ==========
+const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+export async function addPhoto(dogId) {
+  const d0 = await get('psy', dogId); if (!d0) return;
+  openSheet(`<h2>Zdjęcia: ${esc(d0.imie)}</h2>
+    <label class="drop" id="drop" tabindex="0"><b>Przeciągnij tu zdjęcia z komputera</b><span>albo kliknij i wybierz wiele plików naraz (JPG z aparatu też).<br>Na telefonie otworzy się aparat lub galeria.</span>
+      <input type="file" id="pf" accept="image/*" multiple hidden></label>
+    <p class="hint" id="pst" style="margin:10px 0" aria-live="polite"></p>
+    <div id="pmine"></div><div id="psite"></div>`, (s) => {
+    const st = s.querySelector('#pst'); let busy = false;
+    const paint = async () => {
+      const d = await get('psy', dogId); if (!d) return; const mine = d.moje_zdjecia || [], site = d.zdjecia || [];
+      s.querySelector('#pmine').innerHTML = mine.length ? `<h3 class="ph">Zdjęcia dodane w aplikacji (${mine.length})</h3><div class="pgrid">${mine.map((id, n) => `<div class="pt"><img data-photo="${esc(id)}" alt="" src="${GIF}"><div class="pb"><button class="${d.glowne === id ? 'on' : ''}" data-p="main" data-id="${esc(id)}">${d.glowne === id ? '★ Główne' : 'Ustaw główne'}</button><button data-p="dl" data-id="${esc(id)}" data-n="${n + 1}">Pobierz</button><button class="red" data-p="del" data-id="${esc(id)}">Usuń</button></div></div>`).join('')}</div>` : '';
+      s.querySelector('#psite').innerHTML = site.length ? `<h3 class="ph">Ze strony schroniska (${site.length}, tylko podgląd)</h3><div class="pgrid small">${site.slice(0, 24).map((u) => `<div class="pt"><img src="${esc(safeUrl(u.replace(/_l\.(jpe?g)(\?.*)?$/i, '_m.$1$2')) || '')}" loading="lazy" alt=""></div>`).join('')}</div>` : '';
+      hydratePhotos(s);
+    };
+    const handle = async (files) => {
+      files = [...files].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)); if (!files.length || busy) return; busy = true; let ok = 0, bad = 0;
+      for (let i = 0; i < files.length; i++) {
+        st.textContent = `Przetwarzam zdjęcie ${i + 1} z ${files.length}…`;
+        try { const id = await addPhotoFile(files[i], true); const d = await get('psy', dogId); d.moje_zdjecia = [...(d.moje_zdjecia || []), id]; if (!d.glowne && !(d.zdjecia || []).length && !(d.moje_zdjecia.length > 1)) d.glowne = id; await save('psy', d); ok++; await paint(); }
+        catch { bad++; }
+      }
+      busy = false; st.textContent = `Dodano: ${ok}${bad ? '. Nie udało się odczytać: ' + bad : ''}. Wysyłają się na serwer w tle.`; try { (await import('./sync.js')).kick(50); } catch { /* */ }
+    };
+    const drop = s.querySelector('#drop'), pf = s.querySelector('#pf');
+    pf.onchange = () => { handle(pf.files); pf.value = ''; };
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => handle(e.dataTransfer.files));
+    s.addEventListener('click', async (e) => {
+      const b = e.target.closest('[data-p]'); if (!b) return; const id = b.dataset.id, d = await get('psy', dogId); if (!d) return;
+      if (b.dataset.p === 'main') { d.glowne = d.glowne === id ? '' : id; await save('psy', d); paint(); }
+      else if (b.dataset.p === 'dl') { const u = await photoSrc(id); if (!u) { toast('Zdjęcie jeszcze się nie wczytało', true); return; } const a = document.createElement('a'); a.href = u; a.download = `${(d.imie || 'pies').replace(/[^\wąćęłńóśźż-]+/gi, '_')}-${b.dataset.n}.jpg`; document.body.appendChild(a); a.click(); a.remove(); }
+      else if (b.dataset.p === 'del') {
+        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Na pewno?'; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = 'Usuń'; } }, 3000); return; }
+        d.moje_zdjecia = (d.moje_zdjecia || []).filter((x) => x !== id); if (d.glowne === id) d.glowne = ''; await save('psy', d); await removeLocalPhoto(id); paint(); toast('Zdjęcie usunięte');
+      }
+    });
+    paint();
+  });
 }
 actions['dog-photo'] = (el) => addPhoto(el.dataset.id);
 actions['unlock-sheet'] = () => unlockSheet();

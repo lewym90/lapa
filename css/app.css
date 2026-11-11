@@ -380,3 +380,11 @@ button.chip{cursor:pointer}
 @media (min-width:860px){.side{display:flex}}
 
 .ev.walk .wbtns{display:flex;gap:8px;width:100%;margin-top:6px}.ev.walk .wbtns .btn,.ev.walk .zg .btn{flex:1;min-width:0;padding-left:8px;padding-right:8px}.ev.walk .zg>div:last-child{display:flex;gap:8px}
+
+.drop{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;padding:26px 14px;border:2px dashed var(--gold);border-radius:var(--r-lg,18px);background:rgba(177,138,82,.08);cursor:pointer;color:var(--ink,#252925)}
+.drop b{font-size:17px}.drop span{font-size:13.5px;opacity:.75}.drop.over{background:rgba(177,138,82,.25);border-style:solid}
+.ph{font-size:15px;margin:14px 0 8px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}.pgrid.small{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.pt img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:#d9d4c7}
+.pb{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.pb button{flex:1 1 auto;font-size:12px;font-weight:600;padding:6px 8px;border-radius:8px;background:rgba(23,59,50,.1);color:var(--green)}
+.pb button.on{background:var(--gold);color:#fff}.pb button.red{color:var(--terra-d)}

@@ -5,8 +5,8 @@ import { API } from './config.js';
 import { uid, compressImage } from './util.js';
 
 const urls = new Map();
-export async function addPhotoFile(file) {
-  const blob = await compressImage(file);
+export async function addPhotoFile(file, big = false) {
+  const blob = big ? await compressImage(file, 2400, 0.88, 1_400_000) : await compressImage(file); // zdjęcia z sesji: większe (limit serwera 1,5 MB)
   const id = uid();
   await db.blobPut('photo:' + id, blob);
   const q = (await db.metaGet('photo_queue')) || [];

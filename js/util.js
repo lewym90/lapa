@@ -51,13 +51,19 @@ export function distanceKm(a, b) {
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 
-export async function compressImage(file, max = 1280, q = 0.82) {
-  const bmp = await createImageBitmap(file).catch(() => null);
+export async function compressImage(file, max = 1280, q = 0.82, maxBytes = 0) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file).catch(() => null));
   if (!bmp) throw new Error('Nie udało się odczytać zdjęcia');
-  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Błąd kompresji'))), 'image/jpeg', q));
+  let k = Math.min(1, max / Math.max(bmp.width, bmp.height)), blob;
+  for (let i = 0; i < 8; i++) { // przy limicie rozmiaru: obniżamy jakość, a potem wymiary, aż zdjęcie się zmieści
+    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    blob = await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('Błąd kompresji'))), 'image/jpeg', q));
+    if (!maxBytes || blob.size <= maxBytes) break;
+    if (q > 0.7) q -= 0.06; else k *= 0.85;
+  }
+  if (bmp.close) bmp.close();
+  return blob;
 }
 
 export const NEED_LABELS = { spacer: 'Spokojny spacer', zdjecia: 'Aktualne zdjęcia', obserwacja: 'Obserwacja zachowania', dt: 'Dom tymczasowy', transport: 'Transport', promocja: 'Promocja adopcyjna', specjalista: 'Pomoc specjalisty' };
