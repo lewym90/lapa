@@ -39,6 +39,7 @@ export async function start() {
       <a class="tile green" href="#/zrobic">${todo.length + siteN ? html`<span class="badge">${todo.length + siteN}</span>` : ''}${icon('check', 't-ico')}<span class="t-lbl">Do zrobienia</span>${icon('arrow', 't-arr')}</a>
       <a class="tile terra" href="#/pomoc">${helpDogs.length ? html`<span class="badge">${helpDogs.length}</span>` : ''}${icon('medic', 't-ico')}<span class="t-lbl">Psy potrzebujące pomocy</span>${icon('arrow', 't-arr')}</a>
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
+      <a class="tile green" href="#/brama" style="grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:12px">${icon('walk', 't-ico')}<span class="t-lbl">Brama: wydaj / zwróć psa na spacer</span>${icon('arrow', 't-arr')}</a>
     </div>
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}

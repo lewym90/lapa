@@ -13,6 +13,7 @@ import * as F from './finanse.js';
 import * as S from './screens-start.js';
 import * as P from './screens-psy.js';
 import * as W from './screens-spacer.js';
+import * as B from './brama.js';
 import * as X from './screens-inne.js';
 
 const app = document.getElementById('app');
@@ -21,7 +22,7 @@ const app = document.getElementById('app');
 const routes = [
   [/^\/?$/, () => S.start()], [/^\/start$/, () => S.start()],
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
-  [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/wydarzenia$/, () => X.events()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
   [/^\/zadania$/, () => S.tasks()], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
@@ -126,7 +127,7 @@ actions.menu = () => {
   el.innerHTML = `<div class="scrim"></div><nav aria-label="Menu">
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
     <a href="#/start">${icon('home').s}Start</a><a href="#/psy">${icon('paw').s}Psy</a>
-    <a href="#/spacer">${icon('walk').s}Rozpocznij spacer</a><a href="#/zadania">${icon('check').s}Moje zadania</a>
+    <a href="#/brama">${icon('walk').s}Brama (spacery)</a><a href="#/spacer">${icon('walk').s}Spacer osobisty</a><a href="#/zadania">${icon('check').s}Moje zadania</a>
     <a href="#/wydarzenia">${icon('calendar').s}Wydarzenia i sobotnie spacery</a><a href="#/transport">${icon('truck').s}Transport</a>
     <a href="#/zrobic">${icon('check').s}Do zrobienia</a><a href="#/adopcje">${icon('heart').s}Adopcje</a><a href="#/dt">${icon('pin').s}Domy tymczasowe</a><a href="#/zaginiecia">${icon('alert').s}Zaginięcia</a><a href="#/finanse">${icon('box').s}Finanse</a>
     <a href="#/pomoc">${icon('heart').s}Pomoc i potrzeby</a><a href="#/ustawienia">${icon('sliders').s}Ustawienia</a>
@@ -141,7 +142,8 @@ actions.menu = () => {
 actions.bell = () => S.komunikatySheet();
 actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
   <button class="act primary" data-act="a-newdog">${icon('paw').s}Nowy pies w schronisku<small>Przyjęcie, ocena, sesja, publikacja</small></button>
-  <button class="act" data-act="a-walk">${icon('walk').s}Rozpocznij spacer<small>Zapisze się w historii psa</small></button>
+  <button class="act primary" data-act="a-brama">${icon('walk').s}Brama: wydaj / zwróć psa<small>Sobotnie spacery, godziny same</small></button>
+  <button class="act" data-act="a-walk">${icon('walk').s}Spacer osobisty<small>GPS, notatki, zdjęcia</small></button>
   <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
   <button class="act" data-act="a-photo">${icon('camera').s}Dodaj zdjęcie<small>Do karty wybranego psa</small></button>
   <button class="act" data-act="a-task">${icon('check').s}Dodaj zadanie<small>Tylko dla Ciebie</small></button>
@@ -150,6 +152,7 @@ actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
   <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button>
   <button class="act" data-act="a-dog">${icon('paw').s}Dodaj psa<small>Import ze strony schroniska lub ręcznie</small></button></div>`);
 actions['a-newdog'] = () => { closeSheet(); T.nowyPies(); };
+actions['a-brama'] = () => { closeSheet(); location.hash = '#/brama'; };
 actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
 actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };
 actions['a-photo'] = () => { closeSheet(); P.pickDog((d) => P.addPhoto(d.id)); };
