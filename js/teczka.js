@@ -237,7 +237,7 @@ export function gaps(dogs, zdrAll) {
     if (!hasPics(d)) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
     if (d.nowy && !(d.opis || '').trim()) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
     if (k.fb && !k.www && days(k.fb) >= 2) out.push({ d, kind: 'www', sev: 2, text: `Na Facebooku od ${days(k.fb)} dni, nie ma na stronie`, act: 'dog-kanaly' });
-    if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });
+    if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko' && d.status !== 'w_trakcie') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });
     if (d.nowy && (d.opis || '').trim() && hasPics(d) && !k.fb && !k.www) out.push({ d, kind: 'publ', sev: 2, text: 'Gotowy do opublikowania', act: 'dog-teksty' });
     if (d.data_przyjecia && miejsce(d) === 'schronisko' && days(d.data_przyjecia) >= 180 && !d.kampania) out.push({ d, kind: 'halas', sev: 1, text: `W schronisku ${days(d.data_przyjecia)} dni. Czas na „zróbmy hałas”`, act: 'dog-teksty' });
     for (const z of zdrDue(zdrAll.filter((x) => x.pies_id === d.id))) out.push({ d, kind: 'zdrowie', sev: z.termin < now ? 3 : 2, text: `${TYP[z.typ]}: ${z.termin < now ? 'termin minął ' + fmtDate(z.termin) : 'do ' + fmtDate(z.termin)}`, act: 'dog-zdrowie' });

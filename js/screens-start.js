@@ -24,7 +24,7 @@ export async function start() {
   const hero = dog
     ? html`<section class="hero" aria-label="Pies dnia">${dogImg(dog.zdjecia[0], dog.imie, 'ph')}
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
-        <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Dziś w ŁAPIE:</span> <b>${dog.imie}</b> ${icon('chev')}</a></div></section>`
+        <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${icon('chev')}</a></div></section>`
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span>
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
         <a class="dogtag" href="#/psy" data-act="a-dog">${icon('plus')}<span>Dodaj pierwszego psa</span></a></div></section>`;
@@ -44,7 +44,7 @@ export async function start() {
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px"><section class="card" aria-label="Moje zadania">
-      <div class="card-head"><h3>${icon('check')} Moje zadania</h3><a class="link" href="#/zadania">Zobacz wszystkie ${icon('arrow')}</a></div>
+      <div class="card-head"><h3>${icon('check')} Moje zadania <small style="font-weight:400;font-size:12px;color:var(--muted,#6b6f66)">prywatne, tylko na tym telefonie</small></h3><a class="link" href="#/zadania">Zobacz wszystkie ${icon('arrow')}</a></div>
       ${shown.length ? shown.map((t) => taskRow(t)) : html`<p class="sub" style="margin:8px 0 4px">Nic na dziś. Dodaj zadanie przyciskiem <b>+</b> albo zacznij od spaceru.</p>`}
     </section></div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>

@@ -26,7 +26,8 @@ export async function events() {
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1><button class="iconbtn" data-act="a-event" aria-label="Dodaj wydarzenie">${icon('plus')}</button></header>
-    <div class="fchips">${[['wszystko', 'Wszystko'], ['moje', 'Moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
+    <div class="fchips">${[['wszystko', 'Wszystkie'], ['moje', 'Tylko moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
+    ${evFilter === 'moje' ? html`<p class="hint" style="padding:0 20px;margin:0 0 8px">Wydarzenia, które dodałeś(-aś), i transporty, które wieziesz.</p>` : ''}
     ${items.length ? items.map((i) => { const dk = dayKey(i.t), head = dk !== lastDay ? (lastDay = dk, html`<div class="day">${fmtDayLong(i.t)}</div>`) : ''; const p = dayParts(i.t);
       if (i.kind === 'walk') return html`${head}<div class="ev walk"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Sobotni spacer ze schroniska</b><span>Otwarty dla wszystkich · godz. ${fmtTime(i.t)} pod bramą</span></div>
         <button class="btn sm ghost" data-act="walk-post" data-k="${i.k}" data-t="${i.t}">Post: przypomnienie lub odwołanie</button></div>`;
