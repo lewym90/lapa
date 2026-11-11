@@ -39,7 +39,7 @@ async function form(z, dogs) {
     <div class="field"><label for="z_o">Ostatnio widziany</label><input class="input" id="z_o" maxlength="120" value="${esc(z.ostatnio || '')}"></div>
     <div class="field"><label for="z_d">Jak wygląda, jaki jest (obroża, znaki, płochliwy…)</label><textarea class="textarea" id="z_d" maxlength="400">${esc(z.opis || '')}</textarea></div>
     <div class="field"><label for="z_t">Telefony kontaktowe w tej sprawie</label><input class="input" id="z_t" maxlength="80" value="${esc(z.kontakt || KONTAKT_DOM)}"></div>
-    <div class="err" id="z_x"></div><button class="btn block" type="submit">Zapisz i przygotuj post</button></form>`, (s) => {
+    <div class="err" id="z_x"></div><p class="hint" style="margin:0 0 10px">Aplikacja niczego nie publikuje. Zapisze zgłoszenie u wolontariuszy i pokaże gotowy tekst, który sam skopiujesz i wstawisz, gdzie zechcesz.</p><button class="btn block" type="submit">Zapisz i pokaż gotowy tekst</button></form>`, (s) => {
     const sel = s.querySelector('#z_p'); sel.onchange = () => { const d = dogs.find((x) => x.id === sel.value); if (d) s.querySelector('#z_i').value = d.imie; };
     s.querySelector('#zf').addEventListener('submit', async (e) => {
       e.preventDefault(); const imie = s.querySelector('#z_i').value.trim(); if (!imie) { s.querySelector('#z_x').textContent = 'Wpisz imię.'; return; }

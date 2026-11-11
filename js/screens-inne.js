@@ -142,8 +142,7 @@ export async function help() {
       return html`<div class="need"><div style="display:flex;justify-content:space-between;gap:10px"><div><b style="font-size:17px">${n.nazwa}</b>${n.priorytet === 'pilne' ? html` <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>` : ''}<div class="sub">${n.kategoria || ''}</div></div><button class="iconbtn" style="color:var(--green);width:36px;height:36px" data-act="need-edit" data-id="${n.id}" aria-label="Edytuj">${icon('pencil')}</button></div>
         <div class="bar ${pct < 35 ? 'low' : ''}"><i style="width:${pct}%"></i></div><div class="sub">Potrzeba ${n.potrzeba} ${n.jednostka || ''}, zapewniono ${have}, <b>brakuje ${miss}</b></div>
         <button class="btn sm ghost" style="margin-top:10px" data-act="need-give" data-id="${n.id}">${icon('gift')} Przekazuję</button></div>`; })
-      : html`<div class="empty" style="padding:24px 10px">${icon('box')}<h3>Brak zgłoszonych potrzeb</h3><p>Dodaj np. „Karma mokra: 60 puszek”. Wolontariusze zobaczą, ile brakuje, i nie będą kupować przypadkowych rzeczy.</p></div>`}</div>
-    <div class="sec"><h2>Jak jeszcze możesz pomóc?</h2></div><div class="pad"><div class="card"><p style="margin:0 0 10px">Domy tymczasowe, transport, karma, pomoc finansowa i udostępnianie ogłoszeń. Wszystko opisane jest na stronie schroniska.</p><a class="btn sm" href="${SITE}/jak-mozesz-pomoc" target="_blank" rel="noopener">${icon('link')} Otwórz stronę</a></div></div>`
+      : html`<div class="empty" style="padding:24px 10px">${icon('box')}<h3>Brak zgłoszonych potrzeb</h3><p>Dodaj np. „Karma mokra: 60 puszek”. Wolontariusze zobaczą, ile brakuje, i nie będą kupować przypadkowych rzeczy.</p></div>`}</div>`
   };
 }
 actions.decl = async (el) => {

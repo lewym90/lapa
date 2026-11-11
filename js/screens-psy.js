@@ -23,7 +23,7 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['nowe', 'Nowe, do publikacji'], ['pilne', 'Pilne'], ['do_adopcji', 'Do adopcji'], ['dt', 'W domu tymczasowym'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe, do publikacji'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
 function filterDogs(dogs) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
@@ -32,6 +32,7 @@ function filterDogs(dogs) {
     if (ff === 'nowe') return aktywny(d) && d.nowy && etap(d).done < etap(d).total;
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'wszystkie') return true;
+    if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
   }).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
 }
@@ -39,7 +40,7 @@ function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); 
 function grid(dogs, walks) {
   const f = filterDogs(dogs);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
     <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
@@ -212,17 +213,25 @@ actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
 
 // ========== import ze strony schroniska ==========
 const normPlec = (t = '') => (/suk|samic|dziewcz/i.test(t) ? 'suka' : /pies|samiec|piesek|chłop/i.test(t) ? 'samiec' : '');
+const czysc = (x = '') => String(x).replace(/&nbsp;|\u00a0/gi, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+// Strona nie ma pola „miejsce”: jedynym sygnałem jest hasło (np. „ADINA - w domu tymczasowym 🏠”). Ręcznie ustawione miejsce nie jest nadpisywane.
+function miejsceZHasla(haslo, old) {
+  const z = /domu tymczasow|dom tymczasow/i.test(haslo) ? 'dt' : /hotelik/i.test(haslo) ? 'hotelik' : null;
+  if (old.miejsce && !old.miejsce_auto) return {};
+  if (z) return { miejsce: z, miejsce_auto: true };
+  return old.miejsce_auto ? { miejsce: 'schronisko', miejsce_auto: true } : {};
+}
 export function dogFromImport(imp, old = {}) {
-  const f = imp.fields || {};
+  const f = imp.fields || {}; const haslo = czysc(imp.haslo || old.haslo || '');
   return {
     ...old,
     id: old.id || (imp.id ? 'd' + imp.id : 'm' + uid()),
     imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
-    status: imp.status || old.status || 'do_adopcji', opis: imp.opis || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), parser: 2, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
+    opis: imp.opis || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), parser: 3, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
     zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
-    haslo: imp.haslo || old.haslo || '',
-    miejsce: old.miejsce || (/domu tymczasowym|dom tymczasowy/i.test(imp.haslo || '') ? 'dt' : /hotel/i.test(imp.haslo || '') ? 'hotelik' : undefined),
+    haslo, status: /procesie adopcji/i.test(haslo) ? 'w_trakcie' : (imp.status === 'w_trakcie' ? 'do_adopcji' : imp.status) || old.status || 'do_adopcji',
+    ...miejsceZHasla(haslo, old),
     ocena: old.ocena && !old.ocena.auto ? old.ocena : ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
   };
 }
@@ -304,7 +313,7 @@ let refreshing = false;
 export async function refreshStale() {
   if (refreshing || !navigator.onLine) return; refreshing = true;
   try {
-    const stale = (await list('psy')).filter((d) => d.zrodlo_url && (d.parser || 0) < 2);
+    const stale = (await list('psy')).filter((d) => d.zrodlo_url && (d.parser || 0) < 3);
     let n = 0;
     for (const d of stale) { try { await importOne(d.zrodlo_url); n++; } catch (e) { if (e instanceof ApiError && (e.status === 401 || e.status === 0)) break; } }
     if (n) { toast(`Odświeżono opisy i cechy: ${n} psów`); dispatchEvent(new HashChangeEvent('hashchange')); }
