@@ -11,7 +11,12 @@ const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 const favs = () => new Set(lsGet('lapa.fav', []));
 const dogPics = (d) => [...(d.zdjecia || []).map((u) => ({ url: u })), ...(d.moje_zdjecia || []).map((id) => ({ id }))];
 const picImg = (p, alt, cls = '') => (p.url ? dogImg(p.url, alt, cls) : raw(`<img class="${esc(cls)}" data-photo="${esc(p.id)}" alt="${esc(alt)}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">`));
-export const dogThumb = (d) => (dogPics(d)[0] ? picImg(dogPics(d)[0], d.imie) : html`<div class="nophoto">${icon('paw')}</div>`);
+export const dogThumb = (d) => {
+  const p = dogPics(d)[0];
+  if (!p) return html`<div class="nophoto">${icon('paw')}</div>`;
+  if (p.url) return dogImg(p.url.replace(/_l\.(jpe?g)(\?.*)?$/i, '_m.$1$2'), d.imie, '', p.url);
+  return picImg(p, d.imie);
+};
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';

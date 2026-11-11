@@ -96,6 +96,87 @@ const COL_RE = /^[a-z][a-z0-9_]{0,39}$/, ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const isPrivate = (col) => col.startsWith('p_');
 const clientIp = (req) => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
 
+
+// ---------- import ze strony schroniska (tylko ta jedna domena, tylko adresy psów) ----------
+const SITE_HOSTS = new Set(['www.schronisko-nowodwor.com.pl', 'schronisko-nowodwor.com.pl']);
+const SITE = 'https://www.schronisko-nowodwor.com.pl';
+const DOG_PATH = /^\/(psy-do-adopcji|do-adopcji-pilne|adoptowane)\/([^/?#]+)\/(\d+)\/?$/;
+const UA = { 'user-agent': 'LAPA-Nowodwor/1.0 (aplikacja wolontariuszy schroniska)', accept: 'text/html,application/xhtml+xml' };
+const htmlCache = new Map();
+async function fetchHtml(urlStr) {
+  const hit = htmlCache.get(urlStr); if (hit && Date.now() - hit.t < 10 * 60e3) return hit.v;
+  let u = new URL(urlStr);
+  for (let i = 0; i < 3; i++) {
+    if (u.protocol !== 'https:' || !SITE_HOSTS.has(u.hostname)) throw Object.assign(new Error('Niedozwolony adres'), { code: 422 });
+    const res = await fetch(u, { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(12000) });
+    if (res.status >= 300 && res.status < 400 && res.headers.get('location')) { u = new URL(res.headers.get('location'), u); continue; }
+    if (!res.ok) throw Object.assign(new Error(res.status === 404 ? 'Nie ma takiej strony na stronie schroniska' : 'Strona schroniska odpowiedziała błędem ' + res.status), { code: 502 });
+    const t = await res.text();
+    if (t.length > 2_500_000) throw Object.assign(new Error('Strona jest zbyt duża'), { code: 502 });
+    htmlCache.set(urlStr, { t: Date.now(), v: t }); if (htmlCache.size > 200) htmlCache.delete(htmlCache.keys().next().value);
+    return t;
+  }
+  throw Object.assign(new Error('Zbyt wiele przekierowań'), { code: 502 });
+}
+const ENT = { nbsp: ' ', amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', oacute: 'ó', Oacute: 'Ó' };
+const decode = (t) => t.replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)).replace(/&([a-zA-Z]+);/g, (m, n) => ENT[n] ?? m);
+const textLines = (h) => decode(h.replace(/<(script|style|noscript|svg)[\s\S]*?<\/\1>/gi, ' ').replace(/<!--[\s\S]*?-->/g, ' ')
+  .replace(/<\/(p|div|li|h[1-6]|tr|section|article|ul|ol|table)>|<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '))
+  .split('\n').map((l) => l.replace(/[ \t ]+/g, ' ').trim()).filter(Boolean);
+const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9]/g, '');
+const titleCase = (x) => x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : x;
+const LABELS = { 'Płeć': 'plec', 'Wiek': 'wiek', 'Wielkość': 'wielkosc', 'Waga': 'waga', 'Wzrost': 'wzrost', 'Sierść': 'siersc' };
+function parseDog(h, u) {
+  const m = DOG_PATH.exec(u.pathname), slug = decodeURIComponent(m[2]), id = m[3];
+  const status = m[1] === 'do-adopcji-pilne' ? 'pilne' : m[1] === 'adoptowane' ? 'adoptowany' : 'do_adopcji';
+  const lines = textLines(h);
+  const h1 = (/<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(h) || [])[1];
+  const h1t = h1 ? decode(h1.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
+  const first = h1t.split(/\s+[-–—:]\s+|[:!]/)[0].trim().split(' ')[0];
+  const name = first && norm(first) === norm(slug) ? titleCase(first) : titleCase(slug);
+  const fields = {};
+  for (const l of lines) { const f = /^(Płeć|Wiek|Wielkość|Waga|Wzrost|Sierść)\s*:\s*(.{1,60})$/.exec(l); if (f && !fields[LABELS[f[1]]]) fields[LABELS[f[1]]] = f[2].trim(); }
+  // opis: akapity po nagłówku psa, do początku sekcji kontaktu / zasad adopcji
+  let start = lines.findIndex((l) => h1t && l.startsWith(h1t.slice(0, 20)));
+  if (start < 0) start = lines.findIndex((l) => norm(l).startsWith(norm(name)));
+  const STOP = /(kontakt w sprawie adopcji|zasady adopcji|chcesz adoptować|zapraszamy do kontaktu|dane do wpłat|numer konta)/i;
+  const desc = [];
+  for (let i = start + 1; i < lines.length && start >= 0; i++) {
+    const l = lines[i]; if (STOP.test(l)) break;
+    if (/^(Płeć|Wiek|Wielkość|Waga|Wzrost|Sierść|Status)\s*:/.test(l) || l.length < 25) continue;
+    desc.push(l); if (desc.join('\n').length > 4000) break;
+  }
+  const abs = (x) => { try { return new URL(decode(x), u).href; } catch { return ''; } };
+  const imgs = []; const re = /(?:https?:)?\/?[^"'\s()<>]*?_l\.jpe?g(?:\?[^"'\s()<>]*)?/gi; let im;
+  while ((im = re.exec(h))) { const a = abs(im[0].startsWith('//') ? 'https:' + im[0] : im[0]); if (a && SITE_HOSTS.has(new URL(a).hostname) && !imgs.includes(a)) imgs.push(a); }
+  if (!imgs.length) { const og = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i.exec(h); if (og) { const a = abs(og[1]); if (a) imgs.push(a); } }
+  const yt = /(?:youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([\w-]{11})/.exec(h);
+  return { url: u.origin + u.pathname.replace(/\/$/, ''), id, name, status, fields, opis: desc.join('\n\n'), zdjecia: imgs.slice(0, 20), film: yt ? 'https://www.youtube.com/watch?v=' + yt[1] : '',
+    debug: { h1: h1t, linie: lines.length, start, pol: Object.keys(fields) } };
+}
+async function dogLinks() {
+  const links = new Set();
+  for (const cat of ['psy-do-adopcji', 'do-adopcji-pilne']) {
+    for (let page = 1; page <= 15; page++) {
+      let h; try { h = await fetchHtml(`${SITE}/${cat}${page > 1 ? '?page=' + page : ''}`); } catch { break; }
+      const before = links.size, re = /href=["']((?:https?:\/\/(?:www\.)?schronisko-nowodwor\.com\.pl)?\/(?:psy-do-adopcji|do-adopcji-pilne)\/[^"'\/\s]+\/\d+)\/?["']/gi; let m;
+      while ((m = re.exec(h))) links.add(new URL(m[1], SITE).href);
+      if (links.size === before) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  return [...links].slice(0, 400);
+}
+const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
+fs.mkdirSync(PHOTO_DIR, { recursive: true });
+function readRaw(req, max) {
+  return new Promise((resolve, reject) => {
+    let n = 0; const c = [];
+    req.on('data', (b) => { n += b.length; if (n > max) { reject(Object.assign(new Error('Zdjęcie jest za duże'), { code: 413 })); req.destroy(); } else c.push(b); });
+    req.on('end', () => resolve(Buffer.concat(c))); req.on('error', reject);
+  });
+}
+
 async function handle(req, res) {
   const origin = req.headers.origin;
   const cors = origin && ORIGINS.includes(origin)
@@ -181,12 +262,38 @@ async function handle(req, res) {
     return send2(200, { versions: rows.map((r) => ({ data: JSON.parse(r.data), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by })) });
   }
 
+
+  // GET /import?url=...  — pobiera i odczytuje stronę jednego psa ze strony schroniska
+  if (p === '/import' && req.method === 'GET') {
+    let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return send2(422, { error: 'To nie jest poprawny adres' }); }
+    if (u.protocol === 'http:') u.protocol = 'https:';
+    if (!SITE_HOSTS.has(u.hostname) || !DOG_PATH.test(u.pathname)) return send2(422, { error: 'To nie jest link do psa na stronie schronisko-nowodwor.com.pl' });
+    const h = await fetchHtml(u.origin + u.pathname);
+    return send2(200, parseDog(h, new URL(u.origin + u.pathname)));
+  }
+  if (p === '/import/links' && req.method === 'GET') return send2(200, { links: await dogLinks() });
+
+  // POST /photo/:id (JPEG ≤ 1,5 MB), GET /photo/:id
+  const pm = /^\/photo\/([A-Za-z0-9_-]{1,64})$/.exec(p);
+  if (pm && req.method === 'POST') {
+    const buf = await readRaw(req, 1_500_000), f = path.join(PHOTO_DIR, pm[1] + '.jpg');
+    if (buf.length < 100 || !(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) return send2(415, { error: 'To nie jest zdjęcie JPEG' });
+    try { fs.writeFileSync(f, buf, { flag: 'wx' }); } catch (e) { if (e.code === 'EEXIST') return send2(409, { error: 'Zdjęcie już jest na serwerze' }); throw e; }
+    return send2(200, { ok: true });
+  }
+  if (pm && req.method === 'GET') {
+    let buf; try { buf = fs.readFileSync(path.join(PHOTO_DIR, pm[1] + '.jpg')); } catch { return send2(404, { error: 'Nie ma takiego zdjęcia' }); }
+    res.writeHead(200, { ...cors, 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=31536000, immutable', 'x-content-type-options': 'nosniff', 'content-length': buf.length });
+    return res.end(buf);
+  }
+
   return send2(404, { error: 'Nie ma takiej ścieżki' });
 }
 
-http.createServer((req, res) => {
+export { parseDog, DOG_PATH };
+if (!process.env.LAPA_NO_LISTEN) http.createServer((req, res) => {
   handle(req, res).catch((e) => {
-    const code = e.code === 413 || e.code === 400 ? e.code : 500;
+    const code = [400, 413, 422, 502].includes(e.code) ? e.code : 500;
     if (code === 500) console.error(new Date().toISOString(), e);
     if (!res.headersSent) send(res, code, { error: code === 500 ? 'Błąd serwera' : e.message });
   });

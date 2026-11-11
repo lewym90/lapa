@@ -218,7 +218,7 @@ actions['set-logout'] = async () => {
 export async function thanks() {
   return {
     tab: 'start', nav: false, title: 'Dziękujemy',
-    html: html`<div class="login dark" style="min-height:100dvh"><span class="pawbig">${icon('paw')}</span><div class="box" style="text-align:center">
+    html: html`<div class="login" style="min-height:100dvh"><span class="pawbig">${icon('paw')}</span><div class="box" style="text-align:center">
       <span style="font-size:60px;color:var(--gold);display:grid;place-items:center;animation:rise 1s both">${icon('heart')}</span>
       <h1 style="font-size:46px;font-weight:500;margin:10px 0 6px;animation:rise 1s .15s both">Dziękujemy</h1><div style="width:54px;height:2px;background:var(--gold);margin:0 auto 22px"></div>
       ${PODZIEKOWANIE.akapity.map((t, i) => html`<p style="font-family:var(--serif);font-size:19px;line-height:1.6;margin:0 0 16px;color:rgba(244,240,231,.92);animation:rise 1s ${0.3 + i * 0.25}s both">${t}</p>`)}

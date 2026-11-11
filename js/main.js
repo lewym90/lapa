@@ -66,7 +66,7 @@ on('authlost', () => { toast('Sesja wygasła – zaloguj się ponownie', true); 
 // ---------- logowanie ----------
 function showLogin(msg = '') {
   renderId++;
-  app.innerHTML = `<div class="login dark"><span class="pawbig">${icon('paw').s}</span><div class="box">
+  app.innerHTML = `<div class="login"><span class="pawbig">${icon('paw').s}</span><div class="box">
     <div class="logo"><img src="icons/icon-192.png" alt="" width="104" height="104"><div class="w">ŁAPA</div><div class="s">NOWODWÓR</div></div>
     <p class="tag">Każdy dzień ma znaczenie.</p>
     <form class="card" id="lf" autocomplete="on" novalidate>
@@ -95,7 +95,7 @@ function showLogin(msg = '') {
 // ---------- imię ----------
 function showName() {
   renderId++;
-  app.innerHTML = `<div class="login dark"><span class="pawbig">${icon('paw').s}</span><div class="box">
+  app.innerHTML = `<div class="login"><span class="pawbig">${icon('paw').s}</span><div class="box">
     <div class="logo"><div class="w" style="font-size:38px;margin-top:0">Miło Cię widzieć</div></div>
     <form class="card" id="nf" novalidate>
       <h3 style="font-size:22px;margin-bottom:4px">Jak masz na imię?</h3>

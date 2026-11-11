@@ -9,4 +9,4 @@ export function html(strs, ...vals) {
   return new Raw(o);
 }
 // tylko adresy http(s) trafiają do src/href
-export const safeUrl = (u) => { try { const x = new URL(u, location.href); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch { return ''; } };
+export const safeUrl = (u) => { if (typeof u !== 'string' || !u) return ''; try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ''; } catch { return ''; } };

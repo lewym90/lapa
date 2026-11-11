@@ -21,7 +21,7 @@ export async function start() {
     ? html`<section class="hero" aria-label="Pies dnia">${dogImg(dog.zdjecia[0], dog.imie, 'ph')}
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
         <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Dziś w ŁAPIE:</span> <b>${dog.imie}</b> ${icon('chev')}</a></div></section>`
-    : html`<section class="hero empty"><span class="pawbig">${icon('paw')}</span>
+    : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span>
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
         <a class="dogtag" href="#/psy" data-act="a-dog">${icon('plus')}<span>Dodaj pierwszego psa</span></a></div></section>`;
 

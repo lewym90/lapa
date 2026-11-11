@@ -43,14 +43,15 @@ export function confirmSheet(title, text, okLabel = 'Tak', danger = false) {
 }
 
 // Zdjęcie psa z awaryjnym tłem, gdy brak zdjęcia lub brak sieci
-export function dogImg(url, alt = '', cls = '') {
+export function dogImg(url, alt = '', cls = '', fb = '') {
   const u = safeUrl(url);
   if (!u) return html`<div class="nophoto ${cls}">${icon('paw')}</div>`;
-  return raw(`<img class="${esc(cls)}" src="${esc(u)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-ph>`);
+  return raw(`<img class="${esc(cls)}" src="${esc(u)}" alt="${esc(alt)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-ph${fb && safeUrl(fb) ? ` data-fb="${esc(safeUrl(fb))}"` : ''}>`);
 }
 document.addEventListener('error', (e) => {
   const t = e.target;
   if (t.tagName === 'IMG' && t.hasAttribute('data-ph')) {
+    if (t.dataset.fb && t.src !== t.dataset.fb) { t.src = t.dataset.fb; return; }
     const d = document.createElement('div'); d.className = 'nophoto ' + (t.className || '');
     d.innerHTML = icon('paw').s; t.replaceWith(d);
   }
