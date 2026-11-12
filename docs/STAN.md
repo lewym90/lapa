@@ -82,6 +82,6 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Plakat: zaokrąglenia rysowane także w starszych przeglądarkach bez roundRect.
 - Sprawdzone: wszystkie testy, lint, SW ASSETS, importy, ekrany (tel + komputer) bez błędów.
 
-## 1.9.5
-- Post adopcyjny (Teksty psa) w formacie z ich Instagrama: "IMIĘ - hasło", linia "wiek: …; wysokość w kłębie: … cm; waga: … kg; chip: …", opis, blok kontaktu (Justyna, Dorota, e-mail) w osobnych liniach. Dla psa w domu tymczasowym/hoteliku hasło wstawia się samo ("w domu tymczasowym"/"w domowym hoteliku dla psów"). Usunięty akapit o wizycie przedadopcyjnej (nie występuje w ich postach).
-- Analiza: 42 posty z Instagrama schroniska (2024-2026), wszystkie adopcyjne, bez hasztagów, prawie bez emotikon; linia danych pisana ręcznie z literówkami, aplikacja daje poprawną formę. Facebook i inne rodzaje postów (zbiórka, adoptowany, spacery) nie przeanalizowane: Facebook nie doładowuje listy.
+## 1.9.5 / 1.9.6
+- 1.9.5 zmieniło szablon posta adopcyjnego w „Teksty” bez prośby właściciela; w 1.9.6 cofnięte (js/teczka.js jak w 1.9.4). Nie zmieniać szablonów tekstów bez wyraźnej prośby.
+- Analiza Instagrama schroniska (42 posty 2024-2026, wszystkie adopcyjne): układ „IMIĘ - hasło”, linia „wiek: …; wysokość w kłębie: … cm; waga: … kg; chip: …”, opis ze strony, blok kontaktu Justyna 691 742 265 / Dorota 607 119 526 / e-mail stowarzyszenie.nowodwor@wp.pl w osobnych liniach; bez hasztagów i prawie bez emotikon; dla psów w DT hasło „w domu tymczasowym” / „w domowym hoteliku dla psów”. Zaplanowana (jeszcze niezbudowana, czeka na wyraźne „zaczynaj”) zakładka „Social media”. Facebook nie doładowuje listy postów; potrzebny eksport od administratora lub wklejone przykłady (zbiórki, adoptowane, spacery, DT, hałas).
