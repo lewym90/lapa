@@ -3,6 +3,9 @@
 import { esc, toast, safeUrl } from './ui.js';
 import { photoSrc } from './photos.js';
 
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h) { this.rect(x, y, w, h); }; // starsze przeglądarki: prostokąt zamiast zaokrąglenia
+}
 const W = 1240, H = 1754, RED = '#b00020', INK = '#111';
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 

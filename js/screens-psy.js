@@ -316,13 +316,13 @@ actions['dog-print'] = async (el) => {
 };
 
 // Jednorazowe odświeżenie psów zaimportowanych starszym parserem (błędne opisy, brak cech)
-let refreshing = false;
+let refreshing = false, lastTry = 0;
 export async function refreshStale() {
-  if (refreshing || !navigator.onLine) return; refreshing = true;
+  if (refreshing || !navigator.onLine || Date.now() - lastTry < 3600e3) return; refreshing = true; lastTry = Date.now();
   try {
     const stale = (await list('psy')).filter((d) => d.zrodlo_url && (d.parser || 0) < 3);
     let n = 0;
-    for (const d of stale) { try { await importOne(d.zrodlo_url); n++; } catch (e) { if (e instanceof ApiError && (e.status === 401 || e.status === 0)) break; } }
+    for (const d of stale) { try { await importOne(d.zrodlo_url); n++; } catch (e) { if (e instanceof ApiError && (e.status === 401 || e.status === 0 || e.status >= 500)) break; } }
     if (n) { toast(`Odświeżono opisy i cechy: ${n} psów`); dispatchEvent(new HashChangeEvent('hashchange')); }
   } finally { refreshing = false; }
 }

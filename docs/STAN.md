@@ -75,3 +75,9 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 
 ## 1.9.3
 - Start: mała plakietka „N nowych wiadomości na czacie” pod powitaniem (znika po przeczytaniu).
+
+## 1.9.4 (audyt)
+- Naprawa: plakietka czatu na Start kolidowała z klasą czipów w polu pisania (teraz .nchip).
+- Import ze strony: błąd połączenia to 502 (nie 500 ze stosem w logach); automatyczne odświeżanie opisów próbuje najwyżej raz na godzinę i przerywa przy błędzie serwera.
+- Plakat: zaokrąglenia rysowane także w starszych przeglądarkach bez roundRect.
+- Sprawdzone: wszystkie testy, lint, SW ASSETS, importy, ekrany (tel + komputer) bez błędów.

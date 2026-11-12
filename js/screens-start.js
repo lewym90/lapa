@@ -30,7 +30,7 @@ export async function start() {
   return {
     tab: 'start', title: 'Start',
     html: html`${brandBar(dot)}
-    <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p><a class="cchip" href="#/czat" hidden>${icon('chat')}<span class="cchip-t"></span></a></section>
+    <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p><a class="nchip" href="#/czat" hidden>${icon('chat')}<span class="nchip-t"></span></a></section>
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="tiles">

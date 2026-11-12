@@ -213,7 +213,7 @@ async function fetchHtml1(urlStr, fresh) {
   let u = new URL(urlStr);
   for (let i = 0; i < 3; i++) {
     if (u.protocol !== SITE_PROTO || !SITE_HOSTS.has(u.hostname)) throw Object.assign(new Error('Niedozwolony adres'), { code: 422 });
-    const res = await fetch(u, { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(12000) });
+    let res; try { res = await fetch(u, { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(12000) }); } catch { throw Object.assign(new Error('Nie udało się połączyć ze stroną schroniska'), { code: 502 }); }
     if (res.status >= 300 && res.status < 400 && res.headers.get('location')) { u = new URL(res.headers.get('location'), u); continue; }
     if (!res.ok) throw Object.assign(new Error(res.status === 404 ? 'Nie ma takiej strony na stronie schroniska' : 'Strona schroniska odpowiedziała błędem ' + res.status), { code: 502, status404: res.status === 404 });
     const t = await res.text();

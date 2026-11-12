@@ -457,7 +457,7 @@ html.ppv-open,html.ppv-open body{background:#fff}
 
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 
-.cchip{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px 5px 9px;border-radius:999px;background:rgba(177,138,82,.18);border:1px solid rgba(177,138,82,.45);color:var(--ivory,#F4F0E7);font-size:13px;font-weight:600;text-decoration:none}
-.cchip[hidden]{display:none}
-.cchip svg{width:16px;height:16px;color:var(--gold,#B18A52)}
-.cchip::after{content:'';width:7px;height:7px;border-radius:50%;background:var(--terra,#C4745A)}
+.nchip{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px 5px 9px;border-radius:999px;background:rgba(177,138,82,.18);border:1px solid rgba(177,138,82,.45);color:var(--ivory,#F4F0E7);font-size:13px;font-weight:600;text-decoration:none}
+.nchip[hidden]{display:none}
+.nchip svg{width:16px;height:16px;color:var(--gold,#B18A52)}
+.nchip::after{content:'';width:7px;height:7px;border-radius:50%;background:var(--terra,#C4745A)}
