@@ -64,3 +64,7 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Serwer: Web Push bez zależności (VAPID ES256 + RFC 8291 aes128gcm, sprawdzone na wektorze testowym z RFC), klucze w `data/vapid.json` (tworzone same), tabela `push`, endpointy `/push/key|subscribe|prefs|unsubscribe|read|test`, dozwolone tylko hosty usług push (FCM, Apple, Mozilla, Windows). Powiadomienie wysyłane po nowej wiadomości `czat` do wszystkich poza autorem; cisza nocna 22:00-7:00 (czasu warszawskiego), przebijają ją „Pilne" i @imię; licznik odznaki per urządzenie liczy też wiadomości pominięte w ciszy. `GET /events` (SSE): każda zmiana na serwerze budzi telefony z otwartą aplikacją, które pobierają dane od razu (zamiast co 45 s).
 - Testy: tests/s2.mjs (serwer push/SSE/czyszczenie, atrapa usługi push odszyfrowuje jak przeglądarka), tests/swpush.mjs (sw.js), tests/chat.py (dwóch użytkowników), tests/pushui.py (ustawienia i zgody z atrapą PushManager).
 - Nie sprawdzone na prawdziwych telefonach: dostarczenie powiadomienia przez Apple/Google, zachowanie przy trybie „Nie przeszkadzaj" i oszczędzaniu baterii, odznaka na ikonie iPhone'a.
+
+
+## 1.9.1
+- Plakat zaginionego psa jest teraz obrazem PNG (js/plakat.js): Udostępnij/zapisz (gdy przeglądarka pozwala na pliki), Pobierz obraz (nie na iOS; tam przytrzymanie obrazu), Drukuj, Zmień zdjęcie. Pasek podglądu uwzględnia safe-area iPhone'a; Esc zamyka. Dotyczy tylko klienta.

@@ -356,7 +356,7 @@ button.chip{cursor:pointer}
   .ppv-bar{display:none!important}
 }
 .ppv{position:fixed;inset:0;z-index:10000;background:#fff;overflow:auto;-webkit-overflow-scrolling:touch}
-.ppv-bar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;background:var(--ivory,#F4F0E7);border-bottom:1px solid #ccc;z-index:1}
+.ppv-bar{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;background:var(--ivory,#F4F0E7);border-bottom:1px solid #ccc;z-index:1}
 .ppv .ppv-page{display:block;color:#111}
 
 .pawbig{display:block}.pawbig .ico{width:100%;height:100%}
@@ -446,3 +446,11 @@ button.chip{cursor:pointer}
 .cbig{width:100%;max-height:70dvh;object-fit:contain;border-radius:12px;background:#000}
 .csbar[hidden],.cnewpill[hidden],.cbanner[hidden]{display:none}
 .cb.done{opacity:1;border-left-color:var(--ok)}
+
+html.ppv-open,html.ppv-open body{background:#fff}
+.ppv-body{padding:14px 14px calc(24px + env(safe-area-inset-bottom,0px));max-width:760px;margin:auto;text-align:center}
+.ppv-pic{width:100%;height:auto;display:block;border:1px solid #ddd;border-radius:6px;box-shadow:0 2px 14px rgba(0,0,0,.12);-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.ppv-btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 6px}
+.ppv-btns .btn{text-decoration:none}
+.ppv-hint{font-size:13px;color:#555;margin:6px 0 0}
+@media print{.ppv-img .ppv-body{padding:0;max-width:none}.ppv-img .ppv-pic{border:0;box-shadow:none;border-radius:0;width:100%;max-height:100vh;object-fit:contain}.ppv-btns,.ppv-hint{display:none!important}@page{margin:0}}

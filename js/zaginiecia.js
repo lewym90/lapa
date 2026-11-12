@@ -1,5 +1,6 @@
 // Zaginione psy: karta alarmowa, tekst posta z aktualizacjami, plakat do wydruku.
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, safeUrl, confirmSheet, plusBtn, printPreview } from './ui.js';
+import { rysujPlakat, pokazObraz, zdjecieDoPlakatu } from './plakat.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, listRecs, save, remove, get } from './store.js';
 import { ktoText, ktoInto } from './kto.js';
 import { getName } from './auth.js';
@@ -75,16 +76,8 @@ actions['zag-open'] = async (el) => {
   });
 };
 async function plakat(z) {
-  const d = z.pies_id ? await get('psy', z.pies_id) : null; const pic = d && (d.zdjecia || [])[0];
-  const inner = `<div style="font-family:Arial,sans-serif;text-align:center;padding:10mm;max-width:190mm;margin:auto;color:#111">
-    <div style="font-size:72px;font-weight:900;color:#b00020;letter-spacing:.04em">ZAGINĄŁ PIES</div>
-    <div style="font-size:54px;font-weight:800;margin:6px 0">${esc(String(z.imie).toUpperCase())}</div>
-    ${pic && safeUrl(pic) ? `<img src="${esc(safeUrl(pic))}" referrerpolicy="no-referrer" style="width:100%;max-height:300px;object-fit:cover;border-radius:10px;margin:8px 0">` : ''}
-    <div style="font-size:24px;margin:10px 0">${esc(z.opis || '')}</div>
-    <div style="font-size:22px">Zaginął(a) ${esc(dm(z.kiedy))}${z.gdzie ? ', ' + esc(z.gdzie) : ''}${z.ostatnio ? '.<br>Ostatnio widziany(a): ' + esc(z.ostatnio) : ''}</div>
-    <div style="font-size:21px;margin:14px 0;font-weight:700">${esc(z.rada || 'Nie goń. Zwab jedzeniem, zrób zdjęcie i zadzwoń.')}</div>
-    <div style="font-size:46px;font-weight:900;border:6px solid #b00020;border-radius:12px;padding:10px;margin-top:10px">${esc(z.kontakt || KONTAKT_DOM)}</div>
-    <div style="font-size:15px;margin-top:10px;color:#444">Wolontariat Schroniska dla Psów w Nowodworze</div></div>`;
-  await printPreview(inner, 'Plakat');
+  const d = z.pies_id ? await get('psy', z.pies_id) : null; let im = await zdjecieDoPlakatu(d);
+  const plik = `plakat-${String(z.imie || 'pies').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+  await pokazObraz({ title: 'Plakat', plik, rysuj: () => rysujPlakat({ ...z, kontakt: z.kontakt || KONTAKT_DOM }, im, dm), zmienZdjecie: (n) => { im = n; } });
 }
 export async function aktywneLiczba() { return (await list('zaginiecia')).filter(aktywne).length; }
