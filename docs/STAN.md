@@ -72,3 +72,6 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 ## 1.9.2
 - Okna (arkusze): każdy przycisk z data-sheet-close zamyka okno (naprawa „Rozumiem” w czacie).
 - Brak powiększania: viewport bez zoomu, blokada gestów ściągania palcami.
+
+## 1.9.3
+- Start: mała plakietka „N nowych wiadomości na czacie” pod powitaniem (znika po przeczytaniu).

@@ -38,6 +38,8 @@ export function refreshBadge() {
     if (!state.loggedIn) return;
     const n = await unreadCount();
     document.querySelectorAll('.cbadge').forEach((el) => { el.textContent = n > 99 ? '99+' : String(n); el.hidden = n === 0; el.setAttribute('aria-label', n + ' nowych'); });
+    const pl = (k) => (k === 1 ? 'nowa wiadomość' : k % 10 >= 2 && k % 10 <= 4 && (k % 100 < 10 || k % 100 >= 20) ? 'nowe wiadomości' : 'nowych wiadomości');
+    document.querySelectorAll('.cchip').forEach((el) => { el.hidden = n === 0; const t = el.querySelector('.cchip-t'); if (t) t.textContent = `${n} ${pl(n)} na czacie`; });
     try { if ('setAppBadge' in navigator) { n > 0 ? navigator.setAppBadge(n).catch(() => {}) : navigator.clearAppBadge().catch(() => {}); } } catch { /* odznaka nieobsługiwana */ }
   }, 120);
 }
