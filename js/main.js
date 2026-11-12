@@ -204,3 +204,7 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   setTimeout(() => TM.poranny(), 3000);
 })();
 export { render, lock, unlock, emit, logout, raw };
+
+// Bez powiększania: ściąganie palcami (podwójne dotknięcie blokuje touch-action w CSS)
+['gesturestart', 'gesturechange', 'gestureend'].forEach((n) => document.addEventListener(n, (e) => e.preventDefault()));
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });

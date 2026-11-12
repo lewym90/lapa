@@ -68,3 +68,7 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 
 ## 1.9.1
 - Plakat zaginionego psa jest teraz obrazem PNG (js/plakat.js): Udostępnij/zapisz (gdy przeglądarka pozwala na pliki), Pobierz obraz (nie na iOS; tam przytrzymanie obrazu), Drukuj, Zmień zdjęcie. Pasek podglądu uwzględnia safe-area iPhone'a; Esc zamyka. Dotyczy tylko klienta.
+
+## 1.9.2
+- Okna (arkusze): każdy przycisk z data-sheet-close zamyka okno (naprawa „Rozumiem” w czacie).
+- Brak powiększania: viewport bez zoomu, blokada gestów ściągania palcami.
