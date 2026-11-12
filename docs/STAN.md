@@ -97,3 +97,6 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 
 ## 1.10.1
 - Social media: każdy wygenerowany tekst jest polem edytowalnym (dopisek, emotka, poprawka) na potrzeby chwili: nie zmienia szablonu (to robi tylko „Edytuj szablon”), zmiany w formularzu go nie nadpisują, „Wróć do wygenerowanego” cofa poprawkę; zmiana psa lub zapis szablonu kasuje poprawkę. Kopiuj bierze tekst z pola. Test: social3.py.
+
+## 1.10.2
+- Karta psa → „Gdzie jest ogłoszony”: dodany kanał YouTube (pole `kanaly.yt`). Kontakt w apelach o DT bez zmian (Justyna/Dorota).

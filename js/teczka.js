@@ -7,7 +7,7 @@ import { SITE } from './config.js';
 import { api } from './api.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
-export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
+export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['yt', 'YouTube'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
 export const ZDROWIE_TYPY = [['szczepienie', 'Szczepienie'], ['odrobaczanie', 'Odrobaczanie'], ['pchly', 'Pchły i kleszcze'], ['kastracja', 'Kastracja / sterylizacja'], ['chip', 'Czip'], ['weterynarz', 'Wizyta u weterynarza'], ['lek', 'Lek / leczenie'], ['badanie', 'Badanie'], ['inne', 'Inne']];
 const TYP = Object.fromEntries(ZDROWIE_TYPY);
 const OCENA_POLA = [['ludzie', 'Do ludzi'], ['dzieci', 'Do dzieci'], ['psy', 'Do innych psów'], ['koty', 'Do kotów'], ['smycz', 'Na smyczy']];
