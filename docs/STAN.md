@@ -81,3 +81,7 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Import ze strony: błąd połączenia to 502 (nie 500 ze stosem w logach); automatyczne odświeżanie opisów próbuje najwyżej raz na godzinę i przerywa przy błędzie serwera.
 - Plakat: zaokrąglenia rysowane także w starszych przeglądarkach bez roundRect.
 - Sprawdzone: wszystkie testy, lint, SW ASSETS, importy, ekrany (tel + komputer) bez błędów.
+
+## 1.9.5
+- Post adopcyjny (Teksty psa) w formacie z ich Instagrama: "IMIĘ - hasło", linia "wiek: …; wysokość w kłębie: … cm; waga: … kg; chip: …", opis, blok kontaktu (Justyna, Dorota, e-mail) w osobnych liniach. Dla psa w domu tymczasowym/hoteliku hasło wstawia się samo ("w domu tymczasowym"/"w domowym hoteliku dla psów"). Usunięty akapit o wizycie przedadopcyjnej (nie występuje w ich postach).
+- Analiza: 42 posty z Instagrama schroniska (2024-2026), wszystkie adopcyjne, bez hasztagów, prawie bez emotikon; linia danych pisana ręcznie z literówkami, aplikacja daje poprawną formę. Facebook i inne rodzaje postów (zbiórka, adoptowany, spacery) nie przeanalizowane: Facebook nie doładowuje listy.

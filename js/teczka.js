@@ -147,10 +147,14 @@ actions['dog-kanaly'] = async (el) => {
 };
 
 // ===== teksty do postów =====
-const KONTAKT = 'Kontakt w sprawie adopcji: Justyna 691 742 265, Dorota 607 119 526, stowarzyszenie.nowodwor@wp.pl';
+const KONTAKT = 'Kontakt w sprawie adopcji\nJustyna: 691 742 265\nDorota: 607 119 526\ne-mail: stowarzyszenie.nowodwor@wp.pl'; // dokładnie jak w postach na Instagramie i Facebooku
+const jedn = (v, u) => { const t = String(v || '').trim(); return !t ? '' : /^[\d.,]+$/.test(t) ? t + ' ' + u : t; };
+// Linia danych jak w ich postach: wiek: ok. 3 lata; wysokość w kłębie: 54 cm; waga: 23 kg; chip: 6160...
+export const daneLinia = (d) => [d.wiek && 'wiek: ' + String(d.wiek).replace(/^wiek:\s*/i, ''), jedn(d.wzrost, 'cm') && 'wysokość w kłębie: ' + jedn(d.wzrost, 'cm'), jedn(d.waga, 'kg') && 'waga: ' + jedn(d.waga, 'kg'), d.chip && 'chip: ' + d.chip].filter(Boolean).join('; ');
+const hasloAuto = (d, h) => h || (d.miejsce === 'dt' ? 'w domu tymczasowym' : d.miejsce === 'hotelik' ? 'w domowym hoteliku dla psów' : '');
 export const TEKSTY = {
-  album: { l: 'Nazwa albumu', f: (d, h) => `${d.imie.toUpperCase()} - ${h || 'wpisz hasło'}` },
-  post: { l: 'Post adopcyjny', f: (d, h) => `${d.imie.toUpperCase()} - ${h || 'wpisz hasło'}\n\n${[d.wiek, d.wielkosc, d.waga && 'waga ' + d.waga].filter(Boolean).join(', ')}\n\n${d.opis || ''}\n\nPrzed adopcją obowiązuje wizyta przedadopcyjna i umowa. Pies jest po kastracji/sterylizacji lub przed zabiegiem na koszt schroniska.\n${KONTAKT}\n${d.zrodlo_url || SITE}` },
+  album: { l: 'Nazwa albumu', f: (d, h) => `${d.imie.toUpperCase()} - ${hasloAuto(d, h) || 'wpisz hasło'}` },
+  post: { l: 'Post adopcyjny', f: (d, h) => `${d.imie.toUpperCase()} - ${hasloAuto(d, h) || 'wpisz hasło'}\n${[daneLinia(d), (d.opis || '').trim()].filter(Boolean).join(' ')}\n\n${KONTAKT}` },
   halas: { l: 'Zróbmy hałas', f: (d, h) => { const dn = d.data_przyjecia ? days(d.data_przyjecia) : 0; return `ZRÓBMY HAŁAS wokół ${d.imie.toUpperCase()}!\n${dn > 30 ? `${d.imie} jest w schronisku od ${dn} dni i nikt o ${d.plec === 'suka' ? 'nią' : 'niego'} nie zapytał.` : `${d.imie} czeka na swój dom.`} ${h || ''}\n\n${d.opis ? d.opis.slice(0, 300) : ''}\n\nUdostępnij, to może być jego/jej szansa.\n${KONTAKT}`; } },
   dt: { l: 'Apel o dom tymczasowy', f: (d, h) => `PILNIE SZUKAMY DOMU TYMCZASOWEGO dla ${d.imie.toUpperCase()}\n${h || ''}\n\n${d.opis ? d.opis.slice(0, 300) : ''}\n\nDom tymczasowy to czas, w którym pies odpoczywa od schroniska, a my szukamy mu domu na stałe. Koszty leczenia i karmę pokrywa stowarzyszenie.\n${KONTAKT}` },
   sms: { l: 'SMS / WhatsApp (krótko)', f: (d) => `${d.imie}${d.wiek ? ', ' + d.wiek : ''}${d.wielkosc ? ', ' + d.wielkosc : ''}. Szuka domu. Zdjęcia i opis: ${d.zrodlo_url || SITE}` }
