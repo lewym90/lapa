@@ -1,12 +1,12 @@
 /* ŁAPA – service worker (praca offline).
    Po każdej zmianie plików zwiększ numer w VERSION, aby wymusić aktualizację. */
-const VERSION = 'lapa-v1.8.5';
+const VERSION = 'lapa-v1.9.0';
 const IMG_CACHE = 'lapa-img-v1';
 const IMG_MAX = 220;
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/main.js', 'js/bus.js', 'js/ui-core.js', 'js/config.js', 'js/db.js', 'js/store.js', 'js/api.js', 'js/auth.js', 'js/sync.js', 'js/ui.js', 'js/util.js', 'js/icons.js',
-  'js/tekst.js', 'js/update.js', 'js/teczka.js', 'js/kto.js', 'js/adopcje.js', 'js/zaginiecia.js', 'js/finanse.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/brama.js', 'js/udzial.js', 'js/terminarz.js', 'js/dogmerge.js', 'js/screens-inne.js',
+  'js/tekst.js', 'js/update.js', 'js/teczka.js', 'js/kto.js', 'js/czat.js', 'js/push.js', 'js/adopcje.js', 'js/zaginiecia.js', 'js/finanse.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/brama.js', 'js/udzial.js', 'js/terminarz.js', 'js/dogmerge.js', 'js/screens-inne.js',
   'fonts/inter-latin.woff2', 'fonts/inter-latin-ext.woff2',
   'fonts/playfair-latin-normal.woff2', 'fonts/playfair-latin-ext-normal.woff2',
   'fonts/playfair-latin-italic.woff2', 'fonts/playfair-latin-ext-italic.woff2',
@@ -63,4 +63,25 @@ self.addEventListener('fetch', (e) => {
     if (res.ok) { const copy = res.clone(); caches.open(VERSION).then((c) => c.put(req, copy)); }
     return res;
   }).catch(() => caches.match(req)));
+});
+
+// ---------- powiadomienia z serwera ----------
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { t: 'ŁAPA', b: e.data ? e.data.text() : '' }; }
+  const n = Number(d.badge) || 0;
+  const opts = { body: d.b || '', icon: 'icons/icon-192.png', badge: 'icons/favicon-32.png', data: { url: d.url || '#/czat' } };
+  if (d.tag === 'test') opts.tag = 'test';
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(d.t || 'ŁAPA', opts),
+    (async () => { try { if ('setAppBadge' in self.navigator) { n > 0 ? await self.navigator.setAppBadge(n) : await self.navigator.clearAppBadge(); } } catch { /* odznaka nieobsługiwana */ } })()
+  ]));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '#/czat';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'go', url }); return c.focus(); } }
+    return self.clients.openWindow(self.registration.scope + url);
+  }));
 });

@@ -16,6 +16,8 @@ import * as W from './screens-spacer.js';
 import * as B from './brama.js';
 import * as X from './screens-inne.js';
 import * as TM from './terminarz.js';
+import * as C from './czat.js';
+import { firstPrompt, syncPush } from './push.js';
 
 const app = document.getElementById('app');
 
@@ -24,7 +26,7 @@ const routes = [
   [/^\/?$/, () => S.start()], [/^\/start$/, () => S.start()],
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
-  [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
+  [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
   [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
@@ -33,13 +35,13 @@ const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarze
 // Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
 // Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
 const MENU = [
-  ['Dziś', [['start', 'Start', 'home'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
+  ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
   ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z psem (GPS)', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
   ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
 ];
-const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`).join('')).join('');
+const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
 const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
@@ -71,6 +73,7 @@ async function render(keepScroll = false) {
   current = view;
   app.innerHTML = `<div class="shell">${side()}${view.nav === false ? '' : nav(view.tab)}<main class="main" ${view.nav === false ? 'style="padding-bottom:40px"' : ''}>${view.html.s}</main></div>`;
   paintSync(document.getElementById('sp2'));
+  C.refreshBadge();
   view.mount?.(app);
   scrollTo(0, y);
   document.title = (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
@@ -89,7 +92,7 @@ on('change', () => {
     render(true);
   }, 250);
 });
-on('auth', () => { if (!state.loggedIn || !getName()) render(); else { render(true); setTimeout(() => TM.poranny(), 2500); } });
+on('auth', () => { if (!state.loggedIn || !getName()) render(); else { render(true); setTimeout(() => TM.poranny(), 2500); setTimeout(syncPush, 1500); setTimeout(firstPrompt, 4500); } });
 on('authlost', () => { toast('Sesja wygasła – zaloguj się ponownie', true); });
 
 // ---------- logowanie ----------
@@ -195,6 +198,8 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   await render();
   kick(100);
   initUpdates();
+  C.initChat();
+  if (state.loggedIn && getName()) { setTimeout(syncPush, 2000); setTimeout(firstPrompt, 4500); }
   setTimeout(() => { if (state.loggedIn) P.refreshStale(); }, 4000);
   setTimeout(() => TM.poranny(), 3000);
 })();

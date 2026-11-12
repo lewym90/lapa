@@ -124,7 +124,7 @@ export const brandBar = (dot = false) => html`<header class="topbar">
     <span style="font-size:36px;color:var(--gold-l);display:grid">${icon('paw')}</span>
     <span><span class="brand-word">ŁAPA</span><span class="brand-sub">NOWODWÓR</span></span>
   </a>
-  <span style="display:flex"><button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button>
+  <span style="display:flex"><a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a><button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button>
   <a class="iconbtn" href="#/ustawienia" aria-label="Ustawienia i profil">${icon('user')}</a></span>
 </header>`;
 export const pageBar = (title, { back = true, right = '' } = {}) => html`<header class="topbar">

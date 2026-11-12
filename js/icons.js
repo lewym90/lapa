@@ -1,6 +1,10 @@
 import { raw } from './ui-core.js';
 // Spójny zestaw ikon (kreska 1.8, zaokrąglone zakończenia).
 const P = {
+  chat: '<path d="M5 4.500h14a2 2 0 0 1 2 2v8.500a2 2 0 0 1-2 2h-7.500L7 20.500V17H5a2 2 0 0 1-2-2V6.500a2 2 0 0 1 2-2z"/><path d="M8 9.500h8M8 13h5"/>',
+  send: '<path d="M21 3 10 14M21 3l-6.500 18-3.500-7.500L3.500 10z"/>',
+  reply: '<path d="M10 7 4 12l6 5V14c5 0 8 1 10 5-.5-6-4-9.500-10-9.500z"/>',
+  paperclip: '<path d="m20 11-8.500 8.500a5 5 0 0 1-7-7L13 4a3.500 3.500 0 0 1 5 5l-8.500 8.500a2 2 0 0 1-3-3L14.500 7"/>',
   home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   calendar: '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M8 2.5v4M16 2.5v4M3 10h18"/>',
   heart: '<path d="M12 20.5s-8-4.9-8-10.6A4.4 4.4 0 0 1 12 7.3a4.4 4.4 0 0 1 8 2.6c0 5.700-8 10.600-8 10.600z"/>',

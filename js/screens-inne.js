@@ -11,6 +11,7 @@ import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
 import { resetSiteStatus } from './teczka.js';
 import { ktoText, ktoInto } from './kto.js';
+import { settingsCard, syncPush } from './push.js';
 import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
@@ -189,12 +190,13 @@ actions['need-give'] = async (el) => {
 
 // ================= ustawienia =================
 export async function settings() {
-  const pend = await db.outboxCount();
+  const pend = await db.outboxCount(), notif = await settingsCard();
   return {
     tab: 'start', title: 'Ustawienia', live: false,
     html: html`${pageBar('Ustawienia')}<div class="pad stack">
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Podpisuje Twoje wpisy, spacery i zgłoszenia.</p>
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
+      ${notif}
       <section class="card"><h3>${icon('lock')} Dane osobowe</h3><p class="sub" style="margin:2px 0 12px">${state.coordinator ? 'Odblokowane hasłem koordynatora. Zablokują się same po godzinie bez używania aplikacji.' : 'Zablokowane. Numery telefonów i dane osób zainteresowanych adopcją widzi tylko koordynator.'}</p>
         ${state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora</button>`}</section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
@@ -205,7 +207,7 @@ export async function settings() {
         <div class="btnrow"><button class="btn ghost" data-act="set-export">${icon('download')} Zapisz kopię</button><button class="btn ghost" data-act="set-import">${icon('upload')} Wczytaj kopię</button></div></section>
       <section class="card"><h3>O aplikacji</h3><p class="sub" style="margin:2px 0 12px">ŁAPA — Nowodwór, wersja <b>${VERSION}</b>. Aplikacja dla wolontariuszy, bezpłatna i bez reklam. Nowe wersje instalują się same po ponownym otwarciu aplikacji.</p><div class="btnrow"><button class="btn ghost" data-act="set-update">${icon('refresh')} Sprawdź aktualizację</button><a class="btn ghost" href="#/dziekujemy">${icon('gift')} Dziękujemy</a></div></section>
       <button class="btn line block" data-act="set-logout">${icon('logout')} Wyloguj z tego telefonu</button></div>`,
-    mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#sitest').textContent = siteText(h && h.site); root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); toast('Zapisane'); }); }
+    mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#sitest').textContent = siteText(h && h.site); root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); root.querySelector('#sn').addEventListener('submit', (e) => { e.preventDefault(); const v = root.querySelector('#sni').value.trim(); if (v.length < 2) { toast('Wpisz imię', true); return; } setName(v); syncPush(); toast('Zapisane'); }); }
   };
 }
 const siteText = (s) => !s ? 'Serwer nie ma jeszcze automatycznego sprawdzania strony. Zaktualizuj serwer.' : s.enabled === false ? 'Serwer nie ma pliku do sprawdzania strony. Zaktualizuj serwer.' : s.running ? 'Sprawdzam stronę teraz…' : !s.t ? 'Serwer sprawdza stronę 3 razy dziennie (3:00, 11:00, 17:00). Pierwsze sprawdzenie nastąpi zaraz po aktualizacji serwera.' : s.ok ? `Serwer sprawdza stronę 3 razy dziennie. Ostatnio: ${fmtDate(s.t)} ${fmtTime(s.t)}. Psów na stronie: ${s.razem}, nowych: ${s.nowych}, zmienionych: ${s.zmienionych}.${s.nazwy && s.nazwy.length ? ' Nowe: ' + s.nazwy.join(', ') + '.' : ''}` : `Ostatnie sprawdzenie strony (${fmtDate(s.t)} ${fmtTime(s.t)}) nie udało się: ${s.blad}`;

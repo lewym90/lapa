@@ -3,9 +3,10 @@ import * as db from './db.js';
 import { emit, on } from './bus.js';
 import { state, lock, sessionLost } from './auth.js';
 import { uploadPending } from './photos.js';
+import { API } from './config.js';
 
 export const status = { state: 'idle', pending: 0, last: 0 };
-let running = false, timer;
+let running = false, again = false, timer;
 const setStatus = (s) => { Object.assign(status, s); emit('sync', { ...status }); };
 
 export function kick(delay = 400) { clearTimeout(timer); timer = setTimeout(run, delay); }
@@ -50,7 +51,8 @@ async function pull(priv) {
 }
 
 export async function run() {
-  if (running || !getToken() || !state.loggedIn) return;
+  if (running) { again = true; return; }
+  if (!getToken() || !state.loggedIn) return;
   if (!navigator.onLine) { setStatus({ state: 'offline', pending: await db.outboxCount() }); return; }
   running = true; setStatus({ state: 'busy' });
   let changed = 0;
@@ -67,7 +69,7 @@ export async function run() {
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) sessionLost();
     else setStatus({ state: e instanceof ApiError && e.status === 0 ? 'offline' : 'error', pending: await db.outboxCount(), error: e.message });
-  } finally { running = false; }
+  } finally { running = false; if (again) { again = false; kick(100); } }
 }
 
 addEventListener('online', () => kick(200));
@@ -76,3 +78,32 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 setInterval(() => { if (document.visibilityState === 'visible') run(); }, 45000);
 on('unlocked', () => kick(100));
 on('auth', () => { if (state.loggedIn) kick(200); });
+
+// ---------- natychmiastowa synchronizacja: serwer daje znać o każdej zmianie (SSE), pobieramy od razu ----------
+let live = null, liveWait = 3000;
+async function startLive() {
+  if (live || !getToken() || !state.loggedIn || document.visibilityState !== 'visible' || !navigator.onLine) return;
+  const ac = new AbortController(); live = ac; let dog = 0;
+  const arm = () => { clearTimeout(dog); dog = setTimeout(() => ac.abort(), 65000); }; // serwer pinguje co 20 s
+  try {
+    arm();
+    const res = await fetch(API + '/events', { headers: { authorization: 'Bearer ' + getToken() }, signal: ac.signal, cache: 'no-store' });
+    if (!res.ok || !res.body) throw new Error('events ' + res.status);
+    liveWait = 3000;
+    const rd = res.body.getReader(), dec = new TextDecoder();
+    for (;;) {
+      const { value, done } = await rd.read(); if (done) break; arm();
+      const t = dec.decode(value, { stream: true });
+      if (t.includes('data:') && !t.includes('"hello"')) kick(40);
+    }
+  } catch { /* przerwane: spróbujemy ponownie */ }
+  finally {
+    clearTimeout(dog); live = null;
+    if (document.visibilityState === 'visible' && getToken() && state.loggedIn) { setTimeout(startLive, liveWait); liveWait = Math.min(liveWait * 2, 30000); }
+  }
+}
+function stopLive() { try { live?.abort(); } catch { /* */ } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { liveWait = 3000; startLive(); } else stopLive(); });
+addEventListener('online', () => { liveWait = 3000; startLive(); });
+on('auth', () => { if (state.loggedIn) startLive(); else stopLive(); });
+setTimeout(startLive, 1500);

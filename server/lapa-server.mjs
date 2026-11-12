@@ -35,6 +35,9 @@ CREATE INDEX IF NOT EXISTS records_seq ON records(seq);
 CREATE TABLE IF NOT EXISTS history(
   hid INTEGER PRIMARY KEY AUTOINCREMENT, col TEXT, id TEXT, data TEXT, updated_at INTEGER, deleted INTEGER, by TEXT, replaced_at INTEGER);
 CREATE INDEX IF NOT EXISTS history_rec ON history(col,id);
+CREATE TABLE IF NOT EXISTS push(
+  endpoint TEXT PRIMARY KEY, sub TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', quiet INTEGER NOT NULL DEFAULT 1, mute INTEGER NOT NULL DEFAULT 0,
+  badge INTEGER NOT NULL DEFAULT 0, created INTEGER, last_ok INTEGER DEFAULT 0, fails INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS sessions(
   th TEXT PRIMARY KEY, created INTEGER, vol_seen INTEGER, fp_vol TEXT, coord_until INTEGER DEFAULT 0, fp_coord TEXT DEFAULT '');
 `);
@@ -77,6 +80,98 @@ function getSession(req, touchActive) {
   return { th, coord, coordUntil: coord ? (active ? now + COORD_TTL : row.coord_until) : 0 };
 }
 setInterval(() => db.prepare('DELETE FROM sessions WHERE vol_seen < ?').run(Date.now() - VOL_TTL), 3600e3).unref();
+
+const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
+fs.mkdirSync(PHOTO_DIR, { recursive: true });
+// ---------- Czat: powiadomienia web push (bez zależności, node:crypto) i natychmiastowa synchronizacja (SSE) ----------
+const CHAT_DAYS = +(process.env.CHAT_DAYS || 30);
+const VAPID_SUB = process.env.VAPID_SUB || 'https://188-68-247-201.sslip.io/lapa';
+const TEST_PUSH = process.env.LAPA_TEST_PUSH_HOST || ''; // tylko testy: host:port atrapy usługi push (http)
+const b64u = (b) => Buffer.from(b).toString('base64url');
+const VAPID_FILE = path.join(path.dirname(DB_FILE), 'vapid.json');
+function loadVapid() {
+  try { const j = JSON.parse(fs.readFileSync(VAPID_FILE, 'utf8')); if (j.priv && j.pub) return j; } catch { /* nowy */ }
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const jwk = publicKey.export({ format: 'jwk' });
+  const pub = b64u(Buffer.concat([Buffer.from([4]), Buffer.from(jwk.x, 'base64url'), Buffer.from(jwk.y, 'base64url')]));
+  const j = { priv: privateKey.export({ format: 'jwk' }), pub };
+  fs.writeFileSync(VAPID_FILE, JSON.stringify(j), { mode: 0o600 });
+  return j;
+}
+const VAPID = loadVapid();
+const VAPID_KEY = crypto.createPrivateKey({ key: VAPID.priv, format: 'jwk' });
+const PUSH_HOSTS = [/(^|\.)fcm\.googleapis\.com$/, /(^|\.)push\.apple\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)push\.api\.microsoft\.com$/];
+function pushUrlOk(ep) {
+  if (typeof ep !== 'string' || ep.length > 700) return false;
+  let u; try { u = new URL(ep); } catch { return false; }
+  if (TEST_PUSH && u.host === TEST_PUSH) return true;
+  return u.protocol === 'https:' && !u.port && PUSH_HOSTS.some((r) => r.test(u.hostname));
+}
+const vapidJwt = (aud) => {
+  const h = b64u(JSON.stringify({ typ: 'JWT', alg: 'ES256' })), c = b64u(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: VAPID_SUB }));
+  return `${h}.${c}.${b64u(crypto.sign('sha256', Buffer.from(`${h}.${c}`), { key: VAPID_KEY, dsaEncoding: 'ieee-p1363' }))}`;
+};
+const hkdf = (salt, ikm, info, len) => Buffer.from(crypto.hkdfSync('sha256', ikm, salt, info, len));
+function encryptPush(sub, payload) { // RFC 8291 (aes128gcm)
+  const ua = Buffer.from(sub.keys.p256dh, 'base64url'), auth = Buffer.from(sub.keys.auth, 'base64url');
+  const ecdh = crypto.createECDH('prime256v1'); ecdh.generateKeys();
+  const asPub = ecdh.getPublicKey(), secret = ecdh.computeSecret(ua), salt = crypto.randomBytes(16);
+  const prk = hkdf(auth, secret, Buffer.concat([Buffer.from('WebPush: info\0'), ua, asPub]), 32);
+  const cek = hkdf(salt, prk, Buffer.from('Content-Encoding: aes128gcm\0'), 16), nonce = hkdf(salt, prk, Buffer.from('Content-Encoding: nonce\0'), 12);
+  const ci = crypto.createCipheriv('aes-128-gcm', cek, nonce);
+  const ct = Buffer.concat([ci.update(Buffer.concat([Buffer.from(payload), Buffer.from([2])])), ci.final(), ci.getAuthTag()]);
+  const rs = Buffer.alloc(4); rs.writeUInt32BE(4096);
+  return Buffer.concat([salt, rs, Buffer.from([asPub.length]), asPub, ct]);
+}
+const pushDel = db.prepare('DELETE FROM push WHERE endpoint=?');
+async function sendPush(row, msg, urgent = false) {
+  let sub; try { sub = JSON.parse(row.sub); } catch { pushDel.run(row.endpoint); return false; }
+  const u = new URL(row.endpoint);
+  try {
+    const r = await fetch(row.endpoint, {
+      method: 'POST', signal: AbortSignal.timeout(10000),
+      headers: { 'content-encoding': 'aes128gcm', 'content-type': 'application/octet-stream', ttl: '86400', urgency: urgent ? 'high' : 'normal', authorization: `vapid t=${vapidJwt(u.origin)}, k=${VAPID.pub}` },
+      body: encryptPush(sub, JSON.stringify(msg))
+    });
+    if (r.status === 404 || r.status === 410) { pushDel.run(row.endpoint); return false; }
+    if (!r.ok) { db.prepare('UPDATE push SET fails=fails+1 WHERE endpoint=?').run(row.endpoint); if (row.fails >= 8) pushDel.run(row.endpoint); console.error('Push', r.status, u.hostname); return false; }
+    db.prepare('UPDATE push SET fails=0, last_ok=? WHERE endpoint=?').run(Date.now(), row.endpoint);
+    return true;
+  } catch (e) { db.prepare('UPDATE push SET fails=fails+1 WHERE endpoint=?').run(row.endpoint); console.error('Push:', e.message); return false; }
+}
+const QUIET = { from: +(process.env.QUIET_FROM || 22), to: +(process.env.QUIET_TO || 7) };
+const warsawHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', hour: '2-digit', hourCycle: 'h23' }).format(new Date());
+const isQuiet = () => { const h = warsawHour(); return QUIET.from > QUIET.to ? h >= QUIET.from || h < QUIET.to : h >= QUIET.from && h < QUIET.to; };
+const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+async function notifyChat(d) { // d: dane nowej wiadomości
+  const rows = db.prepare('SELECT * FROM push').all();
+  const preview = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 110) || (d.foto ? '📷 Zdjęcie' : d.ref?.nazwa ? String(d.ref.nazwa).slice(0, 80) : 'Nowa wiadomość');
+  const body = (d.kind === 'prosba' ? '🙋 Prośba o pomoc: ' : d.pilne ? '❗ ' : '') + preview;
+  const mentioned = (n) => Array.isArray(d.wzm) && d.wzm.some((x) => sameName(x, n));
+  for (const r of rows) {
+    if (sameName(r.name, d.autor)) continue;
+    db.prepare('UPDATE push SET badge=badge+1 WHERE endpoint=?').run(r.endpoint);
+    const urgent = !!d.pilne || mentioned(r.name);
+    if (r.mute && !mentioned(r.name)) continue;
+    if (r.quiet && isQuiet() && !urgent) continue;
+    const badge = db.prepare('SELECT badge FROM push WHERE endpoint=?').get(r.endpoint)?.badge || 1;
+    sendPush(r, { t: String(d.autor || 'Czat').slice(0, 40), b: mentioned(r.name) ? '@ ' + body : body, url: '#/czat', tag: 'czat', badge }, urgent);
+  }
+}
+const sseClients = new Set();
+function sseBroadcast() { const m = `data: {"t":${Date.now()}}\n\n`; for (const c of sseClients) { try { c.write(m); } catch { sseClients.delete(c); } } }
+setInterval(() => { for (const c of sseClients) { try { c.write(': ping\n\n'); } catch { sseClients.delete(c); } } }, 20e3).unref();
+function pruneChat() { // wiadomości czatu i ich zdjęcia: tylko CHAT_DAYS dni
+  const lim = Date.now() - CHAT_DAYS * 86400e3;
+  try {
+    for (const r of db.prepare("SELECT col,id,data FROM records WHERE col IN ('czat','czat_re') AND updated_at < ?").all(lim)) {
+      try { const f = JSON.parse(r.data).foto; if (f && /^[A-Za-z0-9_-]{1,64}$/.test(f)) fs.rmSync(path.join(PHOTO_DIR, f + '.jpg'), { force: true }); } catch { /* */ }
+    }
+    db.prepare("DELETE FROM records WHERE col IN ('czat','czat_re') AND updated_at < ?").run(lim);
+    db.prepare("DELETE FROM history WHERE col IN ('czat','czat_re') AND replaced_at < ?").run(lim);
+  } catch (e) { console.error('Czyszczenie czatu:', e.message); }
+}
+setInterval(pruneChat, 6 * 3600e3).unref(); setTimeout(pruneChat, process.env.LAPA_TEST_FAST ? 300 : 20e3).unref();
 
 // ---------- HTTP ----------
 function send(res, code, obj, extra = {}) {
@@ -184,8 +279,6 @@ async function dogLinks(fresh = false, info = {}) {
   }
   return [...links].slice(0, 500);
 }
-const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
-fs.mkdirSync(PHOTO_DIR, { recursive: true });
 // ===== Kopie zapasowe: baza co 30 minut (VACUUM INTO), zdjęcia kopiowane przyrostowo =====
 const BACKUP_DIR = path.join(path.dirname(DB_FILE), 'backups');
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -341,7 +434,7 @@ async function handle(req, res) {
   if (p === '/sync' && req.method === 'POST') {
     const { changes } = await readJson(req);
     if (!Array.isArray(changes) || changes.length > 100) return send2(400, { error: 'Zła lista zmian (max 100)' });
-    const now = Date.now(), results = [];
+    const now = Date.now(), results = [], fresh = [];
     const get = db.prepare('SELECT * FROM records WHERE col=? AND id=?');
     const hist = db.prepare('INSERT INTO history(col,id,data,updated_at,deleted,by,replaced_at) VALUES(?,?,?,?,?,?,?)');
     const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
@@ -357,10 +450,13 @@ async function handle(req, res) {
         if (old && old.updated_at > ts && old.by !== 'strona') { results.push({ ...r, status: 'stale' }); continue; } // zmiana wolontariusza wygrywa z automatycznym zapisem ze strony (strona i tak wróci przy następnym sprawdzeniu)
         if (old) hist.run(old.col, old.id, old.data, old.updated_at, old.deleted, old.by, now);
         put.run(c.col, c.id, json, ts, c.deleted ? 1 : 0, String(c.by || '').slice(0, 60));
+        if (c.col === 'czat' && !old && !c.deleted && now - ts < 2 * 86400e3 && c.data && typeof c.data === 'object') fresh.push(c.data);
         results.push({ ...r, status: 'ok' });
       }
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; }
+    if (results.some((x) => x.status === 'ok')) sseBroadcast();
+    for (const d of fresh) notifyChat(d).catch((e) => console.error('notifyChat:', e.message));
     return send2(200, { results });
   }
 
@@ -373,6 +469,32 @@ async function handle(req, res) {
     return send2(200, { versions: rows.map((r) => ({ data: JSON.parse(r.data), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by })) });
   }
 
+  // ----- Powiadomienia i natychmiastowa synchronizacja -----
+  if (p === '/push/key' && req.method === 'GET') return send2(200, { key: VAPID.pub });
+  if (p === '/events' && req.method === 'GET') {
+    if (sseClients.size >= 200) return send2(503, { error: 'Za dużo połączeń' });
+    res.writeHead(200, { ...cors, 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' });
+    res.write(`retry: 3000\ndata: {"t":${Date.now()},"hello":1}\n\n`);
+    sseClients.add(res); req.on('close', () => sseClients.delete(res));
+    return;
+  }
+  if (p.startsWith('/push/') && req.method === 'POST') {
+    const b = await readJson(req), name = String(b.name || '').trim().slice(0, 40);
+    if (p === '/push/subscribe') {
+      const sub = b.sub;
+      if (!sub || !pushUrlOk(sub.endpoint) || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string' || sub.keys.p256dh.length > 200 || sub.keys.auth.length > 100) return send2(422, { error: 'Nieprawidłowa subskrypcja' });
+      if (db.prepare('SELECT COUNT(*) n FROM push').get().n >= 300 && !db.prepare('SELECT 1 FROM push WHERE endpoint=?').get(sub.endpoint)) return send2(429, { error: 'Za dużo urządzeń' });
+      db.prepare('INSERT INTO push(endpoint,sub,name,quiet,mute,created) VALUES(?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub,name=excluded.name,quiet=excluded.quiet,mute=excluded.mute,fails=0')
+        .run(sub.endpoint, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, Date.now());
+      return send2(200, { ok: true });
+    }
+    const ep = b.endpoint, row = pushUrlOk(ep) ? db.prepare('SELECT * FROM push WHERE endpoint=?').get(ep) : null;
+    if (p === '/push/unsubscribe') { if (row) pushDel.run(ep); return send2(200, { ok: true }); }
+    if (!row) return send2(404, { error: 'Nie ma takiego urządzenia', gone: true });
+    if (p === '/push/prefs') { db.prepare('UPDATE push SET name=?, quiet=?, mute=? WHERE endpoint=?').run(name || row.name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, ep); return send2(200, { ok: true }); }
+    if (p === '/push/read') { db.prepare('UPDATE push SET badge=0 WHERE endpoint=?').run(ep); return send2(200, { ok: true }); }
+    if (p === '/push/test') { const ok = await sendPush(row, { t: 'ŁAPA', b: 'Powiadomienia działają. Dostaniesz je, gdy ktoś napisze na czacie.', url: '#/czat', tag: 'test', badge: 0 }, true); return send2(200, { ok }); }
+  }
 
   // GET /import?url=...  — pobiera i odczytuje stronę jednego psa ze strony schroniska
   if (p === '/import' && req.method === 'GET') {
