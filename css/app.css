@@ -151,6 +151,8 @@ button.chip{cursor:pointer}
 .err{color:var(--terra-d);font-size:13.5px;font-weight:500;min-height:1.2em}
 .dark .err{color:#f0a88f}
 .hint{font-size:13px;color:#5b625a}
+.kto{font-size:12.5px;color:#5b625a;margin:2px 0 0}
+.rt .kto{display:block}
 
 /* panel logowania */
 .login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:calc(var(--sat) + 24px) 22px calc(var(--sab) + 24px);background:radial-gradient(120% 70% at 80% 0%,#2a5a4c 0%,var(--green) 45%,var(--green-dd) 100%);position:relative;overflow:hidden}

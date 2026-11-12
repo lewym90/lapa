@@ -1,0 +1,13 @@
+exec(open('e13.py').read().split("with sync_playwright()")[0])
+with sync_playwright() as p:
+    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'wolontariusz-haslo-1','Ania')
+    pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'k1',imie:'Nimus',plec:'samiec',status:'zwykly',miejsce:'schronisko'});await s.save('zaginiecia',{id:'zk1',imie:'Ares',kiedy:Date.now(),gdzie:'Test',status:'poszukiwany',akt:[],autor:'Basia'});await s.save('potrzeby',{id:'pk1',nazwa:'Karma',kategoria:'Karma mokra',potrzeba:10,zapewniono:1,autor:'Basia'});}""")
+    go(pg,'#/zaginiecia'); pg.wait_for_timeout(500)
+    t=pg.inner_text('#app'); print(repr(t[:300])); check('lista zag', 'Dodał(a): Basia' in t and 'Ostatnia zmiana: Ania' in t)
+    pg.click('[data-act=zag-open]'); pg.wait_for_selector('#z_pl'); pg.wait_for_timeout(300)
+    check('sheet zag', 'Dodał(a): Basia' in pg.inner_text('#z_kto'))
+    check('post bez autora', 'Basia' not in pg.input_value('#z_pt'))
+    pg.keyboard.press('Escape'); go(pg,'#/pomoc'); pg.wait_for_timeout(500)
+    t=pg.inner_text('#app'); print(repr(t[t.find('Karma'):][:160])); check('potrzeba lista','Dodał(a): Basia' in t)
+    go(pg,'#/psy/k1'); pg.wait_for_timeout(600)
+    t=pg.inner_text('#app'); check('karta psa','Ostatnia zmiana: Ania' in t); print(errs)

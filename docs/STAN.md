@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.4, 2026-11-11)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.8.5, 2026-11-11)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -50,3 +50,6 @@ W katalogu `tests/`: skrypty Playwright (`e*.py`) i test serwera (`s1.mjs`, atra
 
 ## 1.8.4 (2026-11-11)
 Dokończenie audytu: usunięte nieużywane importy, etykiety dostępności pól wyszukiwania i imienia, większe pola dotyku linków, szkic formularza zapamiętywany po tytule i początkowej zawartości, fokus na oknie po otwarciu, bez `aria-live` na całej aplikacji. Błędy 500 w konsoli audit_ui.py pochodzą z braku sieci w piaskownicy (serwer testowy nie dociera do strony schroniska).
+
+## 1.8.5 (2026-11-12)
+Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `ktoInto`), użyty w Zaginięciach (lista i okno), Potrzebach rzeczowych (lista i edycja) i na karcie psa (ostatnia zmiana, także „automat (strona schroniska)"). Dane: `by` i `updated_at` zapisywane przy każdym zapisie i przesyłane przez serwer. Synchronizacja: zapis wysyłany ~0,4 s po wpisie, pobieranie co 45 s przy otwartej aplikacji i od razu po jej otwarciu; brak powiadomień push.

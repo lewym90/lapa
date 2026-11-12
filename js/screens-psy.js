@@ -6,6 +6,8 @@ import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, uid } from './util.js';
 import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photos.js';
 import { dogBlock } from './adopcje.js';
+import { ktoText } from './kto.js';
+import * as db from './db.js';
 import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -86,6 +88,7 @@ export async function card(id) {
   const obs = obsAll.filter((o) => o.pies_id === id).sort((a, b) => b.ts - a.ts);
   const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks);
   const adBlock = state.coordinator ? await dogBlock(id) : null;
+  const dkto = ktoText(await db.getRec('psy', id), null);
   return {
     tab: 'psy', title: d.imie, live: true,
     html: html`<section class="dogtop"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
@@ -104,6 +107,7 @@ export async function card(id) {
         <button class="row" data-act="dog-needs" data-id="${id}">${icon('medic')}<span class="rt"><b>Czego potrzebuje</b><small>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : 'Nic pilnego. Kliknij, żeby zgłosić potrzebę'}</small></span>${icon('chev')}</button>
         ${d.zrodlo_url ? html`<a class="row" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener">${icon('link')}<span class="rt"><b>Ogłoszenie na stronie schroniska</b><small>Otwórz w przeglądarce</small></span>${icon('chev')}</a>` : ''}
       </div>
+      ${dkto ? html`<p class="hint kto" style="text-align:center;margin:10px 0 0">${dkto}</p>` : ''}
       ${state.coordinator ? adBlock
         : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div>`}
       <div class="btnrow" style="margin-top:20px"><button class="btn block" data-act="dog-obs-add" data-id="${id}">${icon('pencil')} Zapisz obserwację</button></div>

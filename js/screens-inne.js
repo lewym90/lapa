@@ -1,5 +1,5 @@
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
-import { list, save, remove, get } from './store.js';
+import { list, listRecs, save, remove, get } from './store.js';
 import { state, getName, setName, lock, logout } from './auth.js';
 import { VERSION } from './config.js';
 import { checkUpdate } from './update.js';
@@ -10,6 +10,7 @@ import { pickDog, dogThumb } from './screens-psy.js';
 import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
 import { resetSiteStatus } from './teczka.js';
+import { ktoText, ktoInto } from './kto.js';
 import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
@@ -130,7 +131,7 @@ actions['tr-open'] = async (el) => {
 // ================= pomoc =================
 const CATS = ['Karma mokra', 'Karma sucha', 'Karma weterynaryjna', 'Leki i środki profilaktyczne', 'Podkłady i środki higieniczne', 'Smycze, obroże i szelki', 'Transport', 'Domy tymczasowe', 'Pomoc finansowa', 'Inne potrzeby'];
 export async function help() {
-  const [dogs, walks, dec, nd] = await Promise.all([list('psy'), list('spacery'), list('deklaracje'), list('potrzeby')]);
+  const [dogs, walks, dec, ndr] = await Promise.all([list('psy'), list('spacery'), list('deklaracje'), listRecs('potrzeby')]); const nd = ndr.map((r) => r.data), nrec = Object.fromEntries(ndr.map((r) => [r.id, r]));
   const helpDogs = dogs.map((d) => ({ d, needs: dogNeeds(d, walks) })).filter((x) => x.needs.length || x.d.status === 'pilne').sort((a, b) => (b.d.status === 'pilne') - (a.d.status === 'pilne'));
   const open = nd.filter((n) => n.status !== 'zrealizowana').sort((a, b) => (b.priorytet === 'pilne') - (a.priorytet === 'pilne'));
   return {
@@ -144,7 +145,7 @@ export async function help() {
       : html`<div class="empty" style="padding:24px 10px">${icon('heart')}<h3>Nikt nie czeka na pomoc</h3><p>Gdy pies będzie potrzebował spaceru, zdjęć albo domu tymczasowego, pojawi się tutaj.</p></div>`}</div>
     <div class="sec"><h2>Potrzeby rzeczowe</h2><button class="link" data-act="a-need">+ Dodaj</button></div><div class="pad stack">
     ${open.length ? open.map((n) => { const have = n.zapewniono || 0, pct = Math.min(100, Math.round((have / (n.potrzeba || 1)) * 100)), miss = Math.max(0, (n.potrzeba || 0) - have);
-      return html`<div class="need"><div style="display:flex;justify-content:space-between;gap:10px"><div><b style="font-size:17px">${n.nazwa}</b>${n.priorytet === 'pilne' ? html` <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>` : ''}<div class="sub">${n.kategoria || ''}</div></div><button class="iconbtn" style="color:var(--green);width:36px;height:36px" data-act="need-edit" data-id="${n.id}" aria-label="Edytuj">${icon('pencil')}</button></div>
+      return html`<div class="need"><div style="display:flex;justify-content:space-between;gap:10px"><div><b style="font-size:17px">${n.nazwa}</b>${n.priorytet === 'pilne' ? html` <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>` : ''}<div class="sub">${n.kategoria || ''}</div><div class="sub kto">${esc(ktoText(nrec[n.id], n.autor))}</div></div><button class="iconbtn" style="color:var(--green);width:36px;height:36px" data-act="need-edit" data-id="${n.id}" aria-label="Edytuj">${icon('pencil')}</button></div>
         <div class="bar ${pct < 35 ? 'low' : ''}"><i style="width:${pct}%"></i></div><div class="sub">Potrzeba ${n.potrzeba} ${n.jednostka || ''}, zapewniono ${have}, <b>brakuje ${miss}</b></div>
         <button class="btn sm ghost" style="margin-top:10px" data-act="need-give" data-id="${n.id}">${icon('gift')} Przekazuję</button></div>`; })
       : html`<div class="empty" style="padding:24px 10px">${icon('box')}<h3>Brak zgłoszonych potrzeb</h3><p>Dodaj np. „Karma mokra: 60 puszek”. Wolontariusze zobaczą, ile brakuje, i nie będą kupować przypadkowych rzeczy.</p></div>`}</div>`
@@ -155,7 +156,7 @@ actions.decl = async (el) => {
   if (await get('deklaracje', id)) { await remove('deklaracje', id); toast('Wycofano zgłoszenie'); } else { await save('deklaracje', { id, pies_id: el.dataset.dog, potrzeba: el.dataset.need, imie: getName(), ts: Date.now() }); toast('Dziękujemy! Inni zobaczą, że się tym zajmujesz'); }
 };
 export function needForm(n = {}) {
-  openSheet(`<h2>${n.id ? 'Edytuj potrzebę' : 'Nowa potrzeba'}</h2><form id="nf3" novalidate>
+  openSheet(`<h2>${n.id ? 'Edytuj potrzebę' : 'Nowa potrzeba'}</h2><div id="n_kto"></div><form id="nf3" novalidate>
     <div class="field"><label for="nn">Co jest potrzebne?</label><input class="input" id="nn" maxlength="80" placeholder="np. karma mokra" value="${esc(n.nazwa || '')}"></div>
     <div class="field"><label for="nk">Kategoria</label><select class="select" id="nk">${CATS.map((c) => `<option ${c === n.kategoria ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
     <div class="field"><label for="np">Ile potrzeba</label><input class="input" id="np" inputmode="numeric" value="${n.potrzeba ?? ''}"></div>
@@ -163,6 +164,7 @@ export function needForm(n = {}) {
     <div class="field"><label for="nz">Ile już zapewniono</label><input class="input" id="nz" inputmode="numeric" value="${n.zapewniono ?? 0}"></div>
     <label class="chip outline" style="margin-bottom:14px;cursor:pointer"><input type="checkbox" id="npi" style="accent-color:var(--terra)" ${n.priorytet === 'pilne' ? 'checked' : ''}> Pilne</label><div class="err" id="ne3"></div>
     <button class="btn block" type="submit">Zapisz</button>${n.id ? `<button type="button" class="btn ghost block" style="margin-top:10px" id="nd">Oznacz jako zrealizowaną</button>` : ''}</form>`, (s) => {
+    if (n.id) ktoInto(s, '#n_kto', 'potrzeby', n.id, n.autor);
     s.querySelector('#nf3').addEventListener('submit', async (e) => {
       e.preventDefault(); const nazwa = s.querySelector('#nn').value.trim(), p = parseInt(s.querySelector('#np').value, 10), z = parseInt(s.querySelector('#nz').value || '0', 10);
       if (!nazwa || !(p > 0) || !(z >= 0)) { s.querySelector('#ne3').textContent = 'Wpisz nazwę i liczbę (ile potrzeba).'; return; }
