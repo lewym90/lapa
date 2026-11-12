@@ -94,3 +94,6 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Wzorce: TikTok „IMIĘ liczy na pomoc w znalezieniu prawdziwie kochającego go/ją domu i rodziny. Gotowy/Gotowa jest do pokochania i adoptowania. --- PRZEKAŻ 1.5% … KRS 0000861820 #piesek #dogtok #schronisko #niekupujadoptuj #pies”; YouTube tytuł „IMIĘ - jest gotowy do pokochania i adoptowania / czytaj opis ! #dog #pies #shorts #shortvideo” + stopka (kontakt, KRS, linki, prawa autorskie); strona „IMIĘ - hasło” + tabela danych.
 - Do sprawdzenia przez właściciela: kontakt w apelach o dom tymczasowy (wzięty standardowy Justyna/Dorota; w postach bywał inny numer 601…), YouTube nie ma pola „ogłoszony” w karcie psa (KANALY bez yt, celowo niezmienione).
 - Testy: social1.py (47), social2.py (synchronizacja dwóch użytkowników, offline), audyt ekranów, lint. Naprawiony błąd: odświeżenie kart po „change” gubiło pierwsze dotknięcie Kopiuj.
+
+## 1.10.1
+- Social media: każdy wygenerowany tekst jest polem edytowalnym (dopisek, emotka, poprawka) na potrzeby chwili: nie zmienia szablonu (to robi tylko „Edytuj szablon”), zmiany w formularzu go nie nadpisują, „Wróć do wygenerowanego” cofa poprawkę; zmiana psa lub zapis szablonu kasuje poprawkę. Kopiuj bierze tekst z pola. Test: social3.py.

@@ -1,6 +1,6 @@
 /* ŁAPA – service worker (praca offline).
    Po każdej zmianie plików zwiększ numer w VERSION, aby wymusić aktualizację. */
-const VERSION = 'lapa-v1.10.0';
+const VERSION = 'lapa-v1.10.1';
 const IMG_CACHE = 'lapa-img-v1';
 const IMG_MAX = 220;
 const ASSETS = [

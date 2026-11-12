@@ -138,11 +138,11 @@ function composer(typKey) {
   return {
     tab: 'start', title: t.l + ' · Social media', live: false,
     html: html`<header class="topbar"><a class="iconbtn" href="#/social" aria-label="Wstecz do listy rodzajów">${icon('back')}</a><h1 style="font-size:22px;font-weight:500;text-align:center;flex:1;padding:0 6px">${t.l}</h1><span style="min-width:44px"></span></header><div class="pad stack" id="soc"></div>`,
-    mount(root) { const box = root.querySelector('#soc'); cur = { t, box, texts: {}, dog: null }; box.addEventListener('input', onField); box.addEventListener('change', onField); init(); }
+    mount(root) { const box = root.querySelector('#soc'); cur = { t, box, texts: {}, edits: {}, dog: null }; box.addEventListener('input', onField); box.addEventListener('change', onField); init(); }
   };
 }
 async function init() {
-  const { t, box } = cur; await loadOV();
+  const { t, box } = cur; await loadOV(); cur.edits = {};
   cur.dog = t.dog && S.dogId ? await get('psy', S.dogId) : null; if (t.dog && S.dogId && !cur.dog) S.dogId = null;
   for (const p of t.pola) if (p.def && S.vals[p.id] === undefined && (!p.id.match(/haslo|czas/) || cur.dog)) S.vals[p.id] = p.def(cur.dog || {});
   if (t.dog && cur.dog && S.vals.plec === undefined) S.vals.plec = cur.dog.plec === 'suka' ? 'suka' : 'samiec';
@@ -150,6 +150,8 @@ async function init() {
   hydratePhotos(box); paintOut();
 }
 function onField(e) {
+  const o = e.target.dataset?.o; // ręczna poprawka tekstu na potrzeby chwili (nie zmienia szablonu)
+  if (o) { if (e.type !== 'input') return; cur.edits[o] = e.target.value; cur.texts[o] = e.target.value; grow(e.target); const h = cur.box.querySelector(`[data-edited="${o}"]`); if (h) h.hidden = false; return; }
   const id = e.target.dataset?.f; if (!id || S.vals[id] === e.target.value) return; // „change” po „input” nic nie zmienia: bez tego odświeżenie kart gubiło pierwsze dotknięcie Kopiuj
   S.vals[id] = e.target.value; paintOut();
 }
@@ -175,12 +177,16 @@ function paintOut() {
   if (t.dog && !dog) { out.innerHTML = '<div class="empty">' + icon('paw').s + '<h3>Wybierz psa</h3><p>Teksty pojawią się tu od razu po wyborze.</p></div>'; cur.texts = {}; return; }
   const v = zmienne(t, S, dog); cur.texts = {};
   out.innerHTML = t.plat.map((p) => {
-    const txt = wypelnij(tplFor(t, p), v); cur.texts[p] = txt; const ov = OV[ovKey(t.k, p)];
-    return `<div class="card socard"><div class="card-head"><h3>${esc(PLAT[p])}</h3></div><div class="socout" data-o="${p}">${esc(txt) || '<span class="hint">Szablon jest pusty</span>'}</div>
+    const edited = cur.edits[p] !== undefined, txt = edited ? cur.edits[p] : wypelnij(tplFor(t, p), v); cur.texts[p] = txt; const ov = OV[ovKey(t.k, p)];
+    return `<div class="card socard"><div class="card-head"><h3>${esc(PLAT[p])}</h3></div><textarea class="textarea socout" data-o="${p}" data-nodraft spellcheck="true" aria-label="Tekst na ${esc(PLAT[p])}, możesz go poprawić przed skopiowaniem">${esc(txt)}</textarea>
+      <p class="hint" data-edited="${p}" style="margin:6px 0 0"${edited ? '' : ' hidden'}>Poprawiłeś(-aś) ten tekst. Zmiany w formularzu go nie nadpiszą. <button type="button" class="link" data-act="soc-reset" data-p="${p}">Wróć do wygenerowanego</button></p>
       <div class="btnrow" style="margin-top:10px"><button type="button" class="btn sm" data-act="soc-copy" data-p="${p}">Kopiuj</button><button type="button" class="btn sm ghost" data-act="soc-edit" data-p="${p}">Edytuj szablon</button></div>
       ${ov ? `<p class="hint" style="margin:8px 0 0">Szablon zmieniony${ov.autor ? ' przez ' + esc(ov.autor) : ''}${ov.ts ? ', ' + esc(fmtDate(ov.ts)) : ''}</p>` : ''}</div>`;
   }).join('') + (dog ? '<button type="button" class="btn ghost block" data-act="dog-kanaly" data-id="' + esc(dog.id) + '">Zaznacz w karcie psa, gdzie opublikowano</button>' : '');
+  out.querySelectorAll('textarea[data-o]').forEach(grow);
 }
+const grow = (ta) => { ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight + 2, 60) + 'px'; };
+actions['soc-reset'] = (el) => { delete cur.edits[el.dataset.p]; paintOut(); toast('Przywrócono wygenerowany tekst'); };
 // Kopiowanie: najpierw schowek przeglądarki (z limitem czasu, bo bywa, że nigdy nie odpowiada), potem stary sposób, na końcu zaznaczenie tekstu
 async function kopiuj(txt, pole) {
   try { await Promise.race([navigator.clipboard.writeText(txt), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 1500))]); return true; } catch { /* próbujemy dalej */ }
@@ -188,7 +194,7 @@ async function kopiuj(txt, pole) {
     const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
     document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length); const ok = document.execCommand('copy'); ta.remove(); if (ok) return true;
   } catch { /* ignoruj */ }
-  if (pole) { const r = document.createRange(); r.selectNodeContents(pole); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  if (pole) { pole.focus(); pole.select(); }
   return false;
 }
 actions['soc-copy'] = async (el) => {
@@ -241,11 +247,11 @@ actions['soc-edit'] = async (el) => {
       const txt = ta.value.replace(/\s+$/, ''); if (!txt.trim()) { er.textContent = 'Szablon nie może być pusty. Użyj „Przywróć domyślny”, żeby wrócić do początkowego.'; return; }
       if (txt === def) { if (ov) await remove(COL, ovKey(t.k, p)); }
       else await save(COL, { id: ovKey(t.k, p), typ: t.k, plat: p, tekst: txt, autor: getName(), ts: Date.now() });
-      await loadOV(); closeSheet(); toast('Szablon zapisany'); paintOut();
+      await loadOV(); delete cur.edits[p]; closeSheet(); toast('Szablon zapisany'); paintOut();
     };
     s.querySelector('#ts_r').onclick = async () => {
       if (!ov) { ta.value = def; prev(); toast('To już jest szablon domyślny'); return; }
-      if (await confirmSheet('Przywrócić domyślny szablon?', 'Twoja zmiana zniknie u wszystkich wolontariuszy.', 'Przywróć', true)) { await remove(COL, ovKey(t.k, p)); await loadOV(); toast('Przywrócono domyślny'); paintOut(); }
+      if (await confirmSheet('Przywrócić domyślny szablon?', 'Twoja zmiana zniknie u wszystkich wolontariuszy.', 'Przywróć', true)) { await remove(COL, ovKey(t.k, p)); await loadOV(); delete cur.edits[p]; toast('Przywrócono domyślny'); paintOut(); }
     };
   });
 };
