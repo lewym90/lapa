@@ -17,6 +17,7 @@ import * as B from './brama.js';
 import * as X from './screens-inne.js';
 import * as TM from './terminarz.js';
 import * as C from './czat.js';
+import * as SO from './social.js';
 import { firstPrompt, syncPush } from './push.js';
 
 const app = document.getElementById('app');
@@ -27,7 +28,7 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+))?$/, (m) => SO.social(m[1])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
@@ -38,7 +39,7 @@ const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
   ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z psem (GPS)', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
-  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box']]],
+  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
 ];
 const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
