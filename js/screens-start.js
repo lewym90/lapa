@@ -1,7 +1,7 @@
 import { html, icon, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
-import { gaps } from './teczka.js';
+import { gaps, wToku } from './teczka.js';
 import { zalegle } from './adopcje.js';
 import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
@@ -13,7 +13,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 export async function start() {
   const [dogs, walks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('komunikaty'), list('zdrowie')]);
   const todo = gaps(dogs, zdr, walks), adLate = await zalegle(), lost = await aktywneLiczba();
-  const dog = dogOfDay(dogs); const dzis = await dzisItems();
+  const nowePsy = dogs.filter(wToku), dog = dogOfDay(dogs); const dzis = await dzisItems();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
@@ -40,6 +40,7 @@ export async function start() {
       <a class="tile green" href="#/brama" style="grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:12px">${icon('walk', 't-ico')}<span class="t-lbl">Brama: wydaj / zwróć psa na spacer</span>${icon('arrow', 't-arr')}</a>
     </div>
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
+    ${nowePsy.length ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/nowe" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('paw')}<span><b>Nowe psy do uzupełnienia: ${nowePsy.length}</b><br><span class="hint">${nowePsy.slice(0, 3).map((d) => d.imie).join(', ')}${nowePsy.length > 3 ? '…' : ''}</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px">${dzisCard(dzis)}</div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>

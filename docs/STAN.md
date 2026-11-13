@@ -109,3 +109,13 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Zdobywanie zaufania: pole `zaufanie` (znacznik czasu) w rekordzie psa, ustawiane przyciskiem „Jeszcze nie wychodzi: zdobywamy zaufanie” przy nowym psie bez spacerów; wyłącza się samo po pierwszym spacerze albo przyciskiem „Już wychodzi na spacery”. W tym czasie karta pokazuje liczbę dni, ostatnią notatkę i przycisk „Dodaj notatkę o postępach”, bez ponaglania; „Dziś i do zrobienia” nie przypomina o ocenie, zdjęciach, opisie, publikacji i „zróbmy hałas” dla takiego psa. Filtr „Zdobywamy zaufanie” na liście Psy.
 - „Następny krok” (jedna miękka podpowiedź): pierwszy spacer (tylko nowy pies), ocena, sesja, opis, ogłoszenie.
 - Klient tylko; import ze strony zachowuje pole `zaufanie`. Test: droga1.py (17).
+
+## 1.12.0: „Nowe psy” (karta przyjęcia krok po kroku)
+- Menu: Psy → **Nowe psy** (z plakietką liczby psów w toku). Dolny „+” → „Nowy pies w schronisku”: okno z imieniem tworzy psa (od razu ma kartę w Psy) i otwiera ekran kroków `#/nowe/<id>`. Lista `#/nowe`.
+- Tylko psy dodane przez „Nowy pies” (flaga `nowy`) i jeszcze bez `karta_gotowa`. Psy ze strony i dotychczasowe nie trafiają na listę.
+- 8 kroków (`kroki()` w js/teczka.js): Przyjęcie, Zaufanie i spacery, Zdrowie, Charakter, Wygląd i cechy, Zdjęcia, Opis i hasło, Ogłoszenie. Każdy otwiera się ponownie do edycji, zapis od razu. Wymagane: Przyjęcie (imię, płeć, data, wiek lub wielkość), Charakter (ocena lub „Pomiń na razie” = `pominiete.ocena`), Zdjęcia, Opis, Ogłoszenie (min. jeden kanał). Reszta opcjonalna; zaufanie nie blokuje.
+- Zamknięcie: gdy wymagane są gotowe, każdy telefon po zmianie danych ustawia `karta_gotowa` i pies znika z listy (tylko w Psy). Późniejsze poprawki nie wracają go na listę. „Wróć do uzupełniania” ustawia `karta_otwarta` (nie zamyka się sama), „Zakończ uzupełnianie” zamyka.
+- Zapis kroku wczytuje najnowszą wersję psa tuż przed zapisem i zmienia tylko pola kroku (zabezpieczenie przed nadpisaniem przy wspólnym uzupełnianiu). Krok 1 podpowiada, by imię techniczne zmienić na takie jak na stronie (import łączy po imieniu).
+- Przypomnienia: plakietka w menu, linia „Nowe psy do uzupełnienia” na Starcie, jeden wpis „Karta przyjęcia: X z 8” w „Dziś i do zrobienia” zamiast osobnych o ocenie/zdjęciach/opisie/publikacji. Pies w trybie zaufania: bez przypomnień.
+- Social: trasa `#/social/<rodzaj>/<id psa>` wybiera psa (krok Ogłoszenie → „Przygotuj teksty do postów”).
+- Pliki: js/nowe.js (nowy), teczka.js, main.js, social.js, screens-start.js, css, sw.js. Klient tylko, serwer bez zmian. Test: nowe1.py (43).

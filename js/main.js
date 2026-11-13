@@ -18,6 +18,7 @@ import * as X from './screens-inne.js';
 import * as TM from './terminarz.js';
 import * as C from './czat.js';
 import * as SO from './social.js';
+import * as NW from './nowe.js';
 import { firstPrompt, syncPush } from './push.js';
 
 const app = document.getElementById('app');
@@ -28,7 +29,7 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+))?$/, (m) => SO.social(m[1])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => (m[1] ? NW.przyjecie(m[1]) : NW.nowe())], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
 
@@ -37,12 +38,12 @@ const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarze
 // Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
 const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
-  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
+  ['Psy', [['nowe', 'Nowe psy', 'plus'], ['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
   ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
 ];
-const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
+const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : x[0] === 'nowe' ? '<span class="nbadge" hidden></span>' : ''}</a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
 const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
@@ -74,7 +75,7 @@ async function render(keepScroll = false) {
   current = view;
   app.innerHTML = `<div class="shell">${side()}${view.nav === false ? '' : nav(view.tab)}<main class="main" ${view.nav === false ? 'style="padding-bottom:40px"' : ''}>${view.html.s}</main></div>`;
   paintSync(document.getElementById('sp2'));
-  C.refreshBadge();
+  C.refreshBadge(); NW.refreshNowe();
   view.mount?.(app);
   scrollTo(0, y);
   document.title = (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
@@ -156,7 +157,7 @@ actions.menu = () => {
     ${menuHtml('', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
     <div style="font-size:12px;color:var(--sage);padding:0 12px">ŁAPA ${VERSION}</div></nav>`;
-  document.body.appendChild(el);
+  document.body.appendChild(el); NW.refreshNowe();
   const close = () => el.remove();
   el.querySelector('.scrim').onclick = close; el.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
   paintSync(el.querySelector('#sp'));

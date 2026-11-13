@@ -54,6 +54,23 @@ export function droga(d, walks = []) {
   }
   return { steps, trust, next };
 }
+// Karta przyjęcia nowego psa: 8 kroków, każdy zapisuje się od razu. „Wymagane” decydują o zamknięciu karty.
+export const wToku = (d) => !!d.nowy && !d.karta_gotowa && aktywny(d);
+export function kroki(d, ctx = {}) {
+  const k = d.kanaly || {}, walks = ctx.walks || [], zdr = ctx.zdr || [], skip = d.pominiete || {};
+  return [
+    { k: 'przyjecie', l: 'Przyjęcie', req: true, done: !!((d.imie || '').trim() && d.plec && d.data_przyjecia && (d.wiek || d.wielkosc)) },
+    { k: 'zaufanie', l: 'Zaufanie i spacery', done: walks.length > 0, now: zaufanieAktywne(d, walks) },
+    { k: 'zdrowie', l: 'Zdrowie', done: zdr.length > 0 },
+    { k: 'charakter', l: 'Charakter', req: true, done: !!d.ocena || !!skip.ocena, skipped: !d.ocena && !!skip.ocena },
+    { k: 'wyglad', l: 'Wygląd i cechy', done: !!(d.waga || d.wzrost || d.siersc || (d.tagi || []).length) },
+    { k: 'zdjecia', l: 'Zdjęcia', req: true, done: hasPics(d) },
+    { k: 'opis', l: 'Opis i hasło', req: true, done: !!(d.opis || '').trim() },
+    { k: 'ogloszenie', l: 'Ogłoszenie', req: true, done: KANALY.some(([x]) => k[x]) }
+  ];
+}
+export const kompletna = (d) => kroki(d).filter((s) => s.req).every((s) => s.done);
+
 actions['dog-zaufanie-on'] = async (el) => { const d = await get('psy', el.dataset.id); await save('psy', { ...d, zaufanie: Date.now() }); toast('Zapisane. Bez pośpiechu, nic nie ponagla'); };
 actions['dog-zaufanie-off'] = async (el) => { const d = await get('psy', el.dataset.id); await save('psy', { ...d, zaufanie: null }); toast('Zapisane. Świetna wiadomość!'); };
 
@@ -65,6 +82,7 @@ export function teczkaRows(d, zdr, ctx = {}) {
   const dni = d.data_przyjecia && m === 'schronisko' ? days(d.data_przyjecia) : null;
   return html`
     <button class="row" data-act="dog-miejsce" data-id="${d.id}">${icon('pin')}<span class="rt"><b>${(MIEJSCA.find((x) => x[0] === m) || [])[1]}${d.opiekun ? ' · ' + d.opiekun : ''}</b><small>${d.data_przyjecia ? 'Od ' + fmtDate(d.data_przyjecia) + (dni !== null ? ` · ${dni} ${plural(dni, 'dzień', 'dni', 'dni')} w schronisku` : '') : 'Dodaj datę przyjęcia, czip i opiekuna'}${d.chip ? ' · czip ' + d.chip : ''}</small></span>${icon('chev')}</button>
+    ${d.nowy ? html`<a class="row" href="#/nowe/${d.id}">${icon('pencil')}<span class="rt"><b>Karta przyjęcia${d.karta_gotowa ? '' : ': ' + kroki(d, { walks: ctx.walks || [], zdr }).filter((x) => x.done).length + ' z 8 kroków'}</b><small>${d.karta_gotowa ? 'Kompletna. Możesz poprawić każdy krok' : 'Uzupełniaj krok po kroku, w swoim tempie'}</small></span>${icon('chev')}</a>` : ''}
     ${m === 'zmarl' || m === 'zaginiony' ? '' : html`<div class="droga" aria-label="Droga psa"><div class="steps">${dr.steps.map(([l, st]) => html`<span class="${st}">${st === 'ok' ? '✓ ' : ''}${l}</span>`)}</div>
       ${dr.trust ? html`<div class="teraz"><b>Zdobywamy zaufanie od ${days(d.zaufanie)} ${plural(days(d.zaufanie), 'dnia', 'dni', 'dni')}</b><p>Bez pośpiechu. Liczy się każda drobna zmiana: podszedł, wziął smakołyk, nie odsunął się.${lastObs ? ' Ostatnia notatka: ' + (days(lastObs.ts) ? days(lastObs.ts) + ' ' + plural(days(lastObs.ts), 'dzień', 'dni', 'dni') + ' temu' : 'dziś') + '.' : ''}</p>
         <div class="btnrow"><button class="btn sm" data-act="dog-obs-add" data-id="${d.id}">Dodaj notatkę o postępach</button><button class="btn sm ghost" data-act="dog-zaufanie-off" data-id="${d.id}">Już wychodzi na spacery</button></div></div>`
@@ -215,15 +233,16 @@ export async function siteStatus() {
 export function gaps(dogs, zdrAll, walksAll = []) {
   const out = [], now = Date.now();
   for (const d of dogs) {
-    if (!aktywny(d)) continue; const k = d.kanaly || {}; const quiet = zaufanieAktywne(d, walksAll.filter((w) => w.pies_id === d.id));
+    if (!aktywny(d)) continue; const k = d.kanaly || {}; const walksD = walksAll.filter((w) => w.pies_id === d.id), quiet = zaufanieAktywne(d, walksD), nt = wToku(d);
+    if (nt && !quiet) { const st = kroki(d, { walks: walksD, zdr: zdrAll.filter((z) => z.pies_id === d.id) }), br = st.filter((x) => x.req && !x.done).map((x) => x.l.toLowerCase()); out.push({ d, kind: 'karta', sev: 2, text: `Karta przyjęcia: ${st.filter((x) => x.done).length} z ${st.length}${br.length ? '. Brakuje: ' + br.join(', ') : ''}`, act: 'nowe-open' }); }
     if (d.poza_strona && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
     if (d.auto_dodany && Date.now() - d.auto_dodany < 5 * MS_DAY) out.push({ d, kind: 'autonowy', sev: 2, text: 'Dodany automatycznie ze strony. Sprawdź dane i miejsce pobytu', act: 'dog-miejsce' });
-    if (!quiet && (d.nowy && !d.ocena)) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
-    if (!quiet && (!hasPics(d))) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
-    if (!quiet && (d.nowy && !(d.opis || '').trim())) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
+    if (!quiet && !nt && (d.nowy && !d.ocena)) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
+    if (!quiet && !nt && (!hasPics(d))) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
+    if (!quiet && !nt && (d.nowy && !(d.opis || '').trim())) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
     if (k.fb && !k.www && days(k.fb) >= 2) out.push({ d, kind: 'www', sev: 2, text: `Na Facebooku od ${days(k.fb)} dni, nie ma na stronie`, act: 'dog-kanaly' });
     if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko' && d.status !== 'w_trakcie') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });
-    if (!quiet && (d.nowy && (d.opis || '').trim() && hasPics(d) && !k.fb && !k.www)) out.push({ d, kind: 'publ', sev: 2, text: 'Gotowy do opublikowania', act: 'dog-teksty' });
+    if (!quiet && !nt && (d.nowy && (d.opis || '').trim() && hasPics(d) && !k.fb && !k.www)) out.push({ d, kind: 'publ', sev: 2, text: 'Gotowy do opublikowania', act: 'dog-teksty' });
     if (!quiet && (d.data_przyjecia && miejsce(d) === 'schronisko' && days(d.data_przyjecia) >= 180 && !d.kampania)) out.push({ d, kind: 'halas', sev: 1, text: `W schronisku ${days(d.data_przyjecia)} dni. Czas na „zróbmy hałas”`, act: 'dog-teksty' });
     for (const z of zdrDue(zdrAll.filter((x) => x.pies_id === d.id))) out.push({ d, kind: 'zdrowie', sev: z.termin < now ? 3 : 2, text: `${TYP[z.typ]}: ${z.termin < now ? 'termin minął ' + fmtDate(z.termin) : 'do ' + fmtDate(z.termin)}`, act: 'dog-zdrowie' });
   }
@@ -253,7 +272,7 @@ export function nowyPies() {
       e.preventDefault(); const imie = s.querySelector('#n_i').value.trim(); if (!imie) { s.querySelector('#n_e').textContent = 'Wpisz imię (może być robocze).'; return; }
       const [wiek, wielk] = s.querySelector('#n_w').value.split(',').map((x) => x.trim());
       const o = { id: 'm' + uid(), imie, plec: s.querySelector('#n_p').value, wiek: wiek || '', wielkosc: wielk || '', status: 'schronisko', miejsce: 'schronisko', nowy: true, data_przyjecia: new Date(s.querySelector('#n_d').value + 'T12:00').getTime(), dodany: Date.now(), zdjecia: [] };
-      await save('psy', o); closeSheet(); toast('Dodano. Teraz zdjęcia i ocena'); location.hash = '#/psy/' + o.id;
+      await save('psy', o); closeSheet(); toast('Dodano. Pies ma już swoją kartę w sekcji Psy'); location.hash = '#/nowe/' + o.id;
     });
   });
 }

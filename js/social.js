@@ -119,8 +119,8 @@ async function loadOV() { OV = {}; for (const r of await list(COL)) if (r && r.t
 const tplFor = (t, p) => (OV[ovKey(t.k, p)]?.tekst) ?? t.t[p];
 
 // ----- ekran 1: wybór rodzaju -----
-export async function social(typKey) {
-  if (typKey) return composer(typKey);
+export async function social(typKey, dogId) {
+  if (typKey) return composer(typKey, dogId);
   return {
     tab: 'start', title: 'Social media', live: false,
     html: html`${pageBar('Social media')}<div class="pad">
@@ -131,10 +131,11 @@ export async function social(typKey) {
 }
 
 // ----- ekran 2: formularz i teksty -----
-function composer(typKey) {
+function composer(typKey, dogId) {
   const t = TYP[typKey];
   if (!t) return { tab: 'start', title: 'Social media', html: html`${pageBar('Social media')}<div class="empty"><h3>Nie ma takiego rodzaju posta</h3><a class="btn gold" href="#/social">Wróć do listy</a></div>` };
   if (S.typ !== typKey) { const keep = S.typ && TYP[S.typ].dog && t.dog && !!TYP[S.typ].adopted === !!t.adopted; S.typ = typKey; if (!keep) S.dogId = null; S.vals = {}; }
+  if (dogId && t.dog && S.dogId !== dogId) { S.dogId = dogId; S.vals = {}; }
   return {
     tab: 'start', title: t.l + ' · Social media', live: false,
     html: html`<header class="topbar"><a class="iconbtn" href="#/social" aria-label="Wstecz do listy rodzajów">${icon('back')}</a><h1 style="font-size:22px;font-weight:500;text-align:center;flex:1;padding:0 6px">${t.l}</h1><span style="min-width:44px"></span></header><div class="pad stack" id="soc"></div>`,
