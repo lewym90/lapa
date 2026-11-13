@@ -37,7 +37,7 @@ const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarze
 // Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
 const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
-  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z psem (GPS)', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
+  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
   ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
@@ -165,7 +165,7 @@ actions.bell = () => S.komunikatySheet();
 actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
   <button class="act primary" data-act="a-newdog">${icon('paw').s}Nowy pies w schronisku<small>Przyjęcie, ocena, sesja, publikacja</small></button>
   <button class="act primary" data-act="a-brama">${icon('walk').s}Brama: wydaj / zwróć psa<small>Sobotnie spacery, godziny same</small></button>
-  <button class="act" data-act="a-walk">${icon('walk').s}Spacer osobisty<small>GPS, notatki, zdjęcia</small></button>
+  <button class="act" data-act="a-walk">${icon('walk').s}Spacer z wolontariuszem<small>Notatki, zdjęcia, dystans (opcjonalnie)</small></button>
   <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
   <button class="act" data-act="a-photo">${icon('camera').s}Dodaj zdjęcie<small>Do karty wybranego psa</small></button>
   <button class="act" data-act="a-task">${icon('check').s}Przypomnienie dla siebie<small>Widzisz tylko Ty, np. lek, zadanie</small></button>

@@ -27,8 +27,8 @@ export async function pick() {
   const walks = await list('spacery');
   const last = (id) => { const x = walks.filter((v) => v.pies_id === id); return x.length ? Math.max(...x.map((v) => v.start)) : 0; };
   return {
-    tab: 'start', nav: false, title: 'Spacer', live: false,
-    html: html`${pageBar('Spacer')}<div class="pad"><h2 style="font-size:28px;font-weight:500;margin:6px 0 14px">Z kim idziesz na spacer?</h2>
+    tab: 'start', nav: false, title: 'Spacer z wolontariuszem', live: false,
+    html: html`${pageBar('Spacer z wolontariuszem')}<div class="pad"><h2 style="font-size:28px;font-weight:500;margin:6px 0 14px">Z kim idziesz na spacer?</h2>
       <div class="search">${icon('search')}<input id="wq" aria-label="Szukaj psa po imieniu" type="search" placeholder="Szukaj psa po imieniu" autocomplete="off"></div>
       <label class="chip dark" style="margin:14px 0 6px;cursor:pointer"><input type="checkbox" id="gps" style="accent-color:var(--gold);width:18px;height:18px"> Mierz dystans (GPS). Ekran musi być włączony</label></div>
       <div class="pad stack" id="wl" style="margin-top:8px">${dogs.length ? '' : html`<div class="empty">${icon('paw')}<h3>Nie ma jeszcze psów</h3><a class="btn gold" href="#/psy" data-act="a-dog">Dodaj psa</a></div>`}</div>`,
@@ -58,7 +58,7 @@ export async function walk(dogId) {
   if (!d) { writeWalk(null); location.hash = '#/spacer'; return { tab: 'start', nav: false, html: html`` }; }
   if (!w) { w = { dogId, dogName: d.imie, start: Date.now(), events: [{ t: Date.now(), txt: 'Start spaceru' }], photos: [], gps: false, dist: 0, notes: [] }; writeWalk(w); }
   return {
-    tab: 'start', nav: false, title: 'Spacer', live: false,
+    tab: 'start', nav: false, title: 'Spacer z wolontariuszem', live: false,
     html: html`${pageBar('Spacer', { back: true })}
     <section class="walkhero"><div class="avatar">${dogThumb(d)}</div><h2 style="font-size:32px;margin-top:12px">${d.imie}</h2>
       <div class="pulse" style="margin-top:8px">Spacer trwa</div><div class="timer" id="timer" aria-live="off">${hhmm(Date.now() - w.start)}</div>

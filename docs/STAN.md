@@ -100,3 +100,6 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 
 ## 1.10.2
 - Karta psa → „Gdzie jest ogłoszony”: dodany kanał YouTube (pole `kanaly.yt`). Kontakt w apelach o DT bez zmian (Justyna/Dorota).
+
+## 1.10.3
+- Nazwa „Spacer z psem (GPS)” / „Spacer osobisty” zmieniona na „Spacer z wolontariuszem” (menu, okno „+”, tytuły, podpowiedź na Bramie). Pomiar GPS zostaje jako opcjonalne pole w środku.
