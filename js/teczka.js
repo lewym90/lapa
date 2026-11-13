@@ -30,15 +30,45 @@ export function etap(d) {
   return { steps, done, total: steps.length, next: (steps.find((s) => !s[1]) || [])[0] || null };
 }
 
+// Droga psa: to długi proces, nie lista do odhaczenia w jeden dzień. Etapy liczone z danych;
+// tylko „zdobywamy zaufanie” zaznacza człowiek (pies przestraszony lub agresywny, na spacer może wyjść po tygodniach).
+export const zaufanieAktywne = (d, walks) => !!d.zaufanie && !(walks || []).some((w) => (w.start || 0) >= d.zaufanie);
+export function droga(d, walks = []) {
+  const k = d.kanaly || {}, adopted = miejsce(d) === 'adoptowany' || d.status === 'adoptowany', trust = zaufanieAktywne(d, walks);
+  const steps = [
+    ['Przyjęty', 'ok'],
+    ['Zaufanie i spacery', walks.length ? 'ok' : trust ? 'now' : ''],
+    ['Ocena', d.ocena ? 'ok' : ''],
+    ['Zdjęcia', hasPics(d) ? 'ok' : ''],
+    ['Opis', (d.opis || '').trim() ? 'ok' : ''],
+    ['Ogłoszony', k.fb || k.www ? 'ok' : ''],
+    ['Adopcja', adopted ? 'ok' : d.status === 'w_trakcie' ? 'now' : '']
+  ];
+  let next = null;
+  if (!trust && !adopted) {
+    if (!walks.length && d.nowy) next = { txt: 'Następny krok: pierwszy spacer z psem', href: '#/spacer/' + d.id };
+    else if (!d.ocena) next = { txt: 'Następny krok: ocena zachowania (po spacerze)', act: 'dog-ocena' };
+    else if (!hasPics(d)) next = { txt: 'Następny krok: sesja zdjęciowa', act: 'dog-photo' };
+    else if (!(d.opis || '').trim()) next = { txt: 'Następny krok: opis do ogłoszenia', act: 'dog-ocena' };
+    else if (!(k.fb || k.www)) next = { txt: 'Następny krok: ogłoszenie', act: 'dog-teksty' };
+  }
+  return { steps, trust, next };
+}
+actions['dog-zaufanie-on'] = async (el) => { const d = await get('psy', el.dataset.id); await save('psy', { ...d, zaufanie: Date.now() }); toast('Zapisane. Bez pośpiechu, nic nie ponagla'); };
+actions['dog-zaufanie-off'] = async (el) => { const d = await get('psy', el.dataset.id); await save('psy', { ...d, zaufanie: null }); toast('Zapisane. Świetna wiadomość!'); };
+
 // ===== wiersze do karty psa =====
-export function teczkaRows(d, zdr) {
-  const m = miejsce(d), k = d.kanaly || {}, e = etap(d);
+export function teczkaRows(d, zdr, ctx = {}) {
+  const m = miejsce(d), k = d.kanaly || {}, dr = droga(d, ctx.walks || []), lastObs = (ctx.obs || [])[0];
   const nKan = KANALY.filter(([x]) => k[x]).length;
   const due = zdrDue(zdr);
   const dni = d.data_przyjecia && m === 'schronisko' ? days(d.data_przyjecia) : null;
   return html`
     <button class="row" data-act="dog-miejsce" data-id="${d.id}">${icon('pin')}<span class="rt"><b>${(MIEJSCA.find((x) => x[0] === m) || [])[1]}${d.opiekun ? ' · ' + d.opiekun : ''}</b><small>${d.data_przyjecia ? 'Od ' + fmtDate(d.data_przyjecia) + (dni !== null ? ` · ${dni} ${plural(dni, 'dzień', 'dni', 'dni')} w schronisku` : '') : 'Dodaj datę przyjęcia, czip i opiekuna'}${d.chip ? ' · czip ' + d.chip : ''}</small></span>${icon('chev')}</button>
-    ${d.nowy && e.done < e.total ? html`<div class="steps" aria-label="Postęp nowego psa">${e.steps.map(([l, ok]) => html`<span class="${ok ? 'ok' : ''}">${ok ? '✓ ' : ''}${l}</span>`)}</div>` : ''}
+    ${m === 'zmarl' || m === 'zaginiony' ? '' : html`<div class="droga" aria-label="Droga psa"><div class="steps">${dr.steps.map(([l, st]) => html`<span class="${st}">${st === 'ok' ? '✓ ' : ''}${l}</span>`)}</div>
+      ${dr.trust ? html`<div class="teraz"><b>Zdobywamy zaufanie od ${days(d.zaufanie)} ${plural(days(d.zaufanie), 'dnia', 'dni', 'dni')}</b><p>Bez pośpiechu. Liczy się każda drobna zmiana: podszedł, wziął smakołyk, nie odsunął się.${lastObs ? ' Ostatnia notatka: ' + (days(lastObs.ts) ? days(lastObs.ts) + ' ' + plural(days(lastObs.ts), 'dzień', 'dni', 'dni') + ' temu' : 'dziś') + '.' : ''}</p>
+        <div class="btnrow"><button class="btn sm" data-act="dog-obs-add" data-id="${d.id}">Dodaj notatkę o postępach</button><button class="btn sm ghost" data-act="dog-zaufanie-off" data-id="${d.id}">Już wychodzi na spacery</button></div></div>`
+      : dr.next ? html`<div class="teraz"><b>${dr.next.txt}</b><div class="btnrow">${dr.next.href ? html`<a class="btn sm" href="${dr.next.href}">Zacznij</a>` : html`<button class="btn sm" data-act="${dr.next.act}" data-id="${d.id}">Otwórz</button>`}${!(ctx.walks || []).length && d.nowy ? html`<button class="btn sm ghost" data-act="dog-zaufanie-on" data-id="${d.id}">Jeszcze nie wychodzi: zdobywamy zaufanie</button>` : ''}</div></div>` : ''}</div>`}
     <button class="row" data-act="dog-ocena" data-id="${d.id}">${icon('heart')}<span class="rt"><b>Ocena zachowania${d.ocena && d.ocena.auto ? ' (z opisu, sprawdź)' : ''}</b><small>${d.ocena ? OCENA_POLA.filter(([p]) => d.ocena[p]).map(([p, l]) => l.replace('Do ', '').replace('Na ', '') + ': ' + (OCENA_LBL[d.ocena[p]] || '').toLowerCase()).join(' · ') || 'Zapisana' : 'W opisie brak informacji. Kliknij, żeby ocenić po spacerze'}</small></span>${icon('chev')}</button>
     <button class="row" data-act="dog-zdrowie" data-id="${d.id}">${icon('medic')}<span class="rt"><b>Zdrowie i zabiegi</b><small>${zdr.length ? zdr.length + ' ' + plural(zdr.length, 'wpis', 'wpisy', 'wpisów') + (due.length ? ' · do zrobienia: ' + due.map((z) => TYP[z.typ]).join(', ') : '') : 'Szczepienia, kastracja, leki, koszty'}</small></span>${icon('chev')}</button>
     <button class="row" data-act="dog-kanaly" data-id="${d.id}">${icon('share')}<span class="rt"><b>Gdzie jest ogłoszony</b><small>${nKan ? KANALY.filter(([x]) => k[x]).map(([, l]) => l.split(' ')[0]).join(', ') : 'Nigdzie'}${nKan < KANALY.length ? ' · brakuje: ' + KANALY.filter(([x]) => !k[x]).map(([, l]) => l.split(' ')[0]).slice(0, 3).join(', ') + (KANALY.length - nKan > 3 ? '…' : '') : ''}</small></span>${icon('chev')}</button>
@@ -182,26 +212,26 @@ export async function siteStatus() {
 }
 
 // ===== zaległości (ekran „Do zrobienia” i licznik na Starcie) =====
-export function gaps(dogs, zdrAll) {
+export function gaps(dogs, zdrAll, walksAll = []) {
   const out = [], now = Date.now();
   for (const d of dogs) {
-    if (!aktywny(d)) continue; const k = d.kanaly || {};
+    if (!aktywny(d)) continue; const k = d.kanaly || {}; const quiet = zaufanieAktywne(d, walksAll.filter((w) => w.pies_id === d.id));
     if (d.poza_strona && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
     if (d.auto_dodany && Date.now() - d.auto_dodany < 5 * MS_DAY) out.push({ d, kind: 'autonowy', sev: 2, text: 'Dodany automatycznie ze strony. Sprawdź dane i miejsce pobytu', act: 'dog-miejsce' });
-    if (d.nowy && !d.ocena) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
-    if (!hasPics(d)) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
-    if (d.nowy && !(d.opis || '').trim()) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
+    if (!quiet && (d.nowy && !d.ocena)) out.push({ d, kind: 'ocena', sev: 2, text: 'Nowy pies bez oceny zachowania', act: 'dog-ocena' });
+    if (!quiet && (!hasPics(d))) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
+    if (!quiet && (d.nowy && !(d.opis || '').trim())) out.push({ d, kind: 'opis', sev: 1, text: 'Brak opisu do ogłoszenia', act: 'dog-ocena' });
     if (k.fb && !k.www && days(k.fb) >= 2) out.push({ d, kind: 'www', sev: 2, text: `Na Facebooku od ${days(k.fb)} dni, nie ma na stronie`, act: 'dog-kanaly' });
     if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko' && d.status !== 'w_trakcie') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });
-    if (d.nowy && (d.opis || '').trim() && hasPics(d) && !k.fb && !k.www) out.push({ d, kind: 'publ', sev: 2, text: 'Gotowy do opublikowania', act: 'dog-teksty' });
-    if (d.data_przyjecia && miejsce(d) === 'schronisko' && days(d.data_przyjecia) >= 180 && !d.kampania) out.push({ d, kind: 'halas', sev: 1, text: `W schronisku ${days(d.data_przyjecia)} dni. Czas na „zróbmy hałas”`, act: 'dog-teksty' });
+    if (!quiet && (d.nowy && (d.opis || '').trim() && hasPics(d) && !k.fb && !k.www)) out.push({ d, kind: 'publ', sev: 2, text: 'Gotowy do opublikowania', act: 'dog-teksty' });
+    if (!quiet && (d.data_przyjecia && miejsce(d) === 'schronisko' && days(d.data_przyjecia) >= 180 && !d.kampania)) out.push({ d, kind: 'halas', sev: 1, text: `W schronisku ${days(d.data_przyjecia)} dni. Czas na „zróbmy hałas”`, act: 'dog-teksty' });
     for (const z of zdrDue(zdrAll.filter((x) => x.pies_id === d.id))) out.push({ d, kind: 'zdrowie', sev: z.termin < now ? 3 : 2, text: `${TYP[z.typ]}: ${z.termin < now ? 'termin minął ' + fmtDate(z.termin) : 'do ' + fmtDate(z.termin)}`, act: 'dog-zdrowie' });
   }
   return out.sort((a, b) => b.sev - a.sev || (a.d.imie || '').localeCompare(b.d.imie || '', 'pl'));
 }
 import { dzisItems, dzisCard } from './terminarz.js';
 export async function zrobic() {
-  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); const st = await siteStatus(), err = st && st.enabled !== false && st.ok === false ? st.blad || 'Nieznany błąd.' : null;
+  const [dogs, zdr, walksA] = await Promise.all([list('psy'), list('zdrowie'), list('spacery')]); const g = gaps(dogs, zdr, walksA); const st = await siteStatus(), err = st && st.enabled !== false && st.ok === false ? st.blad || 'Nieznany błąd.' : null;
   const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
   return {
     tab: 'start', title: 'Dziś i do zrobienia', live: true,

@@ -8,7 +8,7 @@ import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photo
 import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
-import { teczkaRows, zdrowieDla, etap, aktywny, miejsce, days } from './teczka.js';
+import { teczkaRows, zdrowieDla, etap, zaufanieAktywne, aktywny, miejsce, days } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -24,13 +24,14 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe, do publikacji'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
-function filterDogs(dogs) {
+const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe, do publikacji'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
     if (ff === 'aktywne') return aktywny(d);
     if (ff === 'nowe') return aktywny(d) && d.nowy && etap(d).done < etap(d).total;
+    if (ff === 'zaufanie') return aktywny(d) && zaufanieAktywne(d, walks.filter((w) => w.pies_id === d.id));
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'wszystkie') return true;
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
@@ -39,7 +40,7 @@ function filterDogs(dogs) {
 }
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
 function grid(dogs, walks) {
-  const f = filterDogs(dogs);
+  const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
   return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
     <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
@@ -101,7 +102,7 @@ export async function card(id) {
       <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
       <div class="rows">
-        ${teczkaRows(d, zdr)}
+        ${teczkaRows(d, zdr, { walks: mine, obs })}
         <button class="row" data-act="dog-walks" data-id="${id}">${icon('paw')}<span class="rt"><b>Historia spacerów</b><small>${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' | ' + km.toFixed(1).replace('.', ',') + ' km' : ''}${mine[0] ? ' | ostatni ' + ago(mine[0].start) : ''}</small></span>${icon('chev')}</button>
         <button class="row" data-act="dog-obs" data-id="${id}">${icon('heart')}<span class="rt"><b>Notatki wolontariuszy</b><small>${obs.length} ${plural(obs.length, 'obserwacja', 'obserwacje', 'obserwacji')}${obs[0] ? ' | ostatnia ' + ago(obs[0].ts) : ''}</small></span>${icon('chev')}</button>
         <button class="row" data-act="dog-needs" data-id="${id}">${icon('medic')}<span class="rt"><b>Czego potrzebuje</b><small>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : 'Nic pilnego. Kliknij, żeby zgłosić potrzebę'}</small></span>${icon('chev')}</button>

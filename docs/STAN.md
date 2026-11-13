@@ -103,3 +103,9 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 
 ## 1.10.3
 - Nazwa „Spacer z psem (GPS)” / „Spacer osobisty” zmieniona na „Spacer z wolontariuszem” (menu, okno „+”, tytuły, podpowiedź na Bramie). Pomiar GPS zostaje jako opcjonalne pole w środku.
+
+## 1.11.0: „Droga psa” na karcie psa
+- Pasek 7 etapów (Przyjęty, Zaufanie i spacery, Ocena, Zdjęcia, Opis, Ogłoszony, Adopcja) dla każdego psa, liczony z istniejących danych (`droga()` w js/teczka.js). Etapy to nie lista do odhaczenia w jeden dzień.
+- Zdobywanie zaufania: pole `zaufanie` (znacznik czasu) w rekordzie psa, ustawiane przyciskiem „Jeszcze nie wychodzi: zdobywamy zaufanie” przy nowym psie bez spacerów; wyłącza się samo po pierwszym spacerze albo przyciskiem „Już wychodzi na spacery”. W tym czasie karta pokazuje liczbę dni, ostatnią notatkę i przycisk „Dodaj notatkę o postępach”, bez ponaglania; „Dziś i do zrobienia” nie przypomina o ocenie, zdjęciach, opisie, publikacji i „zróbmy hałas” dla takiego psa. Filtr „Zdobywamy zaufanie” na liście Psy.
+- „Następny krok” (jedna miękka podpowiedź): pierwszy spacer (tylko nowy pies), ocena, sesja, opis, ogłoszenie.
+- Klient tylko; import ze strony zachowuje pole `zaufanie`. Test: droga1.py (17).

@@ -12,7 +12,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 
 export async function start() {
   const [dogs, walks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('komunikaty'), list('zdrowie')]);
-  const todo = gaps(dogs, zdr), adLate = await zalegle(), lost = await aktywneLiczba();
+  const todo = gaps(dogs, zdr, walks), adLate = await zalegle(), lost = await aktywneLiczba();
   const dog = dogOfDay(dogs); const dzis = await dzisItems();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
