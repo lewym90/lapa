@@ -6,7 +6,7 @@ import { MS_DAY, fmtDate, uid } from './util.js';
 import { SITE } from './config.js';
 import { api } from './api.js';
 import { on } from './bus.js';
-import { boks, wybrani, POWODY, OPISY, opis as opisAdm, powody, boksPill, wybCls, linie } from './znak.js';
+import { czyscBoks, boks, wybrani, POWODY, OPISY, opis as opisAdm, powody, boksPill, wybCls, linie } from './znak.js';
 import { raw } from './ui-core.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
@@ -110,14 +110,14 @@ actions['dog-miejsce'] = async (el) => {
   const d = await get('psy', el.dataset.id);
   openSheet(`<h2>Gdzie jest ${esc(d.imie)}?</h2><form id="mf" novalidate>
     ${SEL('mm', 'Miejsce pobytu', MIEJSCA, miejsce(d))}
-    <div class="field"><label for="mb">Numer boksu (gdy pies jest w schronisku)</label><input class="input" id="mb" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="np. 12" value="${esc(d.boks || '')}"></div>
+    <div class="field"><label for="mb">Boks (gdy pies jest w schronisku): numer lub numer z literą</label><input class="input" id="mb" maxlength="8" autocomplete="off" autocapitalize="off" placeholder="np. 12, 7a, A3" value="${esc(d.boks || '')}"></div>
     <div class="field"><label for="mo">Opiekun / dom tymczasowy / hotelik (opcjonalnie)</label><input class="input" id="mo" maxlength="80" value="${esc(d.opiekun || '')}"></div>
     <div class="field"><label for="md">Data przyjęcia do schroniska</label><input class="input" id="md" type="date" value="${d.data_przyjecia ? d10(d.data_przyjecia) : ''}"></div>
     <div class="field"><label for="mc">Numer czipa (opcjonalnie)</label><input class="input" id="mc" maxlength="20" inputmode="numeric" value="${esc(d.chip || '')}"></div>
     <button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
     s.querySelector('#mf').addEventListener('submit', async (e) => {
       e.preventDefault(); const mm = s.querySelector('#mm').value, dd = s.querySelector('#md').value;
-      const o = { ...d, boks: s.querySelector('#mb').value.replace(/\D/g, ''), miejsce: mm, opiekun: s.querySelector('#mo').value.trim(), chip: s.querySelector('#mc').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null };
+      const o = { ...d, boks: czyscBoks(s.querySelector('#mb').value), miejsce: mm, opiekun: s.querySelector('#mo').value.trim(), chip: s.querySelector('#mc').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null };
       if (mm === 'adoptowany') o.status = 'adoptowany'; else if (mm === 'dt') o.status = o.status === 'adoptowany' ? 'dt' : o.status === 'pilne' ? 'pilne' : 'dt'; else if (mm === 'hotelik') o.status = 'hotelik';
       await save('psy', o); closeSheet(); toast('Zapisane');
     });

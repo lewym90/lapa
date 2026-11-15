@@ -16,10 +16,13 @@ with sync_playwright() as p:
     go(pg, '#/psy/d1', 900); t = text(pg)
     check('wolontariusz: brak przycisku oznaczania', 'Oznaczenie i opis psa' not in t)
     check('przycisk + Boks', pg.locator('button.boks.add').count() == 1)
-    pg.click('button.boks.add'); pg.wait_for_selector('#mb'); pg.fill('#mb', '7a'); pg.click('#mf button[type=submit]'); pg.wait_for_timeout(600)
+    pg.click('button.boks.add'); pg.wait_for_selector('#mb'); pg.fill('#mb', ' 7a! '); pg.click('#mf button[type=submit]'); pg.wait_for_timeout(600)
     d = pg.evaluate("async()=>{const s=await import('/js/store.js');return s.get('psy','d1')}")
-    check('boks zapisany jako sam numer', d.get('boks') == '7', d.get('boks'))
-    check('boks na karcie', 'Boks 7' in text(pg))
+    check('boks z literą zapisany (bez spacji i znaków spoza liter i cyfr)', d.get('boks') == '7a', d.get('boks'))
+    check('boks z literą na karcie', 'Boks 7a' in text(pg))
+    for wpis, ma in [('A3', 'A3'), ('12 b', '12 b'), ('rząd 7/c', 'rząd 7/c'), ('7<b>', '7b'), ('123456789', '12345678')]:
+        r = pg.evaluate("async(v)=>(await import('/js/znak.js')).czyscBoks(v)", wpis)
+        check(f'boks „{wpis}”', r == ma, r)
     r = pg.evaluate("async()=>{const s=await import('/js/store.js');await s.save('oznaczenia',{id:'d1',opis:'specjalny'});const y=await import('/js/sync.js');await y.run();return (await import('/js/db.js')).outboxCount()}")
     pg.wait_for_timeout(500)
     srvz = pg.evaluate("async()=>{const a=await import('/js/api.js');return (await a.api('/sync?since=0&private=0')).changes.filter(c=>c.col==='oznaczenia').length}")
@@ -54,7 +57,7 @@ with sync_playwright() as p:
     go(pg, '#/psy', 900); pg.click('[data-act=dog-filter][data-k=aktywne]'); pg.wait_for_timeout(400)
     k = pg.locator('.dcard', has_text='Saba')
     check('lista: obwódka', 'wyb' in k.get_attribute('class'))
-    check('lista: boks na zdjęciu', k.locator('.bx .boks').inner_text() == 'Boks 7')
+    check('lista: boks na zdjęciu', k.locator('.bx .boks').inner_text() == 'Boks 7a')
     check('lista: pasek z powodem', k.locator('.wybl').inner_text() == 'Tylko wybrani: wycofany, silny')
     check('lista: opis zamiast hasła', k.locator('.opisl').inner_text() == 'dla aktywnych' and 'w cieniu strachu' not in k.inner_text())
     l = pg.locator('.dcard', has_text='Luna')
@@ -65,7 +68,7 @@ with sync_playwright() as p:
     for h, nazwa in [('#/brama', 'Brama'), ('#/spacer', 'wybór psa do spaceru'), ('#/pomoc', 'Pomoc'), ('#/start', 'Start: Potrzebują Cię dziś')]:
         go(pg, h, 900); row = pg.locator('.row, .card, .need', has_text='Saba').last
         tt = row.inner_text()
-        check(nazwa + ': boks, opis, powód', 'Boks 7' in tt and 'dla aktywnych' in tt and 'Tylko wybrani: wycofany, silny' in tt, tt)
+        check(nazwa + ': boks, opis, powód', 'Boks 7a' in tt and 'dla aktywnych' in tt and 'Tylko wybrani: wycofany, silny' in tt, tt)
         check(nazwa + ': obwódka zdjęcia', row.locator('.wyb').count() >= 1)
 
     # --- Brama: okno wydania, imię i kontakt, bez godziny na przycisku ---

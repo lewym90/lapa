@@ -10,6 +10,8 @@ export const OPISY = ['specjalny', 'dla każdego', 'dla aktywnych', 'wycofany'];
 const POZA = ['adoptowany', 'zmarl', 'dt', 'hotelik', 'zaginiony'];
 const gdzie = (d) => d.miejsce || (d.status === 'adoptowany' ? 'adoptowany' : d.status === 'dt' ? 'dt' : d.status === 'hotelik' ? 'hotelik' : 'schronisko');
 
+// Oznaczenie boksu: cyfry i litery (np. 12, 7a, A3, 12 b), bo nie znamy numeracji boksów w schronisku.
+export const czyscBoks = (v) => String(v || '').replace(/[^0-9A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż /-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 8);
 export const boks = (d) => (d && d.boks && !POZA.includes(gdzie(d)) && d.status !== 'adoptowany' ? String(d.boks) : '');
 export const wybrani = (d) => !!(d && d.ozn && d.ozn.wybrani && d.ozn.wybrani.on);
 export const powody = (d) => { const w = (d && d.ozn && d.ozn.wybrani) || {}; return [...(w.powody || []), ...(w.inny ? [w.inny] : [])]; };

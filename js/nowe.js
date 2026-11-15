@@ -4,7 +4,7 @@ import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, plusBt
 import { list, save, get } from './store.js';
 import { on } from './bus.js';
 import { raw } from './ui-core.js';
-import { boksPill, wybCls, linie } from './znak.js';
+import { boksPill, wybCls, linie, czyscBoks } from './znak.js';
 import { state } from './auth.js';
 import { fmtDate, MS_DAY } from './util.js';
 import { dogThumb, addPhoto, obsForm } from './screens-psy.js';
@@ -119,14 +119,14 @@ actions['nw-step'] = async (el) => {
       <div class="field"><label for="p_w">Wiek</label><input class="input" id="p_w" maxlength="40" placeholder="np. ok. 2 lata" value="${esc(d.wiek || '')}"></div>
       <div class="field"><label for="p_r">Wielkość</label><input class="input" id="p_r" maxlength="30" placeholder="np. średni" value="${esc(d.wielkosc || '')}"></div>
       <div class="field"><label for="p_d">Data przyjęcia</label><input class="input" id="p_d" type="date" value="${d.data_przyjecia ? d10(d.data_przyjecia) : ''}"></div>
-      <div class="field"><label for="p_b">Numer boksu (opcjonalnie)</label><input class="input" id="p_b" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="np. 12" value="${esc(d.boks || '')}"></div>
+      <div class="field"><label for="p_b">Boks (opcjonalnie): numer lub numer z literą</label><input class="input" id="p_b" maxlength="8" autocomplete="off" autocapitalize="off" placeholder="np. 12, 7a, A3" value="${esc(d.boks || '')}"></div>
       <div class="field"><label for="p_c">Numer czipa (opcjonalnie)</label><input class="input" id="p_c" maxlength="20" inputmode="numeric" value="${esc(d.chip || '')}"></div>
       <div class="err" id="p_e"></div><button class="btn block" type="submit">Zapisz</button>
       <button type="button" class="btn ghost block" style="margin-top:10px" data-sheet-close>Zamknij</button></form>`, (s) => {
       s.querySelector('#f1').addEventListener('submit', async (e) => {
         e.preventDefault(); const imie = s.querySelector('#p_i').value.trim(); if (!imie) { s.querySelector('#p_e').textContent = 'Wpisz imię (może być robocze).'; return; }
         const dd = s.querySelector('#p_d').value;
-        await zmien(id, (x) => ({ ...x, imie, plec: s.querySelector('#p_p').value, wiek: s.querySelector('#p_w').value.trim(), wielkosc: s.querySelector('#p_r').value.trim(), chip: s.querySelector('#p_c').value.trim(), boks: s.querySelector('#p_b').value.replace(/\D/g, ''), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null }));
+        await zmien(id, (x) => ({ ...x, imie, plec: s.querySelector('#p_p').value, wiek: s.querySelector('#p_w').value.trim(), wielkosc: s.querySelector('#p_r').value.trim(), chip: s.querySelector('#p_c').value.trim(), boks: czyscBoks(s.querySelector('#p_b').value), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null }));
         await done(id);
       });
     });

@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.14.0, 2026-11-15)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.14.1, 2026-11-15)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -136,9 +136,11 @@ Prośba właściciela: wszędzie jednakowo; psów już ogłoszonych nie zmieniam
 Prośba ze schroniska. **Wymaga aktualizacji serwera** (komenda pyta o hasło administratora).
 - **Trzy hasła:** wolontariusz, koordynator, administrator. Administrator = wszystkie uprawnienia koordynatora + oznaczanie psów; nie blokuje się po godzinie (klient: `state.admin`, `lapa.admin`; serwer: kolumna `sessions.fp_admin`, sesja administratora nie wygasa po `VOL_TTL`, ważna do zmiany hasła administratora). Hasło administratora/koordynatora działa od razu na ekranie logowania albo przez „Odblokuj…” (okno `unlockSheet`); „Wyłącz tryb administratora” w Ustawieniach.
 - **Oznaczenia psa (tylko administrator):** kolekcja `oznaczenia` (id = id psa): `{ opis, wybrani: { on, powody[], inny, kto } | null }`. Serwer przyjmuje zapisy wyłącznie z sesji administratora (`forbidden` dla innych) i zapisuje `by = ''` (nie widać, kto oznaczył; nie dotyka rekordu psa, więc „Ostatnia zmiana” na karcie też nie zdradza). Klient dokleja je do psa jako `d.ozn` w `store.list/get('psy')`, a `save('psy')` je odcina (nigdy nie trafiają do rekordu psa). Krótki opis = zamknięta lista `OPISY` w js/znak.js: specjalny, dla każdego, dla aktywnych, wycofany. Na kafelku zastępuje hasło ze strony (także „w domu tymczasowym”/„w hoteliku”); hasło zostaje w danych i w tekstach postów.
-- **Boks:** pole `boks` w rekordzie psa (tylko cyfry, do 4), wpisuje każdy wolontariusz: okno „Gdzie jest…”, przycisk „+ Boks” na karcie, krok Przyjęcie. Widoczny tylko u psa w schronisku.
+- **Boks:** pole `boks` w rekordzie psa (od 1.14.1 cyfry i litery, np. 12, 7a, A3, „rząd 7/c”; do 8 znaków, `czyscBoks` w js/znak.js; nie znamy numeracji boksów), wpisuje każdy wolontariusz: okno „Gdzie jest…”, przycisk „+ Boks” na karcie, krok Przyjęcie. Widoczny tylko u psa w schronisku.
 - **Wspólne znaczki** (js/znak.js: `boksPill`, `wybCls`, `wybPill`, `opisLine`, `linie`, `imieZnaki`): lista Psy (obwódka całego kafelka, pasek z powodem na zdjęciu, boks w rogu), karta psa (ramka na zdjęciach, opis pod imieniem, ramka z powodem), Brama, wybór psa, spacer i raport, Start, Pomoc, Nowe psy, Dziś i do zrobienia, Social media (wybór psa), czat, zaginięcia, adopcje, DT, transport, terminarz, finanse. Kolor `--wyb: #C8322B` (inny niż „Pilne”). Nie ma ich w tekstach postów, na plakatach ani w karcie PDF.
 - **Brama:** „Wydaj” otwiera okno (imię, telefon lub Messenger, oba opcjonalne; podpowiedzi dzisiejszych osób), drugi przycisk „Wydaj” zapisuje spacer z godziną tej chwili. W „Poza”/„Wróciły” numer → `tel:`, link m.me/messenger/facebook → Messenger, inny tekst bez linku. Pole `kontakt` w rekordzie spaceru; serwer usuwa je po `KONTAKT_DAYS`=30 dniach (od `start`) z rekordów i historii (imię zostaje).
 - Poprawki przy okazji: widoczne zaznaczenie przycisków `chip outline on` (Nowa obserwacja, Pomoc); podgląd do druku zamyka się Esc i przy zmianie ekranu.
 - aktualizuj.sh: pyta o hasło administratora, gdy go brak (sprawdza, że jest inne niż dwa pozostałe), zapisuje skrót, przepisuje `zmien-haslo.sh` (+ administrator), potem jak dotąd aktualizuje kod z kopią i powrotem przy błędzie.
 
+## 1.14.1
+- Boks przyjmuje litery i cyfry (właściciel: nie znamy numeracji ani rozkładu boksów). Klient tylko; komenda serwera z 1.14.0 bez zmian (commit 63e158a).
