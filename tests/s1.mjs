@@ -1,5 +1,5 @@
 import http from 'node:http'; import { spawn, execSync } from 'node:child_process'; import fs from 'node:fs';
-const R='/home/claude/lapa-git', D='/tmp/srv'; fs.rmSync(D,{recursive:true,force:true}); fs.mkdirSync(D);
+const R=new URL('..', import.meta.url).pathname.replace(/\/$/, ''), D='/tmp/srv'; fs.rmSync(D,{recursive:true,force:true}); fs.mkdirSync(D);
 fs.copyFileSync(R+'/server/lapa-server.mjs',D+'/lapa-server.mjs'); fs.copyFileSync(R+'/js/dogmerge.js',D+'/dogmerge.mjs');
 const hash=(p)=>execSync('node '+R+'/server/hash-password.mjs',{input:p}).toString().trim();
 const dogs={}; const mk=(i,o={})=>({id:i,slug:'pies'+i,name:'Burek'+i,plec:i%2?'Samiec':'Suka',wiek:'2 lata',haslo:'BUREK'+i+' - szuka domu',opis:`Burek${i} jest bardzo przyjazny, lubi ludzi i dobrze dogaduje się z innymi psami. Chodzi na smyczy. Nie jest agresywny.`,...o});

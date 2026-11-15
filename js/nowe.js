@@ -7,7 +7,7 @@ import { state } from './auth.js';
 import { fmtDate, MS_DAY } from './util.js';
 import { dogThumb, addPhoto, obsForm } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
-import { wToku, kroki, kompletna, zaufanieAktywne, KANALY } from './teczka.js';
+import { wToku, kroki, kompletna, zaufanieAktywne, KANALY, stanKarty } from './teczka.js';
 
 const dniOd = (t) => Math.max(0, Math.floor((Date.now() - t) / MS_DAY));
 const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
@@ -50,10 +50,9 @@ export async function nowe() {
     html: html`${pageBar('Nowe psy', { right: plusBtn('a-newdog', 'Nowy pies') })}
     <div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Psy, których karta jeszcze rośnie. Wpisujesz jeden krok, zamykasz i wracasz, kiedy się uda: za dzień, za tydzień, za miesiąc. Gdy wymagane kroki są gotowe, pies zostaje już tylko w sekcji Psy. Każdy pies ma kartę w sekcji Psy od pierwszego dnia.</p>
     ${items.length ? items.map((d) => {
-      const w = walks.filter((x) => x.pies_id === d.id), st = kroki(d, { walks: w, zdr: zdr.filter((z) => z.pies_id === d.id) });
-      const br = st.filter((x) => x.req && !x.done).map((x) => x.l.toLowerCase());
+      const w = walks.filter((x) => x.pies_id === d.id), sk = stanKarty(d, walks, zdr), br = sk.brak;
       const trust = zaufanieAktywne(d, w);
-      return html`<a class="row card" style="border:0" href="#/nowe/${d.id}"><span class="avatar sm">${dogThumb(d)}</span><span class="rt"><b>${d.imie}</b><small>${st.filter((x) => x.done).length} z ${st.length}${trust ? ' · zdobywamy zaufanie od ' + dniOd(d.zaufanie) + ' ' + plural(dniOd(d.zaufanie), 'dnia', 'dni', 'dni') : ''}${br.length ? ' · brakuje: ' + br.join(', ') : ''}</small></span>${icon('chev')}</a>`;
+      return html`<a class="row card" style="border:0" href="#/nowe/${d.id}"><span class="avatar sm">${dogThumb(d)}</span><span class="rt"><b>${d.imie}</b><small>${sk.done} z ${sk.total}${trust ? ' · zdobywamy zaufanie od ' + dniOd(d.zaufanie) + ' ' + plural(dniOd(d.zaufanie), 'dnia', 'dni', 'dni') : ''}${br.length ? ' · brakuje: ' + br.join(', ') : ''}</small></span>${icon('chev')}</a>`;
     }) : html`<div class="empty">${icon('paw')}<h3>Nie ma psów w toku</h3><p>Nowego psa dodasz przyciskiem + u góry albo dużym plusem na dole.</p></div>`}</div>`,
     mount(root) { hydratePhotos(root); }
   };

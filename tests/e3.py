@@ -26,7 +26,8 @@ with sync_playwright() as p:
     # nowy pies przez menu +
     pg.click('.nav .plus'); pg.wait_for_selector('text=Nowy pies w schronisku'); pg.click('text=Nowy pies w schronisku')
     pg.fill('#n_i','Burek'); pg.select_option('#n_p','samiec'); pg.fill('#n_w','ok. 2 lata, średni'); pg.click('#nf button[type=submit]')
-    pg.wait_for_selector('h1:has-text("Burek")'); pg.wait_for_timeout(500)
+    pg.wait_for_function("location.hash.startsWith('#/nowe/')"); pg.wait_for_timeout(500)  # od 1.12.0 „Nowy pies” otwiera kroki karty przyjęcia
+    pg.evaluate("location.hash='#/psy/'+location.hash.split('/').pop()"); pg.wait_for_selector('h1:has-text("Burek")'); pg.wait_for_timeout(500)
     check('nowy pies: karta', pg.locator('.steps').count()==1)
     check('nowy pies: etapy', 'Ocena' in pg.inner_text('.steps'))
     pg.screenshot(path='n_karta.png',full_page=True)
@@ -44,7 +45,7 @@ with sync_playwright() as p:
     t=pg.inner_text('#app')
     check('zaległość: zdrowie', 'termin minął' in t)
     check('zaległość: FB bez strony', 'nie ma na stronie' in t)
-    check('zaległość: brak zdjęć', 'Brak zdjęć' in t)
+    check('zaległość: karta przyjęcia (brak zdjęć)', 'Karta przyjęcia: ' in t and 'zdjęcia' in t)  # od 1.12.0 jedno przypomnienie zamiast osobnych
     pg.screenshot(path='n_zrobic.png',full_page=True)
     pg.evaluate("location.hash='#/start'"); pg.wait_for_selector('.tile'); pg.wait_for_timeout(500)
     check('start: kafel Do zrobienia z licznikiem', 'do zrobienia' in pg.inner_text('.tiles') and pg.locator('.tile .badge').count()>=1)

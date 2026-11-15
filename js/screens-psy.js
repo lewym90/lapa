@@ -8,7 +8,7 @@ import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photo
 import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
-import { teczkaRows, zdrowieDla, etap, zaufanieAktywne, aktywny, miejsce, days } from './teczka.js';
+import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -24,13 +24,13 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe, do publikacji'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe psy (karta w toku)'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
     if (ff === 'aktywne') return aktywny(d);
-    if (ff === 'nowe') return aktywny(d) && d.nowy && etap(d).done < etap(d).total;
+    if (ff === 'nowe') return wToku(d);
     if (ff === 'zaufanie') return aktywny(d) && zaufanieAktywne(d, walks.filter((w) => w.pies_id === d.id));
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'wszystkie') return true;
@@ -39,24 +39,24 @@ function filterDogs(dogs, walks = []) {
   }).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
 }
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
-function grid(dogs, walks) {
+function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : d.nowy ? html`<span class="chip">Nowy</span>` : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${d.nowy && etap(d).done < etap(d).total ? html`<div class="m2" style="color:var(--terra-d);font-weight:600">Nowy · brakuje: ${etap(d).next}</div>` : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : wToku(d) ? html`<span class="chip">Nowy</span>` : ''}</span></div>
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
-  const [dogs, walks] = await Promise.all([list('psy'), list('spacery')]);
+  const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
   return {
     tab: 'psy', title: 'Psy',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
     <div class="fchips" role="group" aria-label="Filtr">${FILTERS.map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
-    <div id="grid">${grid(dogs, walks)}</div>
+    <div id="grid">${grid(dogs, walks, zdr)}</div>
     <button class="btn gold fab" data-act="a-dog">${icon('plus')} Dodaj psa</button>`,
     mount(root) {
       const inp = root.querySelector('#fq'), g = root.querySelector('#grid');
-      inp.addEventListener('input', () => { fq = inp.value; g.innerHTML = grid(dogs, walks).s; hydratePhotos(g); });
+      inp.addEventListener('input', () => { fq = inp.value; g.innerHTML = grid(dogs, walks, zdr).s; hydratePhotos(g); });
       hydratePhotos(root);
     }
   };

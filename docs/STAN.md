@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.9.0, 2026-11-11)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.13.0, 2026-11-15)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -12,7 +12,7 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - Nowa wersja: `./bump.sh X.Y.Z` (config.js VERSION, sw.js, version.json), commit, push. Aplikacja sama się aktualizuje po ponownym otwarciu (Ustawienia → Sprawdź aktualizację). Każdy nowy plik JS trzeba dopisać do listy ASSETS w `sw.js`.
 - Serwer: VPS „NOWY”, katalog /opt/lapa, usługa systemd `lapa`, port 8797, adres https://188-68-247-201.sslip.io/lapa. Node 22 z `node:sqlite`. Pliki: `server/lapa-server.mjs` oraz `js/dogmerge.js` (na serwerze jako `dogmerge.mjs`).
 - Aktualizacja serwera (komendę wpisuje właściciel w Termius na serwerze NOWY): `LAPA_REF=<commit> bash <(curl -fsSL https://raw.githubusercontent.com/lewym90/lapa/<commit>/server/aktualizuj.sh)`. Zmiany w `server/*` i `js/dogmerge.js` wymagają tej komendy; zmiany w reszcie `js/` i `css/` nie.
-- Ostatnia aktualizacja serwera wymagana: commit 1ec8dc7 (automatyczne sprawdzanie strony). Czy właściciel ją wykonał, nie jest potwierdzone: sprawdzić w aplikacji w Ustawienia → „Strona schroniska” albo `GET /health` (pole `site`).
+- Serwer aktualny: właściciel wykonał aktualizację 15.11.2026 na commicie 022dc98 (wszystkie zmiany serwera do 1.12.0 włącznie). Wersje 1.10–1.13 nie zmieniały `server/*` ani `js/dogmerge.js`. Stan można sprawdzić przez `GET /health` (pole `site`).
 - Commity z trailerami `Co-Authored-By` i `Claude-Session` zgodnie z instrukcją sesji.
 
 ## Architektura w skrócie
@@ -32,13 +32,15 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - **Właściciel odrzucił** dopisywanie kolejnych funkcji z badania obowiązków wolontariuszy (zaświadczenia, umowa adopcyjna, ostrzeżenia na Bramie, statystyki, etykiety ról): „zaśmieci aplikację”. Nie wdrażać bez wyraźnej prośby. Opis badania: `docs/obowiazki-wolontariuszy.md`.
 
 ## Dla kolejnej sesji
-- Najpierw potwierdzić z właścicielem, czy serwer został zaktualizowany (komenda wyżej).
+- Serwer jest aktualny (15.11.2026). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.
 - Zdjęcia: wiele plików naraz działa (okno „Zdjęcia / sesja” na karcie psa). Do ewentualnego dopracowania tylko na prośbę.
 - Nie zbadane: Instagram, TikTok, YouTube, Puszatek, Psinder; powiadomienia poza aplikacją; kopia poza serwerem; wideo powitalne; redesign strony schroniska.
 
 ## Testy
-W katalogu `tests/`: skrypty Playwright (`e*.py`) i test serwera (`s1.mjs`, atrapa strony schroniska). Używają lokalnego serwera API na porcie 18999 i statycznego na 8000 (`python3 -m http.server 8000` w katalogu repo). `tests/restart_api.sh` uruchamia czysty serwer testowy (kopiuje serwer do /tmp/t). Testy zależą od stanu: przed każdym uruchomieniem restartować API z czystą bazą. Znany nieszkodliwy błąd w e5: „finanse: wpłaty” (zapis liczby z separatorem tysięcy).
-
+W katalogu `tests/`. Używają lokalnego serwera API na porcie 18999 i statycznego na 8000 (`python3 -m http.server 8000 --bind 127.0.0.1` w katalogu repo). `bash tests/restart_api.sh` uruchamia czysty serwer testowy (kopiuje serwer z repo do /tmp/t; ścieżki liczone od położenia skryptu). Testy zależą od stanu: **przed każdym plikiem testów** restartować API z czystą bazą. Skrypty `*.py` uruchamiać z katalogu `tests/`.
+- Serwer (bez przeglądarki): `node tests/s1.mjs` (atrapa strony schroniska), `node tests/s2.mjs` (push, SSE, czyszczenie czatu), `node tests/swpush.mjs` (sw.js).
+- Aplikacja (Playwright): `e3, e5, e7, e8, e9, e12, e13, kto, chat, pushui` (starsze) oraz `nowe1` (karta przyjęcia i ten sam stan wszędzie, 40), `droga1` (Droga psa i przypomnienia, 25), `teksty1` (szablony tekstów na karcie psa, w tym 2880 porównań z poprzednią wersją, 23), `social1` (Social media, 33). Wspólne funkcje: `tests/wspolne.py`.
+- Stan 15.11.2026 (1.13.0): wszystkie testy przechodzą.
 
 ## Audyt 1.8.3 (2026-11-11)
 - Plakat / karta psa do druku: podgląd pełnoekranowy (`printPreview` w ui.js) z przyciskami Zamknij i Drukuj (samo `print()` w PWA na telefonie nie działało).
@@ -119,3 +121,13 @@ Podpis „kto dodał / kto ostatnio zmienił": nowy `js/kto.js` (`ktoText`, `kto
 - Przypomnienia: plakietka w menu, linia „Nowe psy do uzupełnienia” na Starcie, jeden wpis „Karta przyjęcia: X z 8” w „Dziś i do zrobienia” zamiast osobnych o ocenie/zdjęciach/opisie/publikacji. Pies w trybie zaufania: bez przypomnień.
 - Social: trasa `#/social/<rodzaj>/<id psa>` wybiera psa (krok Ogłoszenie → „Przygotuj teksty do postów”).
 - Pliki: js/nowe.js (nowy), teczka.js, main.js, social.js, screens-start.js, css, sw.js. Klient tylko, serwer bez zmian. Test: nowe1.py (43).
+
+## 1.13.0 (2026-11-15): jedne zasady postępu psa, edytowalne teksty na karcie psa
+Prośba właściciela: wszędzie jednakowo; psów już ogłoszonych nie zmieniamy, skupiamy się na pracy od przyjęcia nowego psa. Klient tylko, serwer bez zmian.
+- **Jedne zasady** (js/teczka.js): `przyjecieOk`, `ocenaPominieta`, `maOpis`, `ogloszony` (dowolny zaznaczony kanał, nie tylko FB/strona), `stanKarty` („X z 8” i czego wymaganego brakuje). Korzystają z nich: karta przyjęcia (`kroki`), Droga psa (`droga`), lista Psy, filtr, ekran Nowe psy, „Dziś i do zrobienia” (`gaps`). Usunięty stary licznik `etap()` (5 punktów).
+- Lista Psy: plakietka „Nowy” i linia „Karta przyjęcia: X z 8” tylko dla psów z kartą w toku (`wToku`); filtr „Nowe psy (karta w toku)” pokazuje te same psy co ekran Nowe psy.
+- Droga psa: „Przyjęty” u nowego psa liczy się jak krok Przyjęcie; „Ocena: na razie pominięta” po „Pomiń na razie” (bez ponaglania o ocenę); „Ogłoszony” = dowolny kanał. Następny krok otwiera to samo okno co krok karty przyjęcia (`nw-step` z `data-k`: przyjęcie, opis, ogłoszenie).
+- „Dziś i do zrobienia”: nowy pies w toku = jedno przypomnienie „Karta przyjęcia”; po zamknięciu karty brak osobnych przypomnień „dla nowych” (wcześniej: „bez oceny” mimo pominięcia, „gotowy do opublikowania” mimo ogłoszenia na IG). Przypomnienia dla pozostałych psów (zdjęcia, FB bez strony, status, zróbmy hałas, zdrowie, zniknął ze strony) bez zmian. Dane psów nie są zmieniane.
+- **Teksty do postów na karcie psa**: szablony z `{zmiennymi}` w kolekcji `szablony_karta` (id = rodzaj: album, post, halas, dt, sms), wspólne dla wszystkich; „Edytuj szablon” (podgląd, „Wstaw zmienną”), „Przywróć domyślny” z potwierdzeniem, podpis „Szablon zmieniony przez…”, odświeżanie na żywo po zmianie u kogoś innego. Domyślne szablony dają co do znaku te same teksty co 1.12.0 (test teksty1). Proste podstawianie (`wypelnijKarta`): bez usuwania pustych linii, nieznane `{słowa}` zostają. Social media bez zmian (osobne szablony `szablony_social`).
+- Testy odtworzone i dodane (nowe1, droga1, teksty1, social1, wspolne.py); e3 dostosowany do 1.12 (Nowy pies otwiera kroki); ścieżki w testach niezależne od katalogu.
+

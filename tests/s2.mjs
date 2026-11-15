@@ -1,6 +1,6 @@
 // Test serwera: powiadomienia push (atrapa usługi push odszyfrowuje jak przeglądarka), cisza nocna, wyciszenie, SSE, czyszczenie czatu.
 import http from 'node:http'; import { spawn, execSync } from 'node:child_process'; import fs from 'node:fs'; import crypto from 'node:crypto';
-const R = '/home/claude/lapa-git', D = '/tmp/srv2';
+const R = new URL('..', import.meta.url).pathname.replace(/\/$/, ''), D = '/tmp/srv2';
 const hash = (p) => execSync('node ' + R + '/server/hash-password.mjs', { input: p }).toString().trim();
 const sl = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ck = (n, c) => { console.log(c ? 'OK  ' : 'FAIL', n); if (!c) fails++; };

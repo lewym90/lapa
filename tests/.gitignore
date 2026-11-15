@@ -1,0 +1,3 @@
+# zrzuty ekranu i pliki tymczasowe z testów
+*.png
+__pycache__/
