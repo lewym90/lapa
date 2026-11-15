@@ -5,6 +5,7 @@ import { state, getName } from './auth.js';
 import { uid, dayKey, startOfDay, fmtDayLong, fmtTime, nextSaturdays } from './util.js';
 import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 import * as db from './db.js';
+import { imieZnaki } from './znak.js';
 
 const DAY = 864e5;
 const pad = (n) => String(n).padStart(2, '0');
@@ -63,7 +64,7 @@ export async function soboty(n = 10) {
 // ===== dane na dziś (Start, Do zrobienia, komunikat poranny) =====
 export async function dzisItems() {
   await migruj();
-  const [tm, tr, sb] = await Promise.all([list('terminarz'), list('transporty'), soboty(10)]);
+  const [tm, tr, sb, psyL] = await Promise.all([list('terminarz'), list('transporty'), soboty(10), list('psy')]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), t1 = t0 + DAY, items = [], overdue = [];
   for (const e of tm.filter(visible)) {
     if (e.status === 'odwolany') continue;
@@ -74,15 +75,15 @@ export async function dzisItems() {
     }
   }
   items.sort((a, b) => a.t - b.t); overdue.sort((a, b) => a.t - b.t);
-  return { items, overdue, walk: sb.find((x) => x.start >= t0 && x.start < t1) || null, trans: tr.filter((x) => x.kiedy >= t0 && x.kiedy < t1 && !['anulowany', 'zrealizowany'].includes(x.status)) };
+  return { items, overdue, walk: sb.find((x) => x.start >= t0 && x.start < t1) || null, trans: tr.filter((x) => x.kiedy >= t0 && x.kiedy < t1 && !['anulowany', 'zrealizowany'].includes(x.status)), psy };
 }
 export const dzisCount = (d) => d.items.filter((x) => !x.done).length + d.overdue.length + (d.walk && d.walk.status !== 'odwolany' ? 1 : 0) + d.trans.length;
 
 function dzisHtml(d) {
-  const row = (t, txt, extra = '') => `<div class="row" style="gap:10px"><span class="rt"><b>${esc(txt)}</b><small>${esc(t)}${extra}</small></span></div>`;
+  const row = (t, txt, extra = '', rawTxt = null) => `<div class="row" style="gap:10px"><span class="rt"><b>${rawTxt ?? esc(txt)}</b><small>${esc(t)}${extra}</small></span></div>`;
   let h = '';
   if (d.walk) h += row(`${fmtTime(d.walk.start)} pod bramą`, d.walk.status === 'odwolany' ? 'Sobotni spacer ODWOŁANY' + (d.walk.powod ? ': ' + d.walk.powod : '') : 'Spacery w schronisku (Brama)');
-  for (const x of d.trans) h += row(`${fmtTime(x.kiedy)} · ${x.skad} → ${x.dokad}`, 'Transport: ' + (x.pies_imie || 'pies'));
+  for (const x of d.trans) h += row(`${fmtTime(x.kiedy)} · ${x.skad} → ${x.dokad}`, '', '', 'Transport: ' + imieZnaki((d.psy || {})[x.pies_id], x.pies_imie || 'pies'));
   for (const x of d.items) h += row(hasTime(x.t) ? toTime(x.t) : 'cały dzień', (x.done ? '✓ ' : '') + x.e.tytul, x.e.widocznosc === 'ja' ? ' · tylko ja' : '');
   if (d.overdue.length) h += `<h3 style="font-size:17px;margin:14px 0 6px;color:var(--terra-d)">Zaległe (${d.overdue.length})</h3>` + d.overdue.map((x) => row(new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short' }).format(x.t), x.e.tytul)).join('');
   return h;
@@ -163,7 +164,7 @@ actions['sb-edit'] = async (el) => { const x = (await soboty(10)).find((y) => y.
 
 // ===== terminarz =====
 async function terView(zg) {
-  const [tm, tr] = await Promise.all([list('terminarz'), list('transporty')]);
+  const [tm, tr, psyL] = await Promise.all([list('terminarz'), list('transporty'), list('psy')]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), to = t0 + 90 * DAY, name = me(), rows = [], undated = [], over = [];
   const mine = (e) => e.owner === name || e.autor === name || forKey(zg, evKey('tm', e.id)).some((z) => z.imie === name && z.status === 'tak');
   for (const e of tm.filter(visible)) {
@@ -179,11 +180,11 @@ async function terView(zg) {
   rows.sort((a, b) => a.t - b.t); over.sort((a, b) => a.t - b.t);
   const chip = (k, l) => `<button class="chip dark ${filt === k ? 'on' : ''}" data-act="tm-filt" data-k="${k}">${l}</button>`;
   const row = (r) => {
-    if (r.k === 'tr') { const p = parts(r.t); return `<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${esc(p.m)}</small></div><div class="what"><b>Transport: ${esc(r.x.pies_imie || 'pies')}</b><span>${esc(r.x.skad)} → ${esc(r.x.dokad)}</span></div>${icon('chev').s}</a>`; }
+    if (r.k === 'tr') { const p = parts(r.t); return `<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${esc(p.m)}</small></div><div class="what"><b>Transport: ${imieZnaki(psy[r.x.pies_id], r.x.pies_imie || 'pies')}</b><span>${esc(r.x.skad)} → ${esc(r.x.dokad)}</span></div>${icon('chev').s}</a>`; }
     const e = r.e, p = parts(r.t), done = isDone(e, r.t), priv = e.widocznosc === 'ja', who = priv ? [] : forKey(zg, evKey('tm', e.id)).filter((z) => z.status === 'tak');
     return `<div class="ev" style="width:calc(100% - 32px);${done || e.status === 'odwolany' ? 'opacity:.6' : ''}">${e.zadanie ? `<button class="chk" data-act="tm-done" data-id="${esc(e.id)}" data-t="${r.t}" aria-pressed="${done}" aria-label="Odhacz">${icon('check').s}</button>` : ''}
       <button class="what" style="text-align:left;background:none;border:0;padding:0" data-act="tm-open" data-id="${esc(e.id)}"><div style="display:flex;gap:10px;align-items:center"><div class="when" style="width:46px"><b>${p.n}</b><small>${esc(p.m)}</small></div><div style="min-width:0"><b style="${done ? 'text-decoration:line-through' : ''}">${esc(e.tytul)}${e.status === 'odwolany' ? ' · ODWOŁANE' : ''}</b>
-      <span>${[hasTime(r.t) ? toTime(r.t) : 'cały dzień', e.miejsce, e.pies_imie, e.powtarzaj ? powtText(e.powtarzaj) : ''].filter(Boolean).map(esc).join(' · ')}${priv ? ' · <i>tylko ja</i>' : ''}</span>
+      <span>${[hasTime(r.t) ? toTime(r.t) : 'cały dzień', e.miejsce, e.pies_imie && '\u0000', e.powtarzaj ? powtText(e.powtarzaj) : ''].filter(Boolean).map((x) => (x === '\u0000' ? imieZnaki(psy[e.pies_id], e.pies_imie) : esc(x))).join(' · ')}${priv ? ' · <i>tylko ja</i>' : ''}</span>
       ${priv ? '' : `<span class="who">${who.length ? 'Zgłosili się (' + who.length + '): ' + esc(who.map((z) => z.imie).join(', ')) : 'Nikt się jeszcze nie zgłosił'}</span>`}</div></div></button></div>`;
   };
   let lastDay = '', out = `<div class="fchips">${chip('wszystko', 'Wszystko')}${chip('moje', 'Moje')}${chip('ja', 'Tylko ja')}</div>
@@ -207,7 +208,7 @@ actions['tm-open'] = async (el) => {
   const when = e.start == null ? 'Bez terminu' : fmtDayLong(e.start) + (hasTime(e.start) ? ', godz. ' + toTime(e.start) : ' (cały dzień)');
   const items = (e.lista || []);
   openSheet(`<h2>${esc(e.tytul)}</h2><p class="sub" style="margin:0 0 8px">${esc(when)}${e.miejsce ? ' · ' + esc(e.miejsce) : ''}${e.powtarzaj ? '<br>' + esc(powtText(e.powtarzaj)) : ''}</p>
-    ${e.status === 'odwolany' ? '<p><b style="color:var(--terra-d)">ODWOŁANE</b></p>' : ''}${e.pies_id ? `<p class="sub"><a href="#/psy/${esc(e.pies_id)}" id="tpd">Pies: ${esc(e.pies_imie || '')}</a></p>` : e.pies_imie ? `<p class="sub">Pies: ${esc(e.pies_imie)}</p>` : ''}
+    ${e.status === 'odwolany' ? '<p><b style="color:var(--terra-d)">ODWOŁANE</b></p>' : ''}${e.pies_id ? `<p class="sub"><a href="#/psy/${esc(e.pies_id)}" id="tpd">Pies: ${imieZnaki(await get('psy', e.pies_id), e.pies_imie || '')}</a></p>` : e.pies_imie ? `<p class="sub">Pies: ${esc(e.pies_imie)}</p>` : ''}
     ${e.notatka ? `<div class="notebox">${esc(e.notatka)}</div>` : ''}
     ${items.length ? `<div class="rows" style="margin-top:10px">${items.map((it, i) => `<button class="row" data-li="${i}" style="gap:10px"><span class="chk" aria-pressed="${!!it.ok}" style="pointer-events:none">${icon('check').s}</span><span class="rt"><b style="${it.ok ? 'text-decoration:line-through;opacity:.6' : ''}">${esc(it.t)}</b></span></button>`).join('')}</div>` : ''}
     ${priv ? '<p class="hint" style="margin-top:10px">Wpis prywatny: nie pokazuje się innym w aplikacji.</p>' : '<div id="zgbox"></div>'}

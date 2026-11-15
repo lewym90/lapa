@@ -1,3 +1,5 @@
+import { raw } from './ui-core.js';
+import { boksPill, wybCls, linie, opisLine, wybPill } from './znak.js';
 import { html, icon, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
@@ -22,7 +24,7 @@ export async function start() {
   const hero = dog
     ? html`<section class="hero" aria-label="Pies dnia">${dogImg(dog.zdjecia[0], dog.imie, 'ph')}
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
-        <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${icon('chev')}</a></div></section>`
+        <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${raw(boksPill(dog, 'in'))} ${icon('chev')}</a>${raw(opisLine(dog, 'na-ciemnym'))}${raw(wybPill(dog, 'pill'))}</div></section>`
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span>
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
         <a class="dogtag" href="#/psy" data-act="a-dog">${icon('plus')}<span>Dodaj pierwszego psa</span></a></div></section>`;
@@ -44,8 +46,8 @@ export async function start() {
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px">${dzisCard(dzis)}</div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>
-      <div class="pad stack">${helpDogs.slice(0, 3).map((d) => html`<a class="row card" style="border:0" href="#/psy/${d.id}"><span class="avatar sm">${dogImg(d.zdjecia?.[0], d.imie)}</span>
-        <span class="rt"><b>${d.imie}</b><small>${[d.status === 'pilne' ? 'Pilny przypadek' : '', ...dogNeeds(d, walks).slice(0, 2).map((k) => NEED_LABELS[k])].filter(Boolean).join(' · ')}</small></span>${icon('chev')}</a>`)}</div>` : ''}`
+      <div class="pad stack">${helpDogs.slice(0, 3).map((d) => html`<a class="row card" style="border:0" href="#/psy/${d.id}"><span class="avatar sm${wybCls(d)}">${dogImg(d.zdjecia?.[0], d.imie)}</span>
+        <span class="rt"><b>${d.imie} ${raw(boksPill(d, 'in'))}</b>${raw(linie(d))}<small>${[d.status === 'pilne' ? 'Pilny przypadek' : '', ...dogNeeds(d, walks).slice(0, 2).map((k) => NEED_LABELS[k])].filter(Boolean).join(' · ')}</small></span>${icon('chev')}</a>`)}</div>` : ''}`
   };
 }
 

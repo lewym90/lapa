@@ -8,6 +8,7 @@ import { on } from './bus.js';
 import { fmtDate } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
+import { boksPill, wybCls, linie } from './znak.js';
 
 const COL = 'szablony_social';
 const KONTAKT = 'Kontakt w sprawie adopcji\nJustyna: 691 742 265\nDorota: 607 119 526\ne-mail: stowarzyszenie.nowodwor@wp.pl';
@@ -165,7 +166,7 @@ function fieldHtml(p) {
 function formHtml() {
   const { t, dog } = cur;
   const dogBox = !t.dog ? '' : dog
-    ? `<div class="card gap"><span class="avatar sm">${dogThumb(dog).s}</span><span class="rt"><b>${esc(dog.imie)}</b><small>${esc([dog.wiek, dog.wielkosc].filter(Boolean).join(' · ') || 'Brak danych w karcie')}</small></span><button type="button" class="btn sm ghost" data-act="soc-dog">Zmień psa</button></div>`
+    ? `<div class="card gap"><span class="avatar sm${wybCls(dog)}">${dogThumb(dog).s}</span><span class="rt"><b>${esc(dog.imie)} ${boksPill(dog, 'in')}</b>${linie(dog)}<small>${esc([dog.wiek, dog.wielkosc].filter(Boolean).join(' · ') || 'Brak danych w karcie')}</small></span><button type="button" class="btn sm ghost" data-act="soc-dog">Zmień psa</button></div>`
     : `<button type="button" class="btn block" data-act="soc-dog">${t.adopted ? 'Wybierz adoptowanego psa' : 'Wybierz psa z bazy'}</button>`;
   const fields = !t.dog || dog ? t.pola.map(fieldHtml).join('') : '';
   const warn = t.dog && dog && !dog.plec ? '<p class="hint" style="margin:-6px 0 12px">W karcie psa nie ma płci. Wybierz ją powyżej, żeby końcówki w tekście były poprawne.</p>' : '';
@@ -210,7 +211,7 @@ actions['soc-dog'] = async () => {
   const dogs = all.filter((d) => (t.adopted ? isAd(d) : !isAd(d))).sort((a, b) => a.imie.localeCompare(b.imie, 'pl'));
   const paint = (q, root) => {
     const f = dogs.filter((d) => d.imie.toLowerCase().includes(q.trim().toLowerCase()));
-    root.innerHTML = f.length ? f.map((d) => `<button type="button" class="row" data-pick="${esc(d.id)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)}</b><small>${esc([d.wiek, d.wielkosc].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</button>`).join('') : '<p class="hint">Nie ma takiego psa.</p>';
+    root.innerHTML = f.length ? f.map((d) => `<button type="button" class="row" data-pick="${esc(d.id)}"><span class="avatar sm${wybCls(d)}">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${esc([d.wiek, d.wielkosc].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</button>`).join('') : '<p class="hint">Nie ma takiego psa.</p>';
     hydratePhotos(root);
   };
   openSheet(`<h2>Wybierz psa</h2><div class="field"><input class="input" id="sq" data-nodraft type="search" placeholder="Szukaj po imieniu" autocomplete="off"></div><div id="sl" class="rows"></div>`, (s) => {

@@ -50,7 +50,7 @@ cat > "$APP/zmien-haslo.sh" <<'Z'
 #!/usr/bin/env bash
 # Zmiana hasła wolontariusza lub koordynatora. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|koordynator
 set -uo pipefail
-case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; koordynator) KEY=PASS_COORDINATOR_HASH;; *) echo "Użycie: $0 wolontariusz|koordynator"; exit 1;; esac
+case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; koordynator) KEY=PASS_COORDINATOR_HASH;; administrator) KEY=PASS_ADMIN_HASH;; *) echo "Użycie: $0 wolontariusz|koordynator|administrator"; exit 1;; esac
 [ "$(id -u)" = 0 ] || { echo "uruchom jako root"; exit 1; }
 read -rsp "Nowe hasło (min. 8 znaków): " P1; echo; read -rsp "Powtórz hasło: " P2; echo
 [ "$P1" = "$P2" ] || { echo "Hasła się różnią."; exit 1; }

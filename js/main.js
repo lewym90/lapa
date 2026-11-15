@@ -48,7 +48,7 @@ const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
 const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
   return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
-    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
+    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator · wszystkie uprawnienia' : state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
     <button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>
     ${menuHtml('sl', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp2" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span><div class="sver">ŁAPA ${VERSION}</div></aside>`;
@@ -80,7 +80,7 @@ async function render(keepScroll = false) {
   scrollTo(0, y);
   document.title = (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
 }
-addEventListener('hashchange', () => { closeSheet(); render(); });
+addEventListener('hashchange', () => { closeSheet(); document.querySelectorAll('.ppv').forEach((e) => e.remove()); render(); }); // przejście dalej zamyka też podgląd do druku / plakat
 
 // odświeżanie po zmianie danych (bez psucia wpisywania tekstu)
 let rt;
@@ -153,7 +153,7 @@ function showName() {
 actions.menu = () => {
   const el = document.createElement('div'); el.className = 'drawer';
   el.innerHTML = `<div class="scrim"></div><nav aria-label="Menu">
-    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
+    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator · wszystkie uprawnienia' : state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
     ${menuHtml('', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
     <div style="font-size:12px;color:var(--sage);padding:0 12px">ŁAPA ${VERSION}</div></nav>`;

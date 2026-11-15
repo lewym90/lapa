@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.13.0, 2026-11-15)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.14.0, 2026-11-15)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -12,7 +12,8 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - Nowa wersja: `./bump.sh X.Y.Z` (config.js VERSION, sw.js, version.json), commit, push. Aplikacja sama się aktualizuje po ponownym otwarciu (Ustawienia → Sprawdź aktualizację). Każdy nowy plik JS trzeba dopisać do listy ASSETS w `sw.js`.
 - Serwer: VPS „NOWY”, katalog /opt/lapa, usługa systemd `lapa`, port 8797, adres https://188-68-247-201.sslip.io/lapa. Node 22 z `node:sqlite`. Pliki: `server/lapa-server.mjs` oraz `js/dogmerge.js` (na serwerze jako `dogmerge.mjs`).
 - Aktualizacja serwera (komendę wpisuje właściciel w Termius na serwerze NOWY): `LAPA_REF=<commit> bash <(curl -fsSL https://raw.githubusercontent.com/lewym90/lapa/<commit>/server/aktualizuj.sh)`. Zmiany w `server/*` i `js/dogmerge.js` wymagają tej komendy; zmiany w reszcie `js/` i `css/` nie.
-- Serwer aktualny: właściciel wykonał aktualizację 15.11.2026 na commicie 022dc98 (wszystkie zmiany serwera do 1.12.0 włącznie). Wersje 1.10–1.13 nie zmieniały `server/*` ani `js/dogmerge.js`. Stan można sprawdzić przez `GET /health` (pole `site`).
+- **1.14.0 wymaga aktualizacji serwera** (rola administratora, ochrona kolekcji `oznaczenia`, kasowanie kontaktów z Bramy po 30 dniach). Komenda aktualizacji przy pierwszym uruchomieniu pyta o hasło administratora (dwa razy, niewidoczne; musi być inne niż hasło wolontariusza i koordynatora; zapisywany tylko skrót `PASS_ADMIN_HASH` w `/etc/lapa.env`). Czy właściciel ją wykonał: sprawdzić logowaniem hasłem administratora (Ustawienia → „Administrator”). Poprzednia aktualizacja: 15.11.2026, commit 022dc98.
+- Hasła na serwerze: `/etc/lapa.env` (skróty scrypt). Zmiana: `bash /opt/lapa/zmien-haslo.sh wolontariusz|koordynator|administrator`.
 - Commity z trailerami `Co-Authored-By` i `Claude-Session` zgodnie z instrukcją sesji.
 
 ## Architektura w skrócie
@@ -32,15 +33,15 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - **Właściciel odrzucił** dopisywanie kolejnych funkcji z badania obowiązków wolontariuszy (zaświadczenia, umowa adopcyjna, ostrzeżenia na Bramie, statystyki, etykiety ról): „zaśmieci aplikację”. Nie wdrażać bez wyraźnej prośby. Opis badania: `docs/obowiazki-wolontariuszy.md`.
 
 ## Dla kolejnej sesji
-- Serwer jest aktualny (15.11.2026). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.
+- Potwierdzić, że serwer jest po aktualizacji 1.14.0 (hasło administratora działa). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.
 - Zdjęcia: wiele plików naraz działa (okno „Zdjęcia / sesja” na karcie psa). Do ewentualnego dopracowania tylko na prośbę.
 - Nie zbadane: Instagram, TikTok, YouTube, Puszatek, Psinder; powiadomienia poza aplikacją; kopia poza serwerem; wideo powitalne; redesign strony schroniska.
 
 ## Testy
 W katalogu `tests/`. Używają lokalnego serwera API na porcie 18999 i statycznego na 8000 (`python3 -m http.server 8000 --bind 127.0.0.1` w katalogu repo). `bash tests/restart_api.sh` uruchamia czysty serwer testowy (kopiuje serwer z repo do /tmp/t; ścieżki liczone od położenia skryptu). Testy zależą od stanu: **przed każdym plikiem testów** restartować API z czystą bazą. Skrypty `*.py` uruchamiać z katalogu `tests/`.
-- Serwer (bez przeglądarki): `node tests/s1.mjs` (atrapa strony schroniska), `node tests/s2.mjs` (push, SSE, czyszczenie czatu), `node tests/swpush.mjs` (sw.js).
-- Aplikacja (Playwright): `e3, e5, e7, e8, e9, e12, e13, kto, chat, pushui` (starsze) oraz `nowe1` (karta przyjęcia i ten sam stan wszędzie, 40), `droga1` (Droga psa i przypomnienia, 25), `teksty1` (szablony tekstów na karcie psa, w tym 2880 porównań z poprzednią wersją, 23), `social1` (Social media, 33). Wspólne funkcje: `tests/wspolne.py`.
-- Stan 15.11.2026 (1.13.0): wszystkie testy przechodzą.
+- Serwer (bez przeglądarki): `node tests/s1.mjs` (atrapa strony schroniska), `node tests/s2.mjs` (push, SSE, czyszczenie czatu), `node tests/s3.mjs` (administrator, oznaczenia, kasowanie kontaktów), `node tests/swpush.mjs` (sw.js).
+- Aplikacja (Playwright): `e3, e5, e7, e8, e9, e12, e13, kto, chat, pushui` (starsze) oraz `nowe1` (karta przyjęcia i ten sam stan wszędzie, 40), `droga1` (Droga psa i przypomnienia, 25), `teksty1` (szablony tekstów na karcie psa, w tym 2880 porównań z poprzednią wersją, 23), `social1` (Social media, 33), `znaki1` (boks, oznaczenia, opis, Brama, administrator, 46), `audyt` (każdy ekran i główne okna: telefon i komputer, wolontariusz i administrator; otwieranie, wyjście, zamykanie okien krzyżykiem/Esc/tłem, brak wychodzenia poza ekran, 683), `audyt2` (podgląd do druku i plakat). Wspólne funkcje: `tests/wspolne.py`. Serwer testowy ma hasło administratora `administrator-haslo-3`.
+- Stan 15.11.2026 (1.14.0): wszystkie testy przechodzą.
 
 ## Audyt 1.8.3 (2026-11-11)
 - Plakat / karta psa do druku: podgląd pełnoekranowy (`printPreview` w ui.js) z przyciskami Zamknij i Drukuj (samo `print()` w PWA na telefonie nie działało).
@@ -130,4 +131,14 @@ Prośba właściciela: wszędzie jednakowo; psów już ogłoszonych nie zmieniam
 - „Dziś i do zrobienia”: nowy pies w toku = jedno przypomnienie „Karta przyjęcia”; po zamknięciu karty brak osobnych przypomnień „dla nowych” (wcześniej: „bez oceny” mimo pominięcia, „gotowy do opublikowania” mimo ogłoszenia na IG). Przypomnienia dla pozostałych psów (zdjęcia, FB bez strony, status, zróbmy hałas, zdrowie, zniknął ze strony) bez zmian. Dane psów nie są zmieniane.
 - **Teksty do postów na karcie psa**: szablony z `{zmiennymi}` w kolekcji `szablony_karta` (id = rodzaj: album, post, halas, dt, sms), wspólne dla wszystkich; „Edytuj szablon” (podgląd, „Wstaw zmienną”), „Przywróć domyślny” z potwierdzeniem, podpis „Szablon zmieniony przez…”, odświeżanie na żywo po zmianie u kogoś innego. Domyślne szablony dają co do znaku te same teksty co 1.12.0 (test teksty1). Proste podstawianie (`wypelnijKarta`): bez usuwania pustych linii, nieznane `{słowa}` zostają. Social media bez zmian (osobne szablony `szablony_social`).
 - Testy odtworzone i dodane (nowe1, droga1, teksty1, social1, wspolne.py); e3 dostosowany do 1.12 (Nowy pies otwiera kroki); ścieżki w testach niezależne od katalogu.
+
+## 1.14.0 (2026-11-15): boks, „tylko dla wybranych”, krótki opis, administrator, Brama z kontaktem
+Prośba ze schroniska. **Wymaga aktualizacji serwera** (komenda pyta o hasło administratora).
+- **Trzy hasła:** wolontariusz, koordynator, administrator. Administrator = wszystkie uprawnienia koordynatora + oznaczanie psów; nie blokuje się po godzinie (klient: `state.admin`, `lapa.admin`; serwer: kolumna `sessions.fp_admin`, sesja administratora nie wygasa po `VOL_TTL`, ważna do zmiany hasła administratora). Hasło administratora/koordynatora działa od razu na ekranie logowania albo przez „Odblokuj…” (okno `unlockSheet`); „Wyłącz tryb administratora” w Ustawieniach.
+- **Oznaczenia psa (tylko administrator):** kolekcja `oznaczenia` (id = id psa): `{ opis, wybrani: { on, powody[], inny, kto } | null }`. Serwer przyjmuje zapisy wyłącznie z sesji administratora (`forbidden` dla innych) i zapisuje `by = ''` (nie widać, kto oznaczył; nie dotyka rekordu psa, więc „Ostatnia zmiana” na karcie też nie zdradza). Klient dokleja je do psa jako `d.ozn` w `store.list/get('psy')`, a `save('psy')` je odcina (nigdy nie trafiają do rekordu psa). Krótki opis = zamknięta lista `OPISY` w js/znak.js: specjalny, dla każdego, dla aktywnych, wycofany. Na kafelku zastępuje hasło ze strony (także „w domu tymczasowym”/„w hoteliku”); hasło zostaje w danych i w tekstach postów.
+- **Boks:** pole `boks` w rekordzie psa (tylko cyfry, do 4), wpisuje każdy wolontariusz: okno „Gdzie jest…”, przycisk „+ Boks” na karcie, krok Przyjęcie. Widoczny tylko u psa w schronisku.
+- **Wspólne znaczki** (js/znak.js: `boksPill`, `wybCls`, `wybPill`, `opisLine`, `linie`, `imieZnaki`): lista Psy (obwódka całego kafelka, pasek z powodem na zdjęciu, boks w rogu), karta psa (ramka na zdjęciach, opis pod imieniem, ramka z powodem), Brama, wybór psa, spacer i raport, Start, Pomoc, Nowe psy, Dziś i do zrobienia, Social media (wybór psa), czat, zaginięcia, adopcje, DT, transport, terminarz, finanse. Kolor `--wyb: #C8322B` (inny niż „Pilne”). Nie ma ich w tekstach postów, na plakatach ani w karcie PDF.
+- **Brama:** „Wydaj” otwiera okno (imię, telefon lub Messenger, oba opcjonalne; podpowiedzi dzisiejszych osób), drugi przycisk „Wydaj” zapisuje spacer z godziną tej chwili. W „Poza”/„Wróciły” numer → `tel:`, link m.me/messenger/facebook → Messenger, inny tekst bez linku. Pole `kontakt` w rekordzie spaceru; serwer usuwa je po `KONTAKT_DAYS`=30 dniach (od `start`) z rekordów i historii (imię zostaje).
+- Poprawki przy okazji: widoczne zaznaczenie przycisków `chip outline on` (Nowa obserwacja, Pomoc); podgląd do druku zamyka się Esc i przy zmianie ekranu.
+- aktualizuj.sh: pyta o hasło administratora, gdy go brak (sprawdza, że jest inne niż dwa pozostałe), zapisuje skrót, przepisuje `zmien-haslo.sh` (+ administrator), potem jak dotąd aktualizuje kod z kopią i powrotem przy błędzie.
 

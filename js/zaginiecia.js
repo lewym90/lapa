@@ -1,4 +1,6 @@
 // Zaginione psy: karta alarmowa, tekst posta z aktualizacjami, plakat do wydruku.
+import { raw } from './ui-core.js';
+import { boksPill, wybCls, linie } from './znak.js';
 import { rysujPlakat, pokazObraz, zdjecieDoPlakatu } from './plakat.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, listRecs, save, remove, get } from './store.js';
@@ -21,7 +23,7 @@ export function postZ(z) {
 export async function zaginiecia() {
   const [zrecs, dogs] = await Promise.all([listRecs('zaginiecia'), list('psy')]); const zs = zrecs.map((r) => r.data), zby = Object.fromEntries(zrecs.map((r) => [r.id, r])); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const a = zs.filter(aktywne).sort((x, y) => y.kiedy - x.kiedy), f = zs.filter((z) => !aktywne(z)).sort((x, y) => y.znaleziony_ts - x.znaleziony_ts);
-  const card = (z) => html`<div class="card gap"><button class="gi" data-act="zag-open" data-id="${z.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp">${byId[z.pies_id] ? dogThumb(byId[z.pies_id]) : icon('paw')}</span><span class="rt"><b>${z.imie}</b><small>${aktywne(z) ? 'Zaginął(a) ' + fmtDate(z.kiedy) + (z.ostatnio ? ' · ' + z.ostatnio : '') : 'Znaleziony(a) ' + fmtDate(z.znaleziony_ts)}</small><small class="kto">${ktoText(zby[z.id], z.autor)}</small></span></button></div>`;
+  const card = (z) => html`<div class="card gap"><button class="gi" data-act="zag-open" data-id="${z.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp${byId[z.pies_id] ? wybCls(byId[z.pies_id]) : ''}">${byId[z.pies_id] ? dogThumb(byId[z.pies_id]) : icon('paw')}</span><span class="rt"><b>${z.imie} ${byId[z.pies_id] ? raw(boksPill(byId[z.pies_id], 'in')) : ''}</b>${byId[z.pies_id] ? raw(linie(byId[z.pies_id])) : ''}<small>${aktywne(z) ? 'Zaginął(a) ' + fmtDate(z.kiedy) + (z.ostatnio ? ' · ' + z.ostatnio : '') : 'Znaleziony(a) ' + fmtDate(z.znaleziony_ts)}</small><small class="kto">${ktoText(zby[z.id], z.autor)}</small></span></button></div>`;
   return { tab: 'start', title: 'Zaginięcia', live: true,
     html: html`${pageBar('Zaginięcia', { right: html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` })}
     <div class="pad stack">${a.length ? a.map(card) : html`<div class="empty">${icon('check')}<h3>Nikt nie jest teraz poszukiwany</h3><p>Zgłoś zaginięcie przyciskiem +. Aplikacja przygotuje post i plakat.</p></div>`}

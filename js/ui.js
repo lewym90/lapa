@@ -141,9 +141,11 @@ export async function printPreview(inner, title = 'Do wydruku') {
   const box = document.createElement('div'); box.className = 'ppv';
   box.innerHTML = `<div class="ppv-bar"><button class="btn ghost" data-ppv="x">Zamknij</button><b>${esc(title)}</b><button class="btn gold" data-ppv="p">Drukuj</button></div><div class="ppv-page printonly">${inner}</div>`;
   document.body.appendChild(box);
+  const onKey = (e) => { if (e.key === 'Escape') { box.remove(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
   box.addEventListener('click', (e) => {
     const b = e.target.closest('[data-ppv]'); if (!b) return;
-    if (b.dataset.ppv === 'x') box.remove();
+    if (b.dataset.ppv === 'x') { box.remove(); document.removeEventListener('keydown', onKey); }
     else { try { window.print(); } catch { toast('Drukowanie niedostępne. Zrób zrzut ekranu lub użyj Udostępnij w przeglądarce', true); } }
   });
   const imgs = [...box.querySelectorAll('img')];

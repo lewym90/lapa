@@ -8,6 +8,7 @@ import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photo
 import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
+import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie } from './znak.js';
 import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -42,8 +43,8 @@ function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); 
 function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : wToku(d) ? html`<span class="chip">Nowy</span>` : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard${wybCls(d)}" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : wToku(d) ? html`<span class="chip">Nowy</span>` : ''}</span></div>
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opis(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
   const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
@@ -70,7 +71,7 @@ export async function pickDog(cb) {
   if (!dogs.length) { toast('Najpierw dodaj psa (przycisk + → Dodaj psa)', true); return; }
   const paint = (q, root) => {
     const f = dogs.filter((d) => (d.imie || '').toLowerCase().includes(q.toLowerCase()));
-    root.innerHTML = f.length ? f.map((d) => `<button class="row" data-pick="${esc(d.id)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${sexSymbol(d.plec)}</b><small>${esc([d.wiek, d.wielkosc].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</button>`).join('') : '<p class="hint">Nie ma takiego psa.</p>';
+    root.innerHTML = f.length ? f.map((d) => `<button class="row" data-pick="${esc(d.id)}"><span class="avatar sm${wybCls(d)}">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${sexSymbol(d.plec)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${esc([d.wiek, d.wielkosc].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</button>`).join('') : '<p class="hint">Nie ma takiego psa.</p>';
     hydratePhotos(root);
   };
   openSheet(`<h2>Wybierz psa</h2><div class="field"><input class="input" id="pq" type="search" placeholder="Szukaj po imieniu" autocomplete="off"></div><div id="pl" class="rows"></div>`, (s) => {
@@ -92,14 +93,15 @@ export async function card(id) {
   const dkto = ktoText(await db.getRec('psy', id), null);
   return {
     tab: 'psy', title: d.imie, live: true,
-    html: html`<section class="dogtop"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
+    html: html`<section class="dogtop${wybCls(d)}"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
         <span style="display:flex;gap:8px"><button class="iconbtn" data-act="dog-fav" data-id="${id}" aria-pressed="${isFav}" aria-label="Ulubiony">${raw(icon('heart').s.replace('class="ico', isFav ? 'style="fill:var(--terra);stroke:var(--terra)" class="ico' : 'class="ico'))}</button>
         <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
       <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
-      ${pics.length > 1 ? html`<div class="dots" id="dots">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
-    <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>
-      <div class="meta">${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
+      ${pics.length > 1 ? html`<div class="dots" id="dots" style="">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
+    <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
+      <div class="meta">${boks(d) ? raw(boksPill(d, 'big')) : miejsce(d) === 'schronisko' && aktywny(d) ? html`<button class="boks add big" data-act="dog-miejsce" data-id="${id}">+ Boks</button>` : ''}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
       <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
+      ${wybrani(d) ? html`<div class="wybbox"><b>Tylko dla wybranych wolontariuszy</b><p>Powód: ${powody(d).join(', ') || 'nie podano'}${kto(d) ? html`<br>Mogą wychodzić: ${kto(d)}` : ''}</p></div>` : ''}
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
       <div class="rows">
         ${teczkaRows(d, zdr, { walks: mine, obs })}
@@ -196,12 +198,12 @@ export async function addPhoto(dogId) {
 actions['dog-photo'] = (el) => addPhoto(el.dataset.id);
 actions['unlock-sheet'] = () => unlockSheet();
 export function unlockSheet(after) {
-  openSheet(`<h2>Hasło koordynatora</h2><p class="hint" style="margin:0 0 14px">Odblokuje numery telefonów i dane osób zainteresowanych adopcją. Blokuje się samo po godzinie bez używania aplikacji.</p>
-    <form id="uf" novalidate><div class="field"><label for="up">Hasło koordynatora</label><input class="input" id="up" type="password" autocomplete="off" autocapitalize="off"></div><div class="err" id="ue" role="alert"></div><button class="btn block" type="submit">${icon('unlock').s} Odblokuj</button></form>`, (s) => {
+  openSheet(`<h2>Odblokuj uprawnienia</h2><p class="hint" style="margin:0 0 14px">Hasło koordynatora odblokuje numery telefonów i dane osób zainteresowanych adopcją (blokuje się samo po godzinie bez używania aplikacji). Hasło administratora daje wszystkie uprawnienia, także oznaczanie psów, i zostaje włączone na stałe.</p>
+    <form id="uf" novalidate><div class="field"><label for="up">Hasło koordynatora lub administratora</label><input class="input" id="up" type="password" autocomplete="off" autocapitalize="off"></div><div class="err" id="ue" role="alert"></div><button class="btn block" type="submit">${icon('unlock').s} Odblokuj</button></form>`, (s) => {
     s.querySelector('#uf').addEventListener('submit', async (e) => {
       e.preventDefault(); const b = s.querySelector('button'); b.disabled = true;
-      try { await unlock(s.querySelector('#up').value); closeSheet(); toast('Dane osobowe odblokowane'); after?.(); }
-      catch (err) { b.disabled = false; s.querySelector('#ue').textContent = err.status === 429 ? 'Za dużo prób. Spróbuj za kilka minut.' : err.status === 0 ? 'Brak połączenia.' : 'Nieprawidłowe hasło koordynatora.'; }
+      try { const r = await unlock(s.querySelector('#up').value); closeSheet(); toast(r && r.admin ? 'Tryb administratora włączony' : 'Dane osobowe odblokowane'); after?.(); }
+      catch (err) { b.disabled = false; s.querySelector('#ue').textContent = err.status === 429 ? 'Za dużo prób. Spróbuj za kilka minut.' : err.status === 0 ? 'Brak połączenia.' : 'Nieprawidłowe hasło.'; }
     });
     s.querySelector('#up').focus();
   });

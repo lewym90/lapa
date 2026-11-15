@@ -7,6 +7,8 @@ import { status as syncStatus, kick } from './sync.js';
 import * as db from './db.js';
 import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS } from './util.js';
 import { pickDog, dogThumb } from './screens-psy.js';
+import { raw } from './ui-core.js';
+import { boksPill, wybCls, linie, imieZnaki } from './znak.js';
 import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
 import { resetSiteStatus } from './teczka.js';
@@ -88,9 +90,9 @@ actions['a-event'] = () => eventForm();
 // ================= transport =================
 const TS = { szuka: 'Poszukiwany kierowca', przypisany: 'Przypisany', zrealizowany: 'Zrealizowany', anulowany: 'Anulowany' };
 export async function transport() {
-  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy);
+  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy), psy = Object.fromEntries((await list('psy')).map((d) => [d.id, d]));
   const act = all.filter((x) => x.status === 'szuka' || x.status === 'przypisany'), old = all.filter((x) => x.status === 'zrealizowany' || x.status === 'anulowany').reverse().slice(0, 8);
-  const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${x.pies_imie || 'Pies'}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : x.status === 'przypisany' ? '' : 'gold'}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}</button>`;
+  const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${raw(imieZnaki(psy[x.pies_id], x.pies_imie || 'Pies'))}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : x.status === 'przypisany' ? '' : 'gold'}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}</button>`;
   return {
     tab: 'start', title: 'Transport',
     html: html`${pageBar('Transport', { right: html`${plusBtn('a-trans', 'Zgłoś transport')}` })}
@@ -116,8 +118,8 @@ export function transForm() {
 }
 actions['a-trans'] = () => transForm();
 actions['tr-open'] = async (el) => {
-  const x = await get('transporty', el.dataset.id); if (!x) return;
-  openSheet(`<h2>${esc(x.pies_imie || 'Transport')}</h2><p class="sub" style="margin:0 0 8px">${esc(x.skad)} → ${esc(x.dokad)}<br>${esc(fmtDayLong(x.kiedy))}, ${esc(fmtTime(x.kiedy))}</p>
+  const x = await get('transporty', el.dataset.id); if (!x) return; const pd = x.pies_id ? await get('psy', x.pies_id) : null;
+  openSheet(`<h2>${esc(x.pies_imie || 'Transport')}</h2>${pd && imieZnaki(pd, '').trim() ? `<p style="margin:-4px 0 8px">${imieZnaki(pd, '').trim()}</p>` : ''}<p class="sub" style="margin:0 0 8px">${esc(x.skad)} → ${esc(x.dokad)}<br>${esc(fmtDayLong(x.kiedy))}, ${esc(fmtTime(x.kiedy))}</p>
     ${x.uwagi ? `<div class="notebox">${esc(x.uwagi)}</div>` : ''}<p class="hint" style="margin:10px 0">Status: <b>${TS[x.status]}</b>${x.kierowca ? ' · kierowca: ' + esc(x.kierowca) : ''} · zgłosił(a): ${esc(x.autor || '')}</p>
     <div class="btnrow" id="tb">${x.status === 'szuka' ? `<button class="btn" data-s="przypisany">${icon('truck').s} Mogę jechać</button>` : ''}
     ${x.status === 'przypisany' ? `<button class="btn" data-s="zrealizowany">${icon('check').s} Zrealizowany</button><button class="btn ghost" data-s="szuka">Nie mogę już jechać</button>` : ''}
@@ -139,7 +141,7 @@ export async function help() {
     tab: 'pomoc', title: 'Pomoc',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Pomoc</h1><span style="width:44px"></span></header>
     <div class="sec" style="margin-top:6px"><h2>Pies potrzebuje Ciebie</h2></div><div class="pad stack">
-    ${helpDogs.length ? helpDogs.map(({ d, needs }) => html`<div class="need"><a href="#/psy/${d.id}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit"><span class="avatar sm">${dogThumb(d)}</span><span style="flex:1"><b style="font-family:var(--serif);font-size:19px">${d.imie}</b>${d.status === 'pilne' ? html` <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>` : ''}</span>${icon('chev')}</a>
+    ${helpDogs.length ? helpDogs.map(({ d, needs }) => html`<div class="need"><a href="#/psy/${d.id}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit"><span class="avatar sm${wybCls(d)}">${dogThumb(d)}</span><span style="flex:1"><b style="font-family:var(--serif);font-size:19px">${d.imie}</b> ${raw(boksPill(d, 'in'))}${d.status === 'pilne' ? html` <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>` : ''}${raw(linie(d))}</span>${icon('chev')}</a>
       <div class="chips" style="margin-top:10px">${needs.map((k) => { const who = dec.filter((x) => x.pies_id === d.id && x.potrzeba === k).map((x) => x.imie), mine = who.includes(getName());
         return html`<button class="chip outline ${mine ? 'on' : ''}" data-act="decl" data-dog="${d.id}" data-need="${k}" aria-pressed="${mine}">${NEED_LABELS[k]}${who.length ? html` · ${names(who)}` : ''}</button>`; })}</div>
       ${needs.length ? html`<p class="hint" style="margin:8px 0 0">Kliknij potrzebę, żeby zgłosić, że się tym zajmujesz. Inni zobaczą Twoje imię.</p>` : ''}</div>`)
@@ -197,8 +199,8 @@ export async function settings() {
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Podpisuje Twoje wpisy, spacery i zgłoszenia.</p>
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       ${notif}
-      <section class="card"><h3>${icon('lock')} Dane osobowe</h3><p class="sub" style="margin:2px 0 12px">${state.coordinator ? 'Odblokowane hasłem koordynatora. Zablokują się same po godzinie bez używania aplikacji.' : 'Zablokowane. Numery telefonów i dane osób zainteresowanych adopcją widzi tylko koordynator.'}</p>
-        ${state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora</button>`}</section>
+      <section class="card"><h3>${icon('lock')} ${state.admin ? 'Administrator' : 'Dane osobowe'}</h3><p class="sub" style="margin:2px 0 12px">${state.admin ? 'Tryb administratora: wszystkie uprawnienia, także oznaczanie psów i krótki opis psa. Zostaje włączony na stałe na tym telefonie.' : state.coordinator ? 'Odblokowane hasłem koordynatora. Zablokują się same po godzinie bez używania aplikacji.' : 'Zablokowane. Numery telefonów i dane osób zainteresowanych adopcją widzi tylko koordynator.'}</p>
+        ${state.admin ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Wyłącz tryb administratora</button>` : state.coordinator ? html`<button class="btn ghost block" data-act="set-lock">${icon('lock')} Zablokuj teraz</button>` : html`<button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem koordynatora lub administratora</button>`}</section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button><button class="btn ghost" data-act="set-resync">Pobierz dane od nowa</button></div></section>
       <section class="card"><h3>Strona schroniska</h3><p class="sub" style="margin:2px 0 12px" id="sitest">Sprawdzam…</p>
@@ -220,7 +222,7 @@ actions['set-site'] = async () => {
     if (i >= 3 && !s.running && s.t === t0) { toast('Serwer sprawdzał stronę przed chwilą'); return; }
   }
 };
-actions['set-lock'] = async () => { await lock(); toast('Dane osobowe zablokowane'); };
+actions['set-lock'] = async () => { const a = state.admin; await lock(); toast(a ? 'Tryb administratora wyłączony' : 'Dane osobowe zablokowane'); };
 actions['set-update'] = () => { toast('Sprawdzam…'); checkUpdate({ manual: true }); };
 actions['set-sync'] = () => { kick(10); toast('Synchronizuję…'); };
 actions['set-resync'] = async () => { await db.metaSet('cursor', 0); await db.metaSet('cursor_private', 0); kick(10); toast('Pobieram wszystko od nowa…'); };

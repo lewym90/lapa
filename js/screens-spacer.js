@@ -1,9 +1,11 @@
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
 import { list, save, get, remove } from './store.js';
 import { getName } from './auth.js';
 import { fmtDate, fmtTime, hhmm, minutesText, ago, distanceKm, uid } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
+import { boksPill, wybCls, linie, opisLine, wybPill } from './znak.js';
+
 
 const WK = 'lapa.walk';
 const readWalk = () => { try { return JSON.parse(localStorage.getItem(WK)); } catch { return null; } };
@@ -35,7 +37,7 @@ export async function pick() {
     mount(root) {
       const l = root.querySelector('#wl');
       const paint = (q) => {
-        l.innerHTML = dogs.filter((d) => (d.imie || '').toLowerCase().includes(q.toLowerCase())).map((d) => `<button class="row card" style="border:0" data-dog="${esc(d.id)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)}</b><small>${last(d.id) ? 'ostatni spacer: ' + ago(last(d.id)) : 'bez udokumentowanego spaceru'}</small></span>${icon('chev').s}</button>`).join('');
+        l.innerHTML = dogs.filter((d) => (d.imie || '').toLowerCase().includes(q.toLowerCase())).map((d) => `<button class="row card" style="border:0" data-dog="${esc(d.id)}"><span class="avatar sm${wybCls(d)}">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${last(d.id) ? 'ostatni spacer: ' + ago(last(d.id)) : 'bez udokumentowanego spaceru'}</small></span>${icon('chev').s}</button>`).join('');
         hydratePhotos(l);
       };
       paint('');
@@ -60,7 +62,7 @@ export async function walk(dogId) {
   return {
     tab: 'start', nav: false, title: 'Spacer z wolontariuszem', live: false,
     html: html`${pageBar('Spacer', { back: true })}
-    <section class="walkhero"><div class="avatar">${dogThumb(d)}</div><h2 style="font-size:32px;margin-top:12px">${d.imie}</h2>
+    <section class="walkhero"><div class="avatar${wybCls(d)}">${dogThumb(d)}</div><h2 style="font-size:32px;margin-top:12px">${d.imie} ${raw(boksPill(d, 'in'))}</h2>${raw(opisLine(d, 'na-ciemnym'))}${raw(wybPill(d, 'pill'))}
       <div class="pulse" style="margin-top:8px">Spacer trwa</div><div class="timer" id="timer" aria-live="off">${hhmm(Date.now() - w.start)}</div>
       <div class="hint" style="color:var(--sage)" id="dist">${w.gps ? 'Dystans: ' + w.dist.toFixed(2).replace('.', ',') + ' km' : 'Rozpoczęto o ' + fmtTime(w.start)}</div></section>
     <div class="quick">
@@ -139,8 +141,8 @@ export async function report(id) {
   return {
     tab: 'start', nav: false, title: 'Raport ze spaceru',
     html: html`${pageBar('Raport ze spaceru')}<div class="pad"><section class="card" style="padding:18px">
-      <div style="display:flex;gap:14px;align-items:center"><span class="avatar sm">${d ? dogThumb(d) : html`<div class="nophoto">${icon('paw')}</div>`}</span>
-        <div><h2 style="font-size:26px;color:var(--graphite)">${w.pies_imie}</h2><div class="sub">Spacer · ${fmtDate(w.start)} · ${w.autor || ''}</div></div></div>
+      <div style="display:flex;gap:14px;align-items:center"><span class="avatar sm${d ? wybCls(d) : ''}">${d ? dogThumb(d) : html`<div class="nophoto">${icon('paw')}</div>`}</span>
+        <div><h2 style="font-size:26px;color:var(--graphite)">${w.pies_imie} ${d ? raw(boksPill(d, 'in')) : ''}</h2>${d ? raw(linie(d)) : ''}<div class="sub">Spacer · ${fmtDate(w.start)} · ${w.autor || ''}</div></div></div>
       <ul class="tl" style="margin-top:14px">${(w.os_czasu || []).map((e) => html`<li><span class="dotp"></span><span class="tm">${fmtTime(e.t)}</span><span>${e.txt}</span></li>`)}</ul>
       <div class="stats"><div class="stat">${icon('route')}<div><small>Dystans</small><b>${w.dystans_km ? w.dystans_km.toFixed(1).replace('.', ',') + ' km' : '—'}</b></div></div>
         <div class="stat">${icon('clock')}<div><small>Czas</small><b>${minutesText(w.czas_min || 0)}</b></div></div></div>
@@ -148,7 +150,7 @@ export async function report(id) {
       <h3 style="font-size:18px;margin:6px 0 8px;display:flex;justify-content:space-between">Notatka ze spaceru <button class="iconbtn" style="width:32px;height:32px;color:var(--green)" data-act="rep-note" data-id="${id}" aria-label="Edytuj notatkę">${icon('pencil')}</button></h3>
       <div class="notebox">${w.notatka || 'Bez notatki.'}</div>
       ${(w.zdjecia || []).length ? html`<h3 style="font-size:18px;margin:16px 0 8px">Zdjęcia (${w.zdjecia.length})</h3><div class="thumbs">${w.zdjecia.map((p) => html`<div class="thumb"><img data-photo="${p}" alt="Zdjęcie ze spaceru" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></div>`)}</div>` : ''}
-      ${w.osoba ? html`<p class="sub" style="margin:8px 0">Kto szedł: ${w.osoba}</p>` : ''}${(w.tagi || []).length ? html`<div class="chips" style="margin-bottom:10px">${w.tagi.map((t) => html`<span class="chip">${t}</span>`)}</div>` : ''}
+      ${w.osoba || w.kontakt ? html`<p class="sub" style="margin:8px 0">Kto szedł: ${[w.osoba, w.kontakt].filter(Boolean).join(' · ')}</p>` : ''}${(w.tagi || []).length ? html`<div class="chips" style="margin-bottom:10px">${w.tagi.map((t) => html`<span class="chip">${t}</span>`)}</div>` : ''}
       <a class="btn block" style="margin-top:20px" href="#/psy/${w.pies_id}">${icon('check')} Gotowe</a>
       <button class="btn ghost block" style="margin-top:10px;color:var(--terra-d)" data-act="rep-del" data-id="${id}">Usuń ten spacer (pomyłka)</button></section></div>`,
     mount(root) { hydratePhotos(root); }

@@ -3,6 +3,8 @@
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, plusBtn } from './ui.js';
 import { list, save, get } from './store.js';
 import { on } from './bus.js';
+import { raw } from './ui-core.js';
+import { boksPill, wybCls, linie } from './znak.js';
 import { state } from './auth.js';
 import { fmtDate, MS_DAY } from './util.js';
 import { dogThumb, addPhoto, obsForm } from './screens-psy.js';
@@ -52,7 +54,7 @@ export async function nowe() {
     ${items.length ? items.map((d) => {
       const w = walks.filter((x) => x.pies_id === d.id), sk = stanKarty(d, walks, zdr), br = sk.brak;
       const trust = zaufanieAktywne(d, w);
-      return html`<a class="row card" style="border:0" href="#/nowe/${d.id}"><span class="avatar sm">${dogThumb(d)}</span><span class="rt"><b>${d.imie}</b><small>${sk.done} z ${sk.total}${trust ? ' · zdobywamy zaufanie od ' + dniOd(d.zaufanie) + ' ' + plural(dniOd(d.zaufanie), 'dnia', 'dni', 'dni') : ''}${br.length ? ' · brakuje: ' + br.join(', ') : ''}</small></span>${icon('chev')}</a>`;
+      return html`<a class="row card" style="border:0" href="#/nowe/${d.id}"><span class="avatar sm${wybCls(d)}">${dogThumb(d)}</span><span class="rt"><b>${d.imie} ${raw(boksPill(d, 'in'))}</b>${raw(linie(d))}<small>${sk.done} z ${sk.total}${trust ? ' · zdobywamy zaufanie od ' + dniOd(d.zaufanie) + ' ' + plural(dniOd(d.zaufanie), 'dnia', 'dni', 'dni') : ''}${br.length ? ' · brakuje: ' + br.join(', ') : ''}</small></span>${icon('chev')}</a>`;
     }) : html`<div class="empty">${icon('paw')}<h3>Nie ma psów w toku</h3><p>Nowego psa dodasz przyciskiem + u góry albo dużym plusem na dole.</p></div>`}</div>`,
     mount(root) { hydratePhotos(root); }
   };
@@ -83,6 +85,7 @@ export async function przyjecie(id) {
     tab: 'psy', title: 'Karta przyjęcia: ' + d.imie, live: true,
     html: html`${pageBar(d.imie, { right: html`<a class="iconbtn" href="#/psy/${id}" aria-label="Otwórz kartę psa">${icon('paw')}</a>` })}
     <div class="pad stack">
+      ${boksPill(d) || linie(d) ? raw(`<div style="color:var(--ivory)">${boksPill(d)}${linie(d).replace('class="opisl"', 'class="opisl na-ciemnym"')}</div>`) : ''}
       <div><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="${st.length}" aria-valuenow="${done}"><i style="width:${Math.round(done / st.length * 100)}%"></i></div><p class="hint" style="color:var(--sage);margin:6px 0 0">${done} z ${st.length} kroków. Każdy krok zapisuje się od razu i możesz do niego wrócić.</p></div>
       ${gotowa ? html`<div class="teraz"><b>Karta jest kompletna</b><p>Pies jest już tylko w sekcji Psy. Kroki dalej możesz poprawiać.</p><div class="btnrow"><button class="btn sm ghost" data-act="nw-reopen" data-id="${id}">Wróć do uzupełniania</button></div></div>`
         : d.nowy && d.karta_otwarta && !br.length ? html`<div class="teraz"><b>Wymagane kroki są gotowe</b><div class="btnrow"><button class="btn sm" data-act="nw-close" data-id="${id}">Zakończ uzupełnianie</button></div></div>`
@@ -116,13 +119,14 @@ actions['nw-step'] = async (el) => {
       <div class="field"><label for="p_w">Wiek</label><input class="input" id="p_w" maxlength="40" placeholder="np. ok. 2 lata" value="${esc(d.wiek || '')}"></div>
       <div class="field"><label for="p_r">Wielkość</label><input class="input" id="p_r" maxlength="30" placeholder="np. średni" value="${esc(d.wielkosc || '')}"></div>
       <div class="field"><label for="p_d">Data przyjęcia</label><input class="input" id="p_d" type="date" value="${d.data_przyjecia ? d10(d.data_przyjecia) : ''}"></div>
+      <div class="field"><label for="p_b">Numer boksu (opcjonalnie)</label><input class="input" id="p_b" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="np. 12" value="${esc(d.boks || '')}"></div>
       <div class="field"><label for="p_c">Numer czipa (opcjonalnie)</label><input class="input" id="p_c" maxlength="20" inputmode="numeric" value="${esc(d.chip || '')}"></div>
       <div class="err" id="p_e"></div><button class="btn block" type="submit">Zapisz</button>
       <button type="button" class="btn ghost block" style="margin-top:10px" data-sheet-close>Zamknij</button></form>`, (s) => {
       s.querySelector('#f1').addEventListener('submit', async (e) => {
         e.preventDefault(); const imie = s.querySelector('#p_i').value.trim(); if (!imie) { s.querySelector('#p_e').textContent = 'Wpisz imię (może być robocze).'; return; }
         const dd = s.querySelector('#p_d').value;
-        await zmien(id, (x) => ({ ...x, imie, plec: s.querySelector('#p_p').value, wiek: s.querySelector('#p_w').value.trim(), wielkosc: s.querySelector('#p_r').value.trim(), chip: s.querySelector('#p_c').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null }));
+        await zmien(id, (x) => ({ ...x, imie, plec: s.querySelector('#p_p').value, wiek: s.querySelector('#p_w').value.trim(), wielkosc: s.querySelector('#p_r').value.trim(), chip: s.querySelector('#p_c').value.trim(), boks: s.querySelector('#p_b').value.replace(/\D/g, ''), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null }));
         await done(id);
       });
     });

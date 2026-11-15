@@ -7,6 +7,8 @@ import * as db from './db.js';
 import { uid, slug, fmtTime, fmtDayLong, fmtDate } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { pickDog, dogThumb } from './screens-psy.js';
+import { wybCls, linie, boksPill, imieZnaki } from './znak.js';
+let PSY = {}; // psy do znaczków przy załącznikach (boks, opis, „tylko wybrani”)
 import { promptCard, pushRead, prefs } from './push.js';
 
 const ls = {
@@ -94,7 +96,7 @@ function msgHtml(m, prev, ctx) {
   if (m.re) o += q0 ? `<button class="cq" data-act="c-quote" data-id="${esc(m.re)}"><b>${esc(q0.autor || '')}</b> ${esc(snip(q0, 70))}</button>` : '<div class="cq gone">Wiadomość usunięta</div>';
   if (m.text) o += `<div class="ct">${fmtText(m.text, me)}</div>`;
   if (m.foto) o += `<img class="cfoto" data-photo="${esc(m.foto)}" data-act="c-photo" data-id="${esc(m.foto)}" alt="Zdjęcie w czacie" loading="lazy">`;
-  if (m.ref) o += `<button class="cref" data-act="c-ref" data-t="${esc(m.ref.typ)}" data-id="${esc(m.ref.id)}">${icon(REFICON[m.ref.typ] || 'pin').s}<span>${esc(m.ref.nazwa || '')}</span>${icon('chev').s}</button>`;
+  if (m.ref) o += `<button class="cref" data-act="c-ref" data-t="${esc(m.ref.typ)}" data-id="${esc(m.ref.id)}">${icon(REFICON[m.ref.typ] || 'pin').s}<span>${m.ref.typ === 'pies' && PSY[m.ref.id] ? imieZnaki(PSY[m.ref.id], m.ref.nazwa || '') : esc(m.ref.nazwa || '')}</span>${icon('chev').s}</button>`;
   if (pro) {
     const names = rece.join(', ');
     o += `<div class="cpro">${rece.length ? `Zgłosili się: <b>${esc(names)}</b>` : 'Nikt jeszcze się nie zgłosił.'}`;
@@ -117,6 +119,7 @@ async function load() {
 }
 
 async function paint(open = false) {
+  PSY = Object.fromEntries((await list('psy')).map((d) => [d.id, d]));
   const box = document.getElementById('c-msgs'); if (!box) return;
   const { all, byId, re } = await load(), me = getName();
   const nb = innerHeight + scrollY >= document.documentElement.scrollHeight - 180;
@@ -305,7 +308,7 @@ actions['c-ref'] = async (el) => {
   const t = el.dataset.t, id = el.dataset.id, none = () => openSheet('<h2>Nie ma już tego wpisu</h2><p class="hint">Mógł zostać usunięty.</p><button class="btn ghost block" data-sheet-close>Zamknij</button>');
   if (t === 'pies') {
     const d = await get('psy', id); if (!d) return none();
-    openSheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:10px"><span class="avatar" style="width:84px;height:84px">${dogThumb(d).s}</span><div><h2 style="margin:0">${esc(d.imie)}</h2><div class="sub">${esc([d.plec, d.wiek, d.wielkosc, d.status && STATUS[d.status]].filter(Boolean).join(' · '))}</div></div></div>
+    openSheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:10px"><span class="avatar${wybCls(d)}" style="width:84px;height:84px">${dogThumb(d).s}</span><div><h2 style="margin:0">${esc(d.imie)} ${boksPill(d, 'in')}</h2>${linie(d)}<div class="sub">${esc([d.plec, d.wiek, d.wielkosc, d.status && STATUS[d.status]].filter(Boolean).join(' · '))}</div></div></div>
       ${d.haslo ? `<p class="hint" style="margin:0 0 6px">${esc(d.haslo)}</p>` : ''}${d.opis ? `<p style="margin:0 0 12px;color:var(--graphite)">${esc(String(d.opis).slice(0, 260))}${d.opis.length > 260 ? '…' : ''}</p>` : ''}
       <button class="btn gold block" data-go="#/psy/${esc(id)}">Otwórz pełną kartę psa</button><button class="btn ghost block" style="margin-top:8px" data-sheet-close>Wróć do czatu</button>`, (s) => { hydratePhotos(s); goBtn(s); });
   } else if (t === 'zag') {

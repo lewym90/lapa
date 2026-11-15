@@ -1,4 +1,6 @@
 // Droga adopcji i domy tymczasowe: dane osobowe, tylko po odblokowaniu hasłem koordynatora (kolekcje p_*).
+import { raw } from './ui-core.js';
+import { wybCls, imieZnaki } from './znak.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
@@ -60,7 +62,7 @@ function autoNext(o) {
 // ===== szczegóły osoby =====
 actions['adopcja-open'] = async (el) => {
   const a = await get('p_adopcje', el.dataset.id); if (!a) return; const d = await get('psy', a.pies_id), e = etapOf(a), i = ORDER.indexOf(e), nx = AKTYWNE.includes(e) ? ORDER[i + 1] : null;
-  openSheet(`<h2>${esc(a.imie)}</h2><p class="sub" style="margin:0 0 8px">Pies: <b>${esc(d?.imie || '?')}</b> · ${esc(ETAP[e])}${a.miasto ? ' · ' + esc(a.miasto) : ''}</p>
+  openSheet(`<h2>${esc(a.imie)}</h2><p class="sub" style="margin:0 0 8px">Pies: <b>${d ? imieZnaki(d) : '?'}</b> · ${esc(ETAP[e])}${a.miasto ? ' · ' + esc(a.miasto) : ''}</p>
     ${a.telefon ? `<div class="btnrow"><a class="btn" href="tel:${esc(tel(a.telefon))}">Zadzwoń</a><a class="btn ghost" href="sms:${esc(tel(a.telefon))}">SMS</a><a class="btn ghost" target="_blank" rel="noopener" href="https://wa.me/${esc(tel(a.telefon).replace(/^\+/, '').replace(/^(\d{9})$/, '48$1'))}">WhatsApp</a></div>` : ''}
     ${a.notatka ? `<div class="notebox" style="margin-top:10px">${esc(a.notatka)}</div>` : ''}
     <div class="field" style="margin-top:12px"><label for="n_d">Następny krok</label><input class="input" id="n_o" maxlength="100" placeholder="co zrobić" value="${esc(a.nastepny_opis || '')}"><input class="input" id="n_t" type="date" style="margin-top:6px" value="${a.nastepny ? d10(a.nastepny) : ''}"></div>
@@ -98,7 +100,7 @@ export async function adopcje() {
     html: html`${pageBar('Adopcje', { right: html`${plusBtn('ad-new', 'Dodaj')}` })}
     <div class="fchips">${[['aktywne', 'W toku'], ['moje', 'Moje'], ['zakonczone', 'Zakończone'], ['wszystkie', 'Wszystkie']].map(([k, l]) => html`<button class="chip dark ${fAd === k ? 'on' : ''}" data-act="ad-filter" data-k="${k}">${l}</button>`)}</div>
     <div class="pad stack">${late ? html`<p class="hint" style="color:var(--gold-l);margin:0">Zaległe kroki: ${late}</p>` : ''}
-    ${items.length ? items.map((a) => { const d = byId[a.pies_id], over = a.nastepny && a.nastepny < now && AKTYWNE.includes(etapOf(a)); return html`<div class="card gap"><button class="gi" data-act="adopcja-open" data-id="${a.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp">${d ? dogThumb(d) : ''}</span><span class="rt"><b>${a.imie} · ${d?.imie || '?'}</b><small>${ETAP[etapOf(a)]}${a.prowadzi ? ' · ' + a.prowadzi : ''}</small><small style="${over ? 'color:var(--terra-d);font-weight:600' : ''}">${a.nastepny ? (over ? 'Zaległe: ' : '') + (a.nastepny_opis || 'Następny krok') + ' · ' + fmtDate(a.nastepny) : 'Brak ustalonego kroku'}</small></span></button></div>`; })
+    ${items.length ? items.map((a) => { const d = byId[a.pies_id], over = a.nastepny && a.nastepny < now && AKTYWNE.includes(etapOf(a)); return html`<div class="card gap"><button class="gi" data-act="adopcja-open" data-id="${a.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp${d ? wybCls(d) : ''}">${d ? dogThumb(d) : ''}</span><span class="rt"><b>${a.imie} · ${d ? raw(imieZnaki(d)) : '?'}</b><small>${ETAP[etapOf(a)]}${a.prowadzi ? ' · ' + a.prowadzi : ''}</small><small style="${over ? 'color:var(--terra-d);font-weight:600' : ''}">${a.nastepny ? (over ? 'Zaległe: ' : '') + (a.nastepny_opis || 'Następny krok') + ' · ' + fmtDate(a.nastepny) : 'Brak ustalonego kroku'}</small></span></button></div>`; })
       : html`<div class="empty">${icon('heart')}<h3>Nikogo tu nie ma</h3><p>Dodaj osobę przyciskiem + albo z karty psa.</p></div>`}</div>`,
     mount(root) { hydratePhotos(root); }
   };
@@ -123,7 +125,7 @@ export async function dt() {
     <div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Pies jest przypisany do opiekuna, gdy w jego karcie wybierzesz miejsce „W domu tymczasowym” i wpiszesz to samo imię opiekuna.</p>
     ${rows.length ? rows.map((p) => { const l = living(p), free = Math.max(0, (+p.pojemnosc || 1) - l.length); return html`<div class="card"><button class="rowbtn" data-act="dt-open" data-id="${p.id}" style="width:100%;text-align:left;background:none;border:0;padding:0"><b>${p.imie}</b> <span class="chip ${free && p.dostepny !== false ? '' : 'outline'}">${p.dostepny === false ? 'Niedostępny' : free ? 'Wolne miejsca: ' + free : 'Komplet'}</span>
       <div class="hint">${[p.miasto, (p.umie || []).map((k) => (UMIE.find((x) => x[0] === k) || [])[1]).filter(Boolean).join(', ')].filter(Boolean).join(' · ')}</div>
-      ${l.length ? html`<div class="hint">Ma teraz: ${l.map((d) => d.imie).join(', ')}</div>` : ''}</button></div>`; })
+      ${l.length ? html`<div class="hint">Ma teraz: ${raw(l.map((d) => imieZnaki(d)).join(', '))}</div>` : ''}</button></div>`; })
       : html`<div class="empty">${icon('heart')}<h3>Brak opiekunów</h3><p>Dodaj osoby, które przyjmują psy do domu tymczasowego.</p></div>`}</div>`
   };
 }

@@ -1,11 +1,13 @@
 // Teczka psa: miejsce pobytu, zdrowie, ocena zachowania, publikacja per kanał, teksty do postów, zaległości.
 import { html, icon, esc, openSheet, closeSheet, toast, actions, confirmSheet } from './ui.js';
 import { list, save, remove, get } from './store.js';
-import { getName } from './auth.js';
+import { getName, state } from './auth.js';
 import { MS_DAY, fmtDate, uid } from './util.js';
 import { SITE } from './config.js';
 import { api } from './api.js';
 import { on } from './bus.js';
+import { boks, wybrani, POWODY, OPISY, opis as opisAdm, powody, boksPill, wybCls, linie } from './znak.js';
+import { raw } from './ui-core.js';
 
 export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['adoptowany', 'Adoptowany'], ['zaginiony', 'Zaginiony'], ['zmarl', 'Odszedł za tęczowy most']];
 export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['yt', 'YouTube'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
@@ -90,7 +92,8 @@ export function teczkaRows(d, zdr, ctx = {}) {
   const due = zdrDue(zdr);
   const dni = d.data_przyjecia && m === 'schronisko' ? days(d.data_przyjecia) : null;
   return html`
-    <button class="row" data-act="dog-miejsce" data-id="${d.id}">${icon('pin')}<span class="rt"><b>${(MIEJSCA.find((x) => x[0] === m) || [])[1]}${d.opiekun ? ' · ' + d.opiekun : ''}</b><small>${d.data_przyjecia ? 'Od ' + fmtDate(d.data_przyjecia) + (dni !== null ? ` · ${dni} ${plural(dni, 'dzień', 'dni', 'dni')} w schronisku` : '') : 'Dodaj datę przyjęcia, czip i opiekuna'}${d.chip ? ' · czip ' + d.chip : ''}</small></span>${icon('chev')}</button>
+    <button class="row" data-act="dog-miejsce" data-id="${d.id}">${icon('pin')}<span class="rt"><b>${(MIEJSCA.find((x) => x[0] === m) || [])[1]}${boks(d) ? ' · boks ' + boks(d) : m === 'schronisko' ? ' · boks: uzupełnij' : ''}${d.opiekun ? ' · ' + d.opiekun : ''}</b><small>${d.data_przyjecia ? 'Od ' + fmtDate(d.data_przyjecia) + (dni !== null ? ` · ${dni} ${plural(dni, 'dzień', 'dni', 'dni')} w schronisku` : '') : 'Dodaj datę przyjęcia, czip i opiekuna'}${d.chip ? ' · czip ' + d.chip : ''}</small></span>${icon('chev')}</button>
+    ${state.admin ? html`<button class="row adminrow" data-act="dog-oznacz" data-id="${d.id}">${icon('star')}<span class="rt"><b>Oznaczenie i opis psa (administrator)</b><small>${[wybrani(d) ? 'Tylko dla wybranych' + (powody(d).length ? ': ' + powody(d).join(', ') : '') : 'Bez oznaczenia', opisAdm(d) ? 'opis: „' + opisAdm(d) + '”' : 'bez opisu'].join(' · ')}</small></span>${icon('chev')}</button>` : ''}
     ${d.nowy ? html`<a class="row" href="#/nowe/${d.id}">${icon('pencil')}<span class="rt"><b>Karta przyjęcia${d.karta_gotowa ? '' : ': ' + stanKarty(d, ctx.walks || [], zdr).done + ' z 8 kroków'}</b><small>${d.karta_gotowa ? 'Kompletna. Możesz poprawić każdy krok' : 'Uzupełniaj krok po kroku, w swoim tempie'}</small></span>${icon('chev')}</a>` : ''}
     ${m === 'zmarl' || m === 'zaginiony' ? '' : html`<div class="droga" aria-label="Droga psa"><div class="steps">${dr.steps.map(([l, st]) => html`<span class="${st}">${st === 'ok' ? '✓ ' : ''}${l}</span>`)}</div>
       ${dr.trust ? html`<div class="teraz"><b>Zdobywamy zaufanie od ${days(d.zaufanie)} ${plural(days(d.zaufanie), 'dnia', 'dni', 'dni')}</b><p>Bez pośpiechu. Liczy się każda drobna zmiana: podszedł, wziął smakołyk, nie odsunął się.${lastObs ? ' Ostatnia notatka: ' + (days(lastObs.ts) ? days(lastObs.ts) + ' ' + plural(days(lastObs.ts), 'dzień', 'dni', 'dni') + ' temu' : 'dziś') + '.' : ''}</p>
@@ -107,15 +110,44 @@ actions['dog-miejsce'] = async (el) => {
   const d = await get('psy', el.dataset.id);
   openSheet(`<h2>Gdzie jest ${esc(d.imie)}?</h2><form id="mf" novalidate>
     ${SEL('mm', 'Miejsce pobytu', MIEJSCA, miejsce(d))}
+    <div class="field"><label for="mb">Numer boksu (gdy pies jest w schronisku)</label><input class="input" id="mb" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="np. 12" value="${esc(d.boks || '')}"></div>
     <div class="field"><label for="mo">Opiekun / dom tymczasowy / hotelik (opcjonalnie)</label><input class="input" id="mo" maxlength="80" value="${esc(d.opiekun || '')}"></div>
     <div class="field"><label for="md">Data przyjęcia do schroniska</label><input class="input" id="md" type="date" value="${d.data_przyjecia ? d10(d.data_przyjecia) : ''}"></div>
     <div class="field"><label for="mc">Numer czipa (opcjonalnie)</label><input class="input" id="mc" maxlength="20" inputmode="numeric" value="${esc(d.chip || '')}"></div>
     <button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
     s.querySelector('#mf').addEventListener('submit', async (e) => {
       e.preventDefault(); const mm = s.querySelector('#mm').value, dd = s.querySelector('#md').value;
-      const o = { ...d, miejsce: mm, opiekun: s.querySelector('#mo').value.trim(), chip: s.querySelector('#mc').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null };
+      const o = { ...d, boks: s.querySelector('#mb').value.replace(/\D/g, ''), miejsce: mm, opiekun: s.querySelector('#mo').value.trim(), chip: s.querySelector('#mc').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null };
       if (mm === 'adoptowany') o.status = 'adoptowany'; else if (mm === 'dt') o.status = o.status === 'adoptowany' ? 'dt' : o.status === 'pilne' ? 'pilne' : 'dt'; else if (mm === 'hotelik') o.status = 'hotelik';
       await save('psy', o); closeSheet(); toast('Zapisane');
+    });
+  });
+};
+
+// ===== oznaczenie i krótki opis psa: wyłącznie administrator (kolekcja „oznaczenia”, bez podpisu autora) =====
+actions['dog-oznacz'] = async (el) => {
+  if (!state.admin) { toast('To może zmienić tylko administrator', true); return; }
+  const d = await get('psy', el.dataset.id); if (!d) return;
+  const o = d.ozn || {}, w = o.wybrani || {}, sel = new Set(w.powody || []);
+  openSheet(`<h2>Oznaczenie: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Widać je przy tym psie we wszystkich zakładkach, u wszystkich wolontariuszy. Nie widać, kto je ustawił.</p><form id="of2" novalidate>
+    <div class="field"><span class="lbl">Krótki opis psa (pod imieniem, zamiast hasła ze strony)</span><div class="chips" id="oz_o">${['', ...OPISY].map((k) => `<button type="button" class="chip outline ${(o.opis || '') === k ? 'on' : ''}" data-op="${esc(k)}" aria-pressed="${(o.opis || '') === k}">${k ? esc(k) : 'bez opisu'}</button>`).join('')}</div></div>
+    <label class="check" style="margin-top:6px"><input type="checkbox" id="oz_on" ${w.on ? 'checked' : ''}> <b>Tylko dla wybranych wolontariuszy</b> (czerwona obwódka)</label>
+    <div class="field" style="margin-top:12px"><span class="lbl">Dlaczego (możesz zaznaczyć kilka)</span><div class="chips">${POWODY.map(([k, l]) => `<button type="button" class="chip outline pw ${sel.has(k) ? 'on' : ''}" data-pw="${k}">${l}</button>`).join('')}</div></div>
+    <div class="field"><label for="oz_i">Inny powód (opcjonalnie)</label><input class="input" id="oz_i" maxlength="40" placeholder="np. ucieka, gryzie smycz" value="${esc(w.inny || '')}" data-nodraft></div>
+    <div class="field"><label for="oz_k">Kto może z nim wychodzić (opcjonalnie)</label><input class="input" id="oz_k" maxlength="120" placeholder="np. Justyna, Marek" value="${esc(w.kto || '')}" data-nodraft></div>
+    <div class="err" id="oz_e" role="alert"></div><button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
+    const on = s.querySelector('#oz_on'); let op = OPISY.includes(o.opis) ? o.opis : '';
+    s.querySelectorAll('[data-op]').forEach((b) => b.addEventListener('click', () => { op = b.dataset.op; s.querySelectorAll('[data-op]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); }); }));
+    s.querySelectorAll('[data-pw]').forEach((b) => b.addEventListener('click', () => { const k = b.dataset.pw; sel.has(k) ? sel.delete(k) : sel.add(k); b.classList.toggle('on'); if (sel.size) on.checked = true; }));
+    s.querySelector('#oz_i').addEventListener('input', (e) => { if (e.target.value.trim()) on.checked = true; });
+    s.querySelector('#of2').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inny = s.querySelector('#oz_i').value.trim();
+      if (on.checked && !sel.size && !inny) { s.querySelector('#oz_e').textContent = 'Zaznacz powód (wycofany, trudny, silny) albo wpisz inny.'; return; }
+      const wyb = on.checked ? { on: true, powody: POWODY.map(([k]) => k).filter((k) => sel.has(k)), inny, kto: s.querySelector('#oz_k').value.trim() } : null;
+      if (!op && !wyb) await remove('oznaczenia', d.id);
+      else await save('oznaczenia', { id: d.id, opis: op, wybrani: wyb });
+      closeSheet(); toast('Zapisane');
     });
   });
 };
@@ -331,7 +363,7 @@ export async function zrobic() {
   const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
   return {
     tab: 'start', title: 'Dziś i do zrobienia', live: true,
-    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div><div class="sec" style="margin-top:0"><h2>Do uzupełnienia u psów</h2></div><div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Serwer nie mógł sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="set-site">Sprawdź teraz</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie}</b><small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
+    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div><div class="sec" style="margin-top:0"><h2>Do uzupełnienia u psów</h2></div><div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Serwer nie mógł sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="set-site">Sprawdź teraz</button></div>` : ''}${g.length ? g.map((x) => html`<div class="card gap"><a class="gi" href="#/psy/${x.d.id}"><span class="gp${wybCls(x.d)}">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie} ${raw(boksPill(x.d, 'in'))}</b>${raw(linie(x.d))}<small>${x.text}</small></span></a><button class="btn sm ghost" data-act="${x.act}" data-id="${x.d.id}">Otwórz</button></div>`)
       : (err ? '' : html`<div class="empty">${icon('check')}<h3>Wszystko ogarnięte</h3><p>Brak zaległości. Nowe pojawią się tu same.</p></div>`)}</div>`,
     mount(root) { import('./photos.js').then((m) => m.hydratePhotos(root)); }
   };

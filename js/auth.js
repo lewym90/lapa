@@ -3,8 +3,8 @@ import { COORD_IDLE_MS } from './config.js';
 import { emit } from './bus.js';
 import * as db from './db.js';
 
-export const state = { loggedIn: !!getToken(), coordinator: false };
-const NAME = 'lapa.name', COORD = 'lapa.coordLast';
+export const state = { loggedIn: !!getToken(), coordinator: false, admin: false };
+const NAME = 'lapa.name', COORD = 'lapa.coordLast', ADMIN = 'lapa.admin';
 const ls = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* */ } }
@@ -14,39 +14,43 @@ export const setName = (n) => { ls.set(NAME, n.trim().slice(0, 40)); emit('auth'
 
 export async function login(password) {
   const r = await api('/auth/login', { method: 'POST', body: { password }, auth: false });
-  setToken(r.token); state.loggedIn = true; state.coordinator = !!r.coordinator;
+  setToken(r.token); state.loggedIn = true; state.coordinator = !!r.coordinator; state.admin = !!r.admin;
+  ls.set(ADMIN, r.admin ? '1' : null);
   if (r.coordinator) ls.set(COORD, String(Date.now())); else ls.set(COORD, null);
   emit('auth'); return r;
 }
 export async function unlock(password) {
   const r = await api('/auth/unlock', { method: 'POST', body: { password } });
-  state.coordinator = true; ls.set(COORD, String(Date.now())); emit('auth'); emit('unlocked'); return r;
+  state.coordinator = true; state.admin = !!r.admin; ls.set(ADMIN, r.admin ? '1' : null); ls.set(COORD, String(Date.now())); emit('auth'); emit('unlocked'); return r;
 }
 export async function lock(notifyServer = true) {
-  state.coordinator = false; ls.set(COORD, null);
+  state.coordinator = false; state.admin = false; ls.set(COORD, null); ls.set(ADMIN, null);
   await db.purgePrivate().catch(() => {});
   if (notifyServer && getToken()) api('/auth/lock', { method: 'POST' }).catch(() => {});
   emit('auth'); emit('change', { col: 'p_' });
 }
 export async function logout() {
   if (getToken()) await api('/auth/logout', { method: 'POST' }).catch(() => {});
-  setToken(null); state.loggedIn = false; state.coordinator = false; ls.set(COORD, null);
+  setToken(null); state.loggedIn = false; state.coordinator = false; state.admin = false; ls.set(COORD, null); ls.set(ADMIN, null);
   await db.wipeAll().catch(() => {});
   emit('auth');
 }
 export function sessionLost() {
-  setToken(null); state.loggedIn = false; state.coordinator = false; ls.set(COORD, null);
+  setToken(null); state.loggedIn = false; state.coordinator = false; state.admin = false; ls.set(COORD, null); ls.set(ADMIN, null);
   db.purgePrivate().catch(() => {}); emit('auth');
 }
 
 // Start aplikacji: sprawdź sesję na serwerze (gdy jest zasięg) i stan odblokowania koordynatora.
 export async function init() {
   if (!state.loggedIn) return;
+  // Administrator zostaje zalogowany (bez blokady po godzinie); koordynator blokuje się po godzinie bez aktywności.
+  state.admin = ls.get(ADMIN) === '1';
   const last = +ls.get(COORD) || 0;
-  state.coordinator = last > 0 && Date.now() - last < COORD_IDLE_MS;
+  state.coordinator = state.admin || (last > 0 && Date.now() - last < COORD_IDLE_MS);
   if (last && !state.coordinator) await lock(false);
   try {
     const s = await api('/auth/status');
+    if (state.admin && !s.admin) { state.admin = false; ls.set(ADMIN, null); state.coordinator = !!s.coordinator && Date.now() - last < COORD_IDLE_MS; emit('auth'); }
     if (state.coordinator && !s.coordinator) await lock(false);
   } catch (e) { if (!(e instanceof ApiError) || e.status !== 401) { /* offline – zostajemy zalogowani */ } }
 }
@@ -55,12 +59,12 @@ export async function init() {
 let lastSave = 0;
 function activity() {
   markActive();
-  if (state.coordinator && Date.now() - lastSave > 15000) { lastSave = Date.now(); ls.set(COORD, String(lastSave)); }
+  if (state.coordinator && !state.admin && Date.now() - lastSave > 15000) { lastSave = Date.now(); ls.set(COORD, String(lastSave)); }
 }
 ['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach((ev) => addEventListener(ev, activity, { passive: true, capture: true }));
 setInterval(() => {
-  if (state.coordinator && Date.now() - (+ls.get(COORD) || 0) > COORD_IDLE_MS) lock();
+  if (state.coordinator && !state.admin && Date.now() - (+ls.get(COORD) || 0) > COORD_IDLE_MS) lock();
 }, 30000);
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.coordinator && Date.now() - (+ls.get(COORD) || 0) > COORD_IDLE_MS) lock();
+  if (document.visibilityState === 'visible' && state.coordinator && !state.admin && Date.now() - (+ls.get(COORD) || 0) > COORD_IDLE_MS) lock();
 });

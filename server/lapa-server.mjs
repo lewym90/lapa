@@ -13,6 +13,7 @@ const HOST = process.env.HOST || '127.0.0.1';
 const DB_FILE = process.env.DB_FILE || './data/lapa.db';
 const HASH_VOL = process.env.PASS_VOLUNTEER_HASH || '';
 const HASH_COORD = process.env.PASS_COORDINATOR_HASH || '';
+const HASH_ADMIN = process.env.PASS_ADMIN_HASH || ''; // administrator: wszystkie uprawnienia, bez wygasania; puste = rola wyłączona
 const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://lewym90.github.io,http://localhost:8000,http://127.0.0.1:8000').split(',');
 const VOL_TTL = +(process.env.VOL_TTL_MS || 24 * 3600e3);
 const COORD_TTL = +(process.env.COORD_TTL_MS || 3600e3);
@@ -21,7 +22,10 @@ const MAX_RECORD = 200_000;
 
 if (!HASH_VOL || !HASH_COORD) { console.error('Brak PASS_VOLUNTEER_HASH / PASS_COORDINATOR_HASH'); process.exit(1); }
 const fp = (h) => crypto.createHash('sha256').update(h).digest('hex').slice(0, 16);
-const FP_VOL = fp(HASH_VOL), FP_COORD = fp(HASH_COORD);
+const FP_VOL = fp(HASH_VOL), FP_COORD = fp(HASH_COORD), FP_ADMIN = HASH_ADMIN ? fp(HASH_ADMIN) : '';
+// Kolekcja zapisywana tylko przez administratora (oznaczenie „tylko dla wybranych” i krótki opis psa). Czytają wszyscy, bez podpisu autora.
+const ADMIN_COLS = new Set(['oznaczenia']);
+const KONTAKT_DAYS = +(process.env.KONTAKT_DAYS || 30); // numer telefonu / Messenger osoby z Bramy: tylko tyle dni
 
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 const db = new DatabaseSync(DB_FILE);
@@ -41,6 +45,7 @@ CREATE TABLE IF NOT EXISTS push(
 CREATE TABLE IF NOT EXISTS sessions(
   th TEXT PRIMARY KEY, created INTEGER, vol_seen INTEGER, fp_vol TEXT, coord_until INTEGER DEFAULT 0, fp_coord TEXT DEFAULT '');
 `);
+try { db.exec("ALTER TABLE sessions ADD COLUMN fp_admin TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
 
 // ---------- hasła ----------
 function verifyPassword(pw, stored) {
@@ -62,24 +67,27 @@ setInterval(() => { for (const [k, v] of fails) if (Date.now() - v.t > WINDOW) f
 
 // ---------- sesje ----------
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-function newSession(coord) {
+function newSession(coord, admin = false) {
   const token = crypto.randomBytes(32).toString('base64url'), now = Date.now();
-  db.prepare('INSERT INTO sessions(th,created,vol_seen,fp_vol,coord_until,fp_coord) VALUES(?,?,?,?,?,?)')
-    .run(sha(token), now, now, FP_VOL, coord ? now + COORD_TTL : 0, coord ? FP_COORD : '');
+  db.prepare('INSERT INTO sessions(th,created,vol_seen,fp_vol,coord_until,fp_coord,fp_admin) VALUES(?,?,?,?,?,?,?)')
+    .run(sha(token), now, now, FP_VOL, coord ? now + COORD_TTL : 0, coord ? FP_COORD : '', admin ? FP_ADMIN : '');
   return token;
 }
+// Sesja administratora: ważna, dopóki nie zmieni się hasło administratora (nie wygasa po czasie i po zmianie hasła wolontariusza).
+const isAdminRow = (row) => !!(FP_ADMIN && row && row.fp_admin === FP_ADMIN);
 function getSession(req, touchActive) {
   const m = /^Bearer ([\w-]{20,80})$/.exec(req.headers.authorization || '');
   if (!m) return null;
   const th = sha(m[1]), row = db.prepare('SELECT * FROM sessions WHERE th=?').get(th), now = Date.now();
-  if (!row || row.fp_vol !== FP_VOL || now - row.vol_seen > VOL_TTL) { if (row) db.prepare('DELETE FROM sessions WHERE th=?').run(th); return null; }
-  const coord = row.coord_until > now && row.fp_coord === FP_COORD;
+  const admin = isAdminRow(row);
+  if (!row || (!admin && (row.fp_vol !== FP_VOL || now - row.vol_seen > VOL_TTL))) { if (row) db.prepare('DELETE FROM sessions WHERE th=?').run(th); return null; }
+  const coord = admin || (row.coord_until > now && row.fp_coord === FP_COORD);
   const active = req.headers['x-active'] === '1' || touchActive;
   if (now - row.vol_seen > Math.min(30e3, VOL_TTL / 10)) db.prepare('UPDATE sessions SET vol_seen=? WHERE th=?').run(now, th);
-  if (coord && active) db.prepare('UPDATE sessions SET coord_until=? WHERE th=?').run(now + COORD_TTL, th);
-  return { th, coord, coordUntil: coord ? (active ? now + COORD_TTL : row.coord_until) : 0 };
+  if (coord && active && !admin) db.prepare('UPDATE sessions SET coord_until=? WHERE th=?').run(now + COORD_TTL, th);
+  return { th, coord, admin, coordUntil: admin ? 0 : coord ? (active ? now + COORD_TTL : row.coord_until) : 0 };
 }
-setInterval(() => db.prepare('DELETE FROM sessions WHERE vol_seen < ?').run(Date.now() - VOL_TTL), 3600e3).unref();
+setInterval(() => db.prepare("DELETE FROM sessions WHERE vol_seen < ? AND (fp_admin IS NULL OR fp_admin = '' OR fp_admin != ?)").run(Date.now() - VOL_TTL, FP_ADMIN || '-'), 3600e3).unref();
 
 const PHOTO_DIR = path.join(path.dirname(DB_FILE), 'photos');
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
@@ -171,7 +179,19 @@ function pruneChat() { // wiadomości czatu i ich zdjęcia: tylko CHAT_DAYS dni
     db.prepare("DELETE FROM history WHERE col IN ('czat','czat_re') AND replaced_at < ?").run(lim);
   } catch (e) { console.error('Czyszczenie czatu:', e.message); }
 }
-setInterval(pruneChat, 6 * 3600e3).unref(); setTimeout(pruneChat, process.env.LAPA_TEST_FAST ? 300 : 20e3).unref();
+// Kontakt (telefon / Messenger) osoby, która wzięła psa na Bramie: po KONTAKT_DAYS dniach znika z rekordu i z historii; imię zostaje.
+function pruneKontakty() {
+  const lim = Date.now() - KONTAKT_DAYS * 86400e3;
+  try {
+    const rows = db.prepare("SELECT col,id,data,deleted,by FROM records WHERE col='spacery' AND json_extract(data,'$.kontakt') IS NOT NULL AND json_extract(data,'$.kontakt') != '' AND COALESCE(json_extract(data,'$.start'),0) < ?").all(lim);
+    const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
+    for (const r of rows) { const d = JSON.parse(r.data); delete d.kontakt; put.run(r.col, r.id, JSON.stringify(d), Date.now(), r.deleted, r.by); }
+    db.prepare("UPDATE history SET data=json_remove(data,'$.kontakt') WHERE col='spacery' AND json_extract(data,'$.kontakt') IS NOT NULL AND COALESCE(json_extract(data,'$.start'),0) < ?").run(lim);
+    if (rows.length) sseBroadcast();
+  } catch (e) { console.error('Czyszczenie kontaktów:', e.message); }
+}
+const pruneAll = () => { pruneChat(); pruneKontakty(); };
+setInterval(pruneAll, 6 * 3600e3).unref(); setTimeout(pruneAll, process.env.LAPA_TEST_FAST ? 300 : 20e3).unref();
 
 // ---------- HTTP ----------
 function send(res, code, obj, extra = {}) {
@@ -397,22 +417,27 @@ async function handle(req, res) {
     if (wait) return send2(429, { error: 'Za dużo prób. Spróbuj za kilka minut.', retry_after: wait });
     const { password } = await readJson(req);
     if (typeof password !== 'string' || password.length < 1 || password.length > 200) return send2(400, { error: 'Brak hasła' });
-    const isCoord = verifyPassword(password, HASH_COORD), isVol = !isCoord && verifyPassword(password, HASH_VOL);
+    const isAdmin = !!HASH_ADMIN && verifyPassword(password, HASH_ADMIN);
+    const isCoord = isAdmin || verifyPassword(password, HASH_COORD), isVol = !isCoord && verifyPassword(password, HASH_VOL);
     if (!isCoord && !isVol) { addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło' }); }
-    const token = newSession(isCoord);
-    return send2(200, { token, coordinator: isCoord, vol_ttl_ms: VOL_TTL, coord_ttl_ms: COORD_TTL });
+    const token = newSession(isCoord && !isAdmin, isAdmin);
+    return send2(200, { token, coordinator: isCoord, admin: isAdmin, vol_ttl_ms: VOL_TTL, coord_ttl_ms: COORD_TTL });
   }
 
   const s = getSession(req, false);
   if (!s) return send2(401, { error: 'Zaloguj się ponownie', login: true });
 
-  if (p === '/auth/status') return send2(200, { ok: true, coordinator: s.coord, coord_until: s.coordUntil });
+  if (p === '/auth/status') return send2(200, { ok: true, coordinator: s.coord, admin: s.admin, coord_until: s.coordUntil });
   if (p === '/auth/logout' && req.method === 'POST') { db.prepare('DELETE FROM sessions WHERE th=?').run(s.th); return send2(200, { ok: true }); }
-  if (p === '/auth/lock' && req.method === 'POST') { db.prepare('UPDATE sessions SET coord_until=0 WHERE th=?').run(s.th); return send2(200, { ok: true }); }
+  if (p === '/auth/lock' && req.method === 'POST') { db.prepare("UPDATE sessions SET coord_until=0, fp_admin='' WHERE th=?").run(s.th); return send2(200, { ok: true }); }
   if (p === '/auth/unlock' && req.method === 'POST') {
     const ip = clientIp(req), wait = blocked(ip);
     if (wait) return send2(429, { error: 'Za dużo prób. Spróbuj za kilka minut.', retry_after: wait });
     const { password } = await readJson(req);
+    if (typeof password === 'string' && HASH_ADMIN && verifyPassword(password, HASH_ADMIN)) {
+      db.prepare('UPDATE sessions SET fp_admin=? WHERE th=?').run(FP_ADMIN, s.th);
+      return send2(200, { ok: true, coordinator: true, admin: true, coord_until: 0 });
+    }
     if (typeof password !== 'string' || !verifyPassword(password, HASH_COORD)) { addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło koordynatora' }); }
     const until = Date.now() + COORD_TTL;
     db.prepare('UPDATE sessions SET coord_until=?, fp_coord=? WHERE th=?').run(until, FP_COORD, s.th);
@@ -444,12 +469,13 @@ async function handle(req, res) {
         const r = { col: c?.col, id: c?.id };
         if (!COL_RE.test(c?.col || '') || !ID_RE.test(c?.id || '') || !Number.isFinite(c?.updated_at)) { results.push({ ...r, status: 'invalid' }); continue; }
         if (isPrivate(c.col) && !s.coord) { results.push({ ...r, status: 'locked' }); continue; }
+        if (ADMIN_COLS.has(c.col) && !s.admin) { results.push({ ...r, status: 'forbidden' }); continue; }
         const json = JSON.stringify(c.data ?? {});
         if (json.length > MAX_RECORD) { results.push({ ...r, status: 'too_big' }); continue; }
         const ts = Math.min(Math.floor(c.updated_at), now + 5 * 60e3), old = get.get(c.col, c.id);
         if (old && old.updated_at > ts && old.by !== 'strona') { results.push({ ...r, status: 'stale' }); continue; } // zmiana wolontariusza wygrywa z automatycznym zapisem ze strony (strona i tak wróci przy następnym sprawdzeniu)
         if (old) hist.run(old.col, old.id, old.data, old.updated_at, old.deleted, old.by, now);
-        put.run(c.col, c.id, json, ts, c.deleted ? 1 : 0, String(c.by || '').slice(0, 60));
+        put.run(c.col, c.id, json, ts, c.deleted ? 1 : 0, ADMIN_COLS.has(c.col) ? '' : String(c.by || '').slice(0, 60));
         if (c.col === 'czat' && !old && !c.deleted && now - ts < 2 * 86400e3 && c.data && typeof c.data === 'object') fresh.push(c.data);
         results.push({ ...r, status: 'ok' });
       }

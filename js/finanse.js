@@ -1,4 +1,6 @@
 // Finanse: wpłaty i wydatki, koszty leczenia z teczek psów, podsumowania i eksport do sprawozdania. Tylko koordynator.
+import { raw } from './ui-core.js';
+import { imieZnaki } from './znak.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove } from './store.js';
 import { state, getName } from './auth.js';
@@ -30,7 +32,7 @@ export async function finanse() {
       <p class="hint" style="margin:0">Wydatki zawierają koszty z teczek zdrowia psów (${zl(sum(zk, 'koszt'))}).</p></section>
     ${Object.keys(bySrc).length ? html`<section class="card"><h3>Skąd pieniądze</h3>${Object.entries(bySrc).sort((a, b) => b[1] - a[1]).map(([k, v]) => html`<div class="oh"><span>${L[k] || k}</span><b>${zl(v)}</b></div>`)}</section>` : ''}
     ${Object.keys(byKat).length ? html`<section class="card"><h3>Na co idą</h3>${Object.entries(byKat).sort((a, b) => b[1] - a[1]).map(([k, v]) => html`<div class="oh"><span>${L[k] || k}</span><b>${zl(v)}</b></div>`)}</section>` : ''}
-    ${Object.keys(perDog).length ? html`<section class="card"><h3>Koszty na psa</h3>${Object.entries(perDog).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => html`<div class="oh"><span>${byId[k]?.imie || '—'}</span><b>${zl(v)}</b></div>`)}</section>` : ''}
+    ${Object.keys(perDog).length ? html`<section class="card"><h3>Koszty na psa</h3>${Object.entries(perDog).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([k, v]) => html`<div class="oh"><span>${byId[k] ? raw(imieZnaki(byId[k])) : '—'}</span><b>${zl(v)}</b></div>`)}</section>` : ''}
     <section class="card"><h3>Ostatnie wpisy</h3>${recent.length ? recent.map((x) => html`<button class="row" data-act="fin-open" data-id="${x.id}" style="min-height:52px"><span class="rt"><b>${x.typ === 'wplata' ? '+' : '−'}${zl(x.kwota)}</b><small>${fmtDate(x.data)} · ${L[x.kat || x.zrodlo] || ''}${x.pies_id && byId[x.pies_id] ? ' · ' + byId[x.pies_id].imie : ''}${x.opis ? ' · ' + x.opis : ''}</small></span>${icon('chev')}</button>`) : html`<p class="hint">Brak wpisów.</p>`}</section>
     <button class="btn ghost block" data-act="fin-csv">${icon('download')} Pobierz zestawienie roku (CSV)</button></div>` };
 }
