@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.14.1, 2026-11-15)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.15.0, 2026-11-16)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -40,8 +40,8 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 ## Testy
 W katalogu `tests/`. Używają lokalnego serwera API na porcie 18999 i statycznego na 8000 (`python3 -m http.server 8000 --bind 127.0.0.1` w katalogu repo). `bash tests/restart_api.sh` uruchamia czysty serwer testowy (kopiuje serwer z repo do /tmp/t; ścieżki liczone od położenia skryptu). Testy zależą od stanu: **przed każdym plikiem testów** restartować API z czystą bazą. Skrypty `*.py` uruchamiać z katalogu `tests/`.
 - Serwer (bez przeglądarki): `node tests/s1.mjs` (atrapa strony schroniska), `node tests/s2.mjs` (push, SSE, czyszczenie czatu), `node tests/s3.mjs` (administrator, oznaczenia, kasowanie kontaktów), `node tests/swpush.mjs` (sw.js).
-- Aplikacja (Playwright): `e3, e5, e7, e8, e9, e12, e13, kto, chat, pushui` (starsze) oraz `nowe1` (karta przyjęcia i ten sam stan wszędzie, 40), `droga1` (Droga psa i przypomnienia, 25), `teksty1` (szablony tekstów na karcie psa, w tym 2880 porównań z poprzednią wersją, 23), `social1` (Social media, 33), `znaki1` (boks, oznaczenia, opis, Brama, administrator, 46), `audyt` (każdy ekran i główne okna: telefon i komputer, wolontariusz i administrator; otwieranie, wyjście, zamykanie okien krzyżykiem/Esc/tłem, brak wychodzenia poza ekran, 683), `audyt2` (podgląd do druku i plakat). Wspólne funkcje: `tests/wspolne.py`. Serwer testowy ma hasło administratora `administrator-haslo-3`.
-- Stan 15.11.2026 (1.14.0): wszystkie testy przechodzą.
+- Aplikacja (Playwright): `e3, e5, e7, e8, e9, e12, e13, kto, chat, pushui` (starsze) oraz `nowe1` (karta przyjęcia i ten sam stan wszędzie, 40), `droga1` (Droga psa i przypomnienia, 25), `teksty1` (szablony tekstów na karcie psa, w tym 2880 porównań z poprzednią wersją, 23), `social1` (Social media, 33), `znaki1` (boks, oznaczenia, opis, Brama, administrator, 46), `audyt` (każdy ekran i główne okna: telefon i komputer, wolontariusz i administrator; otwieranie, wyjście, zamykanie okien krzyżykiem/Esc/tłem, brak wychodzenia poza ekran, 683), `audyt2` (podgląd do druku i plakat), `kolejnosc1` (kolejność alfabetycznie/boks, 19). Wspólne funkcje: `tests/wspolne.py`. Serwer testowy ma hasło administratora `administrator-haslo-3`.
+- Stan 16.11.2026 (1.15.0): wszystkie testy przechodzą. Uwaga: e13 (poranny komunikat) przechodzi tylko po 6:00, bo komunikat celowo nie pokazuje się w nocy.
 
 ## Audyt 1.8.3 (2026-11-11)
 - Plakat / karta psa do druku: podgląd pełnoekranowy (`printPreview` w ui.js) z przyciskami Zamknij i Drukuj (samo `print()` w PWA na telefonie nie działało).
@@ -144,3 +144,9 @@ Prośba ze schroniska. **Wymaga aktualizacji serwera** (komenda pyta o hasło ad
 
 ## 1.14.1
 - Boks przyjmuje litery i cyfry (właściciel: nie znamy numeracji ani rozkładu boksów). Klient tylko; komenda serwera z 1.14.0 bez zmian (commit 63e158a).
+
+## 1.15.0 (2026-11-16): kolejność według boksów
+- Przełącznik „Kolejność: Alfabetycznie | Boks” na Bramie (w „Poza” i „Wróciły”: „Godzina | Boks”, bo tam domyślnie według godziny), w wyborze psa do spaceru i na liście Psy (js/znak.js: `kolejnosc`, `kolejnoscHtml`, `poBoksie`, akcja `kolejnosc`).
+- Według boksów: psy z boksem w porządku naturalnym (2, 7, 7a, 12, A3; `Intl.Collator` z `numeric`), pod nimi psy bez boksu alfabetycznie (prośba właściciela). Na Bramie w „Wydaj” zostaje podział: najpierw psy, które dziś jeszcze nie wyszły, potem te, które już były; w obu grupach ta sama kolejność.
+- Wybór zapamiętuje telefon, osobno dla każdego ekranu (`lapa.kolejnosc.brama|spacer|psy`). Na liście Psy w trybie „Boks” nie ma podnoszenia psów „Pilne” na górę (w trybie alfabetycznym jak dotąd). Klient tylko.
+

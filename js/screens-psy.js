@@ -8,7 +8,7 @@ import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photo
 import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
-import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie } from './znak.js';
+import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
 import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty } from './teczka.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -37,7 +37,7 @@ function filterDogs(dogs, walks = []) {
     if (ff === 'wszystkie') return true;
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
-  }).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  }).sort(kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
 }
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
 function grid(dogs, walks, zdr = []) {
@@ -53,6 +53,7 @@ export async function list_() {
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
     <div class="fchips" role="group" aria-label="Filtr">${FILTERS.map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
+    <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>
     <div id="grid">${grid(dogs, walks, zdr)}</div>
     <button class="btn gold fab" data-act="a-dog">${icon('plus')} Dodaj psa</button>`,
     mount(root) {

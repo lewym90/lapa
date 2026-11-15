@@ -13,6 +13,7 @@ TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/s
 
 
 def seed(pg):
+    # spacery z Bramy z „przed chwilą”, żeby test działał też tuż po północy (Brama pokazuje tylko dzisiejsze)
     now = pg.evaluate('Date.now()')
     psy = [
         {'id': 'd1', 'imie': 'Saba', 'plec': 'suka', 'wiek': '5 lat', 'wielkosc': 'duża', 'boks': '7', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'haslo': 'SABA - w cieniu strachu', 'data_przyjecia': now - 300 * D, 'kanaly': {'www': now}, 'opis': 'Potrzebuje czasu. ' * 20, 'zdjecia': ['https://example.invalid/s_l.jpg'], 'potrzeby': ['transport'], 'zrodlo_url': 'https://www.schronisko-nowodwor.com.pl/psy-do-adopcji/saba/1'},
@@ -21,8 +22,8 @@ def seed(pg):
         {'id': 'm1', 'imie': 'Nowy', 'plec': 'samiec', 'wiek': '1 rok', 'nowy': True, 'status': 'schronisko', 'miejsce': 'schronisko', 'data_przyjecia': now, 'dodany': now, 'zdjecia': []},
     ]
     for d in psy: save(pg, 'psy', d)
-    save(pg, 'spacery', {'id': 'w1', 'tryb': 'brama', 'pies_id': 'd1', 'pies_imie': 'Saba', 'start': now - 30 * 60000, 'end': None, 'autor': 'A', 'osoba': 'Kasia', 'kontakt': '600 100 200'})
-    save(pg, 'spacery', {'id': 'w2', 'tryb': 'brama', 'pies_id': 'd2', 'pies_imie': 'Bardzo Długie Imię Psa Testowego', 'start': now - 90 * 60000, 'end': now - 30 * 60000, 'autor': 'A', 'osoba': 'Bardzo Długie Imię Osoby', 'kontakt': 'https://m.me/bardzo.dlugi.profil.messengera.osoby'})
+    save(pg, 'spacery', {'id': 'w1', 'tryb': 'brama', 'pies_id': 'd1', 'pies_imie': 'Saba', 'start': now - 60000, 'end': None, 'autor': 'A', 'osoba': 'Kasia', 'kontakt': '600 100 200'})
+    save(pg, 'spacery', {'id': 'w2', 'tryb': 'brama', 'pies_id': 'd2', 'pies_imie': 'Bardzo Długie Imię Psa Testowego', 'start': now - 120000, 'end': now - 60000, 'autor': 'A', 'osoba': 'Bardzo Długie Imię Osoby', 'kontakt': 'https://m.me/bardzo.dlugi.profil.messengera.osoby'})
     save(pg, 'spacery', {'id': 'w3', 'pies_id': 'd1', 'pies_imie': 'Saba', 'start': now - 5 * D, 'end': now - 5 * D + 3e6, 'czas_min': 50, 'dystans_km': 2.5, 'autor': 'A', 'notatka': 'Spokojnie.'})
     save(pg, 'zaginiecia', {'id': 'z1', 'pies_id': 'd1', 'imie': 'Saba', 'kiedy': now, 'gdzie': 'Nowodwór', 'status': 'poszukiwany', 'akt': [], 'autor': 'A'})
     save(pg, 'transporty', {'id': 't1', 'pies_id': 'd1', 'pies_imie': 'Saba', 'skad': 'Schronisko', 'dokad': 'Weterynarz', 'kiedy': now + 3600e3, 'status': 'szuka', 'autor': 'A'})

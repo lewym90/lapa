@@ -513,3 +513,5 @@ details>summary{list-style:revert}
 .adminbox{margin:12px 0 4px;padding:12px 14px;border-radius:14px;border:1.5px dashed var(--gold);background:rgba(177,138,82,.08)}
 .opisl.na-ciemnym{color:var(--gold-l);font-size:15px;margin-top:6px}
 .wybl.pill{display:inline-block;border-radius:99px;margin-top:8px}
+.kolej{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 2px;font-size:13.5px;color:var(--sage)}
+.kolej .chip{min-height:32px;padding:4px 12px}

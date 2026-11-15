@@ -6,7 +6,7 @@ import { uid, fmtTime as hhmm } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 import { miejsce, aktywny } from './teczka.js';
-import { boksPill, wybCls, wybrani, wybraniTxt, linie, kto, opisLine } from './znak.js';
+import { boksPill, wybCls, wybrani, wybraniTxt, linie, kto, opisLine, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
 
 // Kontakt do osoby: numer telefonu → „Zadzwoń”, link z Messengera → „Messenger”, inny tekst (np. nazwa z Messengera) bez linku.
 const kontaktHtml = (k) => { const t = String(k || '').trim(); if (!t) return ''; const dig = t.replace(/[\s()+-]/g, '');
@@ -27,8 +27,12 @@ async function stan() {
   const dzis = walks.filter((w) => w.tryb === 'brama' && w.start >= od);
   const out = new Map(dzis.filter((w) => !w.end).map((w) => [w.pies_id, w]));
   const bylo = new Set(dzis.map((w) => w.pies_id));
-  const lista = dogs.filter((d) => aktywny(d) && miejsce(d) === 'schronisko').sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
-  return { lista, out, bylo, dzis, wrocily: dzis.filter((w) => w.end).sort((a, b) => b.end - a.end) };
+  const boksem = kolejnosc('brama') === 'boks';
+  const lista = dogs.filter((d) => aktywny(d) && miejsce(d) === 'schronisko').sort(boksem ? poBoksie : (a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  // „Poza” i „Wróciły”: według boksów albo jak dotąd według godziny
+  const psa = (w) => dogs.find((d) => d.id === w.pies_id) || { imie: w.pies_imie };
+  const wgBoksu = (a, b) => poBoksie(psa(a), psa(b));
+  return { lista, out, bylo, dzis, wrocily: dzis.filter((w) => w.end).sort(boksem ? wgBoksu : (a, b) => b.end - a.end), wgBoksu: boksem ? wgBoksu : null };
 }
 
 export async function brama() {
@@ -44,7 +48,7 @@ export async function brama() {
       ...juz.filter(f).map((d) => dogRow(d, { sub: `dziś był już ${s.dzis.filter((w) => w.pies_id === d.id).length}x`, html: `<button class="btn ghost" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` }))];
     body = rows.join('') || `<div class="empty">${icon('paw').s}<h3>Brak psów</h3><p>Dodaj psy w zakładce Psy.</p></div>`;
   } else if (tab === 'out') {
-    const rows = [...s.out.values()].sort((a, b) => a.start - b.start).filter((w) => (w.pies_imie || '').toLowerCase().includes(ql)).map((w) => {
+    const rows = [...s.out.values()].sort(s.wgBoksu || ((a, b) => a.start - b.start)).filter((w) => (w.pies_imie || '').toLowerCase().includes(ql)).map((w) => {
       const d = s.lista.find((x) => x.id === w.pies_id) || { imie: w.pies_imie };
       const m = min(Date.now() - w.start);
       return dogRow(d, { sub: `<span data-since="${w.start}" ${m > 90 ? 'style="color:var(--terracotta);font-weight:600"' : ''}>${hhmm(w.start)} (${dur(m)})</span>${w.osoba ? ' | ' + esc(w.osoba) : ''}${w.kontakt ? '<br>' + kontaktHtml(w.kontakt) : ''}`, html: `<button class="btn ghost" data-act="br-info" data-id="${esc(w.id)}" aria-label="Dane osoby">${icon('pencil').s}</button><button class="btn gold" data-act="br-back" data-id="${esc(w.id)}">Zwróć</button>` });
@@ -63,7 +67,7 @@ export async function brama() {
     html: html`${pageBar('Brama – spacery')}<div class="pad">
       <p class="sub" style="margin:4px 0 12px">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}, <b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z ${s.lista.length} psów. Bez spaceru: <b>${nieWyd.length}</b>.</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size) + tb('out', 'Poza', s.out.size) + tb('wrocily', 'Wróciły', s.wrocily.length))}</div>
-      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div></div>
+      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div>${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}</div>
       <div class="pad stack" id="bl" style="margin-top:8px">${raw(body)}</div>
       <div class="pad" style="margin-top:12px"><button class="btn ghost block" data-act="br-sum">Podsumowanie dnia (post)</button><p class="hint" style="margin-top:8px">Dla psa, który wyszedł z wolontariuszem na dłuższy spacer z notatkami i zdjęciami, użyj <a href="#/spacer">spaceru z wolontariuszem</a>.</p></div>`,
     mount(root) {
