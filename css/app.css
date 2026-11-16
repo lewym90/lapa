@@ -494,7 +494,6 @@ details>summary{list-style:revert}
 .dcard.wyb{box-shadow:0 0 0 4px var(--wyb),var(--sh)}
 .wybl{display:block;background:var(--wyb);color:#fff;font-family:var(--sans);font-weight:700;font-size:12.5px;padding:5px 10px;line-height:1.3}
 .dcard .pic .wybl{position:absolute;left:0;right:0;bottom:0}
-.avatar.wyb{border-color:var(--wyb)!important;border-width:3px!important;box-shadow:0 0 0 2px var(--wyb)}
 .wybt{display:block;color:var(--wyb);font-weight:700;font-size:12.5px;margin-top:1px}
 .dogtop.wyb::after{content:'';position:absolute;inset:0;border:6px solid var(--wyb);pointer-events:none;z-index:2;border-radius:inherit}
 .dogtop .wybl{position:absolute;left:0;right:0;bottom:0;z-index:3;font-size:14px;padding:8px 14px;text-align:center}
@@ -502,7 +501,6 @@ details>summary{list-style:revert}
 .wybbox b{display:block;color:var(--wyb);font-size:15px}
 .wybbox p{margin:4px 0 0;font-size:14px}
 .kontakt{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--green);text-decoration:underline;text-underline-offset:2px}
-.gap .gp.wyb{box-shadow:0 0 0 3px var(--wyb)}
 .chip.pw.on{background:var(--wyb);border-color:var(--wyb);color:#fff;font-weight:600}
 .opisl{display:block;color:var(--green);font-weight:700;font-size:13.5px;line-height:1.3;margin-top:2px}
 .dcard .opisl{font-size:14.5px;margin:3px 0 1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -515,3 +513,13 @@ details>summary{list-style:revert}
 .wybl.pill{display:inline-block;border-radius:99px;margin-top:8px}
 .kolej{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 2px;font-size:13.5px;color:var(--sage)}
 .kolej .chip{min-height:32px;padding:4px 12px}
+
+/* 1.15.1: „Tylko wybrani” w wierszach list: cienka czerwona ramka wokół całego wiersza (zdjęcie ze zwykłą złotą obwódką).
+   Starsze przeglądarki bez :has() – czerwona obwódka na zdjęciu jak wcześniej. */
+@supports selector(:has(*)) {
+  :is(.row, .card, .need, .gap):not(.walkhero):has(> .avatar.wyb, > a > .avatar.wyb, > .gi > .gp.wyb, > .rt + .avatar.wyb) { outline: 2px solid var(--wyb); outline-offset: -2px; }
+}
+@supports not selector(:has(*)) {
+  .avatar.wyb { border-color: var(--wyb) !important; box-shadow: 0 0 0 2px var(--wyb); }
+  .gap .gp.wyb { box-shadow: 0 0 0 3px var(--wyb); }
+}

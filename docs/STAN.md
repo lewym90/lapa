@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.15.0, 2026-11-16)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.15.1, 2026-11-16)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -149,4 +149,7 @@ Prośba ze schroniska. **Wymaga aktualizacji serwera** (komenda pyta o hasło ad
 - Przełącznik „Kolejność: Alfabetycznie | Boks” na Bramie (w „Poza” i „Wróciły”: „Godzina | Boks”, bo tam domyślnie według godziny), w wyborze psa do spaceru i na liście Psy (js/znak.js: `kolejnosc`, `kolejnoscHtml`, `poBoksie`, akcja `kolejnosc`).
 - Według boksów: psy z boksem w porządku naturalnym (2, 7, 7a, 12, A3; `Intl.Collator` z `numeric`), pod nimi psy bez boksu alfabetycznie (prośba właściciela). Na Bramie w „Wydaj” zostaje podział: najpierw psy, które dziś jeszcze nie wyszły, potem te, które już były; w obu grupach ta sama kolejność.
 - Wybór zapamiętuje telefon, osobno dla każdego ekranu (`lapa.kolejnosc.brama|spacer|psy`). Na liście Psy w trybie „Boks” nie ma podnoszenia psów „Pilne” na górę (w trybie alfabetycznym jak dotąd). Klient tylko.
+
+## 1.15.1 (2026-11-16)
+- „Tylko wybrani” w wierszach list (Brama, wybór psa, Start, Pomoc, Dziś i do zrobienia, Nowe psy, adopcje, zaginięcia itd.): zamiast grubej czerwonej obwódki na zdjęciu cienka (2 px) czerwona ramka wokół całego wiersza (`:has()`), zdjęcie ze zwykłą złotą obwódką. Bez obsługi `:has()` – obwódka na zdjęciu jak wcześniej. Kafelki na liście Psy i karta psa bez zmian (decyzja właściciela). Tylko CSS.
 
