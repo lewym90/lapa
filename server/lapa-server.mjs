@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS sessions(
 `);
 try { db.exec("ALTER TABLE sessions ADD COLUMN fp_admin TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
 try { db.exec('ALTER TABLE push ADD COLUMN admin INTEGER NOT NULL DEFAULT 0'); } catch { /* kolumna już jest */ }
+try { db.exec("ALTER TABLE push ADD COLUMN th TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
 // Kto utworzył zgłoszenie wolontariusza (skrót identyfikatora telefonu): tylko on może je zmienić albo wycofać.
 db.exec('CREATE TABLE IF NOT EXISTS owners(col TEXT NOT NULL, id TEXT NOT NULL, dev TEXT NOT NULL, ts INTEGER, PRIMARY KEY(col,id))');
 
@@ -169,7 +170,9 @@ const warsawHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/W
 const isQuiet = () => { const h = warsawHour(); return QUIET.from > QUIET.to ? h >= QUIET.from || h < QUIET.to : h >= QUIET.from && h < QUIET.to; };
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 async function notifyChat(d) { // d: dane nowej wiadomości
-  const rows = db.prepare('SELECT * FROM push WHERE admin=1').all(); // czat jest tylko dla administratorów
+  // czat jest tylko dla administratorów: wysyłamy tylko na telefony, których sesja JEST TERAZ sesją administratora
+  // (po wylogowaniu, wyłączeniu trybu administratora albo zmianie hasła powiadomienia z treścią czatu przestają przychodzić)
+  const rows = FP_ADMIN ? db.prepare('SELECT p.* FROM push p JOIN sessions s ON s.th = p.th WHERE p.admin=1 AND s.fp_admin = ?').all(FP_ADMIN) : [];
   const preview = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 110) || (d.foto ? '📷 Zdjęcie' : d.ref?.nazwa ? String(d.ref.nazwa).slice(0, 80) : 'Nowa wiadomość');
   const body = (d.kind === 'prosba' ? '🙋 Prośba o pomoc: ' : d.pilne ? '❗ ' : '') + preview;
   const mentioned = (n) => Array.isArray(d.wzm) && d.wzm.some((x) => sameName(x, n));
@@ -546,14 +549,14 @@ async function handle(req, res) {
       const sub = b.sub;
       if (!sub || !pushUrlOk(sub.endpoint) || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string' || sub.keys.p256dh.length > 200 || sub.keys.auth.length > 100) return send2(422, { error: 'Nieprawidłowa subskrypcja' });
       if (db.prepare('SELECT COUNT(*) n FROM push').get().n >= 300 && !db.prepare('SELECT 1 FROM push WHERE endpoint=?').get(sub.endpoint)) return send2(429, { error: 'Za dużo urządzeń' });
-      db.prepare('INSERT INTO push(endpoint,sub,name,quiet,mute,created,admin) VALUES(?,?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub,name=excluded.name,quiet=excluded.quiet,mute=excluded.mute,admin=excluded.admin,fails=0')
-        .run(sub.endpoint, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, Date.now(), s.admin ? 1 : 0);
+      db.prepare('INSERT INTO push(endpoint,sub,name,quiet,mute,created,admin,th) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub,name=excluded.name,quiet=excluded.quiet,mute=excluded.mute,admin=excluded.admin,th=excluded.th,fails=0')
+        .run(sub.endpoint, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, Date.now(), s.admin ? 1 : 0, s.th);
       return send2(200, { ok: true });
     }
     const ep = b.endpoint, row = pushUrlOk(ep) ? db.prepare('SELECT * FROM push WHERE endpoint=?').get(ep) : null;
     if (p === '/push/unsubscribe') { if (row) pushDel.run(ep); return send2(200, { ok: true }); }
     if (!row) return send2(404, { error: 'Nie ma takiego urządzenia', gone: true });
-    if (p === '/push/prefs') { db.prepare('UPDATE push SET name=?, quiet=?, mute=?, admin=? WHERE endpoint=?').run(name || row.name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, s.admin ? 1 : 0, ep); return send2(200, { ok: true }); }
+    if (p === '/push/prefs') { db.prepare('UPDATE push SET name=?, quiet=?, mute=?, admin=?, th=? WHERE endpoint=?').run(name || row.name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, s.admin ? 1 : 0, s.th, ep); return send2(200, { ok: true }); }
     if (p === '/push/read') { db.prepare('UPDATE push SET badge=0 WHERE endpoint=?').run(ep); return send2(200, { ok: true }); }
     if (p === '/push/test') { const ok = await sendPush(row, { t: 'ŁAPA', b: 'Powiadomienia działają. Dostaniesz je, gdy ktoś napisze na czacie.', url: '#/czat', tag: 'test', badge: 0 }, true); return send2(200, { ok }); }
   }

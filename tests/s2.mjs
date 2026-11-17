@@ -77,6 +77,15 @@ let tr = await t.post('/push/test', { endpoint: sB.endpoint }); await sl(200); c
 status = 410; await t.msg('m6', 'Ania', { text: 'do Basi' }); await sl(500); status = 201;
 const left = await t.post('/push/prefs', { endpoint: sB.endpoint, name: 'Basia' }); ck('A11: 410 usuwa subskrypcję', left.s === 404);
 ck('A12: nieznany endpoint → 404', (await t.post('/push/read', { endpoint: 'https://fcm.googleapis.com/x/nieistnieje' })).s === 404);
+// 1.16: czat tylko na telefony z aktywną sesją administratora (wiadomości pisze drugi administrator)
+const tok2 = (await (await fetch(t.B + '/auth/login', { method: 'POST', body: JSON.stringify({ password: 'administrator-haslo-3' }) })).json()).token;
+const msg2 = async (id, text) => (await (await fetch(t.B + '/sync', { method: 'POST', headers: { authorization: 'Bearer ' + tok2, 'content-type': 'application/json' }, body: JSON.stringify({ changes: [{ col: 'czat', id, data: { id, ts: Date.now(), autor: 'Basia', text: '@Ania ' + text, wzm: ['ania'], kind: 'msg' }, updated_at: Date.now(), deleted: false, by: 'Basia' }] }) })).json()).results[0].status;
+got.length = 0; ck('A13a: przed wyłączeniem przychodzą', (await msg2('l0', 'test')) === 'ok' && (await sl(500), got.some((x) => x.name === 'Ania')));
+await t.post('/auth/lock', {}); got.length = 0; const st = await msg2('l1', 'po wyłączeniu trybu administratora'); await sl(500);
+ck('A13: po wyłączeniu trybu administratora nie przychodzą powiadomienia czatu', st === 'ok' && got.length === 0, st + JSON.stringify(got.map((x) => x.name)));
+ck('A13b: odblokowanie hasłem administratora', (await t.post('/auth/unlock', { password: 'administrator-haslo-3' })).s === 200);
+got.length = 0; await msg2('l2', 'znów administrator'); await sl(500);
+ck('A13c: po odblokowaniu znów przychodzą', got.some((x) => x.name === 'Ania'), JSON.stringify(got.map((x) => x.name)));
 ctl.abort(); t.srv.kill(); await sl(500);
 
 // ===== B: cisza nocna zawsze włączona =====

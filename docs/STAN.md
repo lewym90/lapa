@@ -166,3 +166,13 @@ Prośba właściciela: pracownicy schroniska = administratorzy (wszystko), wolon
 - aktualizuj.sh: krok kopii bazy (`data/kopia-przed-aktualizacja-DATA/`) przed podmianą kodu.
 - Poprawka: szkic formularza (`draft`) po zamknięciu okna nie rzuca błędem.
 - Testy: s4.mjs (role na serwerze, 29), wol1.py (zgłoszenia, dwie wolontariuszki i administrator, 45), znaki1 (69) i audyt (584, obie role: tylko dozwolone przyciski u wolontariusza) przepisane; stare testy logują się jako administrator (`wspolne.login` domyślnie `ADM`). tests/zrzuty116.py robi zrzuty (zdjęcia z tmpimg/ — katalog tylko lokalnie).
+
+## 1.16.1 (2026-11-17): audyt po 1.16
+**Wymaga aktualizacji serwera.**
+- Serwer: powiadomienia z czatu tylko na telefony, których sesja jest TERAZ sesją administratora (kolumna `push.th` = skrót tokenu; złączenie z `sessions` i `fp_admin`). Wcześniej telefon po „Wyłącz tryb administratora”, wylogowaniu albo zmianie hasła nadal dostawałby treść czatu. Test s2 A13.
+- zmien-haslo.sh (generowany przez aktualizuj.sh i install.sh): odrzuca hasło administratora takie samo jak wolontariusza i odwrotnie (inaczej każdy wolontariusz logowałby się jako administrator).
+- aktualizuj.sh: zostawia 5 ostatnich kopii bazy sprzed aktualizacji.
+- Pies dnia i Pomoc: bez psów, które odeszły, zaginęły albo zostały adoptowane (`dogOfDay`, `dogNeeds` patrzą też na `miejsce`).
+- Zgłoszenia: „Przyjmij”/„Przypisz” odporne na podwójne dotknięcie; przycisk „Usuń” na ekranie Zgłoszenia wolontariuszy był niewidoczny (jasna ikona na jasnej karcie); na wąskich ekranach przyciski schodzą pod tekst, telefon w jednej linii; po „Będę” podziękowanie „Do zobaczenia pod bramą”.
+- Lista Psy: po wyłączeniu trybu administratora filtr „Nowe psy”/„Zdobywamy zaufanie” wraca do „Aktywne”.
+- Testy: upgrade1.py (telefon z poprzedniej wersji: wolontariusz czyszczony i pobiera okrojone dane, odrzucone zmiany psów, administrator pobiera wszystko), wol1 rozszerzony (okna wolontariusza tylko z dozwolonymi przyciskami, raport spaceru, pies, który odszedł).

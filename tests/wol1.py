@@ -114,4 +114,27 @@ with sync_playwright() as p:
     # --- usuwanie przez administratora ---
     go(pa, '#/zgloszenia', 900); pa.locator('[data-act=zg-usun]').first.click(); pa.wait_for_selector('[data-yes]'); pa.click('[data-yes]'); pa.wait_for_timeout(600)
     check('administrator usunął zgłoszenie', pa.locator('a.kontakt[href="tel:600111222"]').count() == 2)
+    # --- okna wolontariusza: tylko dozwolone przyciski ---
+    VOL = set(pv.evaluate("async()=>[...(await import('/js/ui.js')).VOL_ACTIONS]"))
+    save(pa, 'spacery', {'id': 'w9', 'pies_id': 'd1', 'pies_imie': 'Saba', 'start': now - 3600e3, 'end': now - 1800e3, 'czas_min': 30, 'autor': 'Ania', 'osoba': 'Kasia', 'kontakt': '600 999 888', 'notatka': 'Grzecznie.'})
+    save(pa, 'zaginiecia', {'id': 'z1', 'imie': 'Burek', 'status': 'aktywne', 'opis': 'Czarny', 'ts': now, 'gdzie': 'Nowodwór', 'kiedy': now})
+    save(pa, 'komunikaty', {'id': 'k1', 'tekst': 'Komunikat testowy', 'ts': now, 'autor': 'Ania'})
+    sync(pa); sync(pv, 1500)
+    okna = [('#/psy/d1', '[data-act=dog-walks]'), ('#/pomoc', '#app [data-act=decl]'), ('#/potrzeby', '[data-act=of-potrzeba]'), ('#/transport', '[data-act=tr-open]'),
+            ('#/sobotnie', '[data-act=sob-bede]'), ('#/zaginiecia', '[data-act=zag-open]'), ('#/ustawienia', '[data-act=unlock-sheet]'), ('#/start', '[data-act=bell]')]
+    for h, sel in okna:
+        go(pv, h, 700)
+        if pv.locator(sel).count() == 0: check(f'okno {h}: przycisk {sel} jest', False); continue
+        pv.locator(sel).first.click(); pv.wait_for_selector('#sheet-root .sheet', timeout=3000)
+        zle = set(pv.locator('#sheet-root [data-act]').evaluate_all('(e)=>e.map(x=>x.dataset.act)')) - VOL
+        check(f'okno {h}: tylko dozwolone przyciski', not zle, zle)
+        close_sheet(pv)
+    go(pv, '#/raport/w9', 900); t = text(pv)
+    check('raport spaceru: podgląd bez telefonu i bez usuwania', 'Grzecznie.' in t and '600 999 888' not in t and pv.locator('[data-act=rep-del], [data-act=rep-note]').count() == 0)
+    check('raport spaceru: „Wróć do psa”', pv.locator('a[href="#/psy/d1"]', has_text='Wróć do psa').count() == 1)
+    # pies, który odszedł, nie jest psem dnia ani w Pomocy
+    save(pa, 'psy', {'id': 'd1', 'imie': 'Saba', 'plec': 'suka', 'status': 'do_adopcji', 'miejsce': 'zmarl', 'potrzeby': ['transport'], 'zdjecia': ['https://example.com/a.jpg']})
+    sync(pa); sync(pv, 1500); go(pv, '#/start', 800)
+    check('pies, który odszedł: nie jest psem dnia', pv.locator('.hero .dogtag').count() == 0)
+    go(pv, '#/pomoc', 800); check('pies, który odszedł: nie ma go w Pomocy', 'Saba' not in text(pv))
     koniec('wol1')

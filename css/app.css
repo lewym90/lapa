@@ -544,3 +544,8 @@ details>summary{list-style:revert}
 .zco{display:block;width:100%;font-weight:600;font-size:15px;color:var(--graphite);margin-bottom:2px}
 .zco a{color:var(--green)}
 button.zco.zlink{background:none;border:0;padding:0;text-align:left;font:inherit;font-weight:600;font-size:15px;color:var(--green);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+/* 1.16.1: wąskie ekrany – przyciski zgłoszeń schodzą pod tekst zamiast go ściskać */
+.zglr{flex-wrap:wrap}
+.zglr > span:first-child{flex:1 1 210px}
+.zgla{margin-left:auto}
+.zglr a.kontakt{white-space:nowrap}

@@ -48,6 +48,7 @@ function grid(dogs, walks, zdr = []) {
     <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
+  if (!state.admin && ['nowe', 'zaufanie'].includes(ff)) ff = 'aktywne'; // filtry tylko dla administratora (np. po wyłączeniu trybu administratora)
   const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
   return {
     tab: 'psy', title: 'Psy',

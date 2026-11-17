@@ -37,7 +37,8 @@ export function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++)
 
 // Pies dnia: wszyscy widzą tego samego psa tego samego dnia; każdy pies po kolei, zanim któryś się powtórzy.
 export function dogOfDay(dogs, now = Date.now()) {
-  const pool = dogs.filter((d) => (d.zdjecia || []).length && d.status !== 'adoptowany');
+  // tylko psy, które są z nami (bez adoptowanych, zaginionych i tych, które odeszły)
+  const pool = dogs.filter((d) => (d.zdjecia || []).length && d.status !== 'adoptowany' && !['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce));
   if (!pool.length) return null;
   pool.sort((a, b) => hash(a.id + 'lapa') - hash(b.id + 'lapa') || (a.id < b.id ? -1 : 1));
   const dn = Math.floor((startOfDay(now) - new Date(2026, 0, 1).getTime()) / MS_DAY + 0.5);
@@ -70,7 +71,7 @@ export const NEED_LABELS = { spacer: 'Spokojny spacer', zdjecia: 'Aktualne zdję
 // Potrzeby psa: ręcznie zaznaczone + wyliczone regułami (bez AI).
 export function dogNeeds(d, walks = []) {
   const out = new Set(d.potrzeby || []);
-  if (d.status === 'adoptowany') return [];
+  if (d.status === 'adoptowany' || ['adoptowany', 'zmarl'].includes(d.miejsce)) return [];
   if (!(d.zdjecia || []).length) out.add('zdjecia');
   const mine = walks.filter((w) => w.pies_id === d.id);
   if (mine.length) {

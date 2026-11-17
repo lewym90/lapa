@@ -26,7 +26,7 @@ export const telLink = (t) => (t ? `<a class="kontakt" href="tel:${esc(String(t)
 const imiona = (a) => (a.length <= 4 ? a.map((z) => z.imie).join(', ') : a.slice(0, 4).map((z) => z.imie).join(', ') + ' +' + (a.length - 4));
 
 // Okno zgłoszenia: imię, telefon (zapamiętane na telefonie), opcjonalnie ilość.
-export function zglosSie({ tytul, opis = '', ilosc = null, przycisk = 'Zgłaszam się' }, zapisz) {
+export function zglosSie({ tytul, opis = '', ilosc = null, przycisk = 'Zgłaszam się', dzieki = 'Dziękujemy! Administrator się z Tobą skontaktuje' }, zapisz) {
   openSheet(`<h2>${esc(tytul)}</h2>${opis}<form id="zw" novalidate>
     ${ilosc ? `<div class="field"><label for="zw_q">Ile możesz przywieźć?${ilosc.jedn ? ' (' + esc(ilosc.jedn) + ')' : ''}</label><input class="input" id="zw_q" inputmode="numeric" maxlength="6" data-nodraft placeholder="np. ${Math.max(1, Math.min(10, ilosc.brak || 5))}"></div>` : ''}
     <div class="field"><label for="zw_i">Twoje imię</label><input class="input" id="zw_i" maxlength="40" autocomplete="given-name" data-nodraft value="${esc(getName())}"></div>
@@ -40,7 +40,7 @@ export function zglosSie({ tytul, opis = '', ilosc = null, przycisk = 'Zgłaszam
       if (imie.length < 2) { er.textContent = 'Wpisz swoje imię.'; return; }
       if (cyfry(tel).length < 9) { er.textContent = 'Wpisz numer telefonu (9 cyfr), żeby administrator mógł się z Tobą skontaktować.'; return; }
       setTel(tel);
-      await zapisz({ imie, tel, ilosc: q }); closeSheet(); toast('Dziękujemy! Administrator się z Tobą skontaktuje');
+      await zapisz({ imie, tel, ilosc: q }); closeSheet(); toast(dzieki);
     });
   });
 }
@@ -115,7 +115,7 @@ actions['of-potrzeba'] = async (el) => {
 };
 // administrator: przyjęcie oferty rzeczowej = doliczenie do „zapewniono”
 actions['of-przyjmij'] = async (el) => {
-  const o = await get('oferty', el.dataset.id); if (!o) return; const n = await get('potrzeby', o.ref);
+  const o = await get('oferty', el.dataset.id); if (!o || o.stan === 'przyjeta') return; const n = await get('potrzeby', o.ref);
   if (n) { n.zapewniono = (n.zapewniono || 0) + (o.ilosc || 0); if (n.zapewniono >= n.potrzeba) n.status = 'zrealizowana'; await save('potrzeby', n); }
   await save('oferty', { ...o, stan: 'przyjeta', przyjeto: Date.now() }); toast(n ? `Doliczono ${o.ilosc || 0} do „${n.nazwa}”` : 'Przyjęte');
 };
@@ -137,7 +137,7 @@ actions['of-transport'] = async (el) => {
     ({ imie, tel }) => nowe('oferty', { typ: 'transport', ref: x.id, stan: 'nowa' }, imie, tel));
 };
 actions['of-kierowca'] = async (el) => {
-  const o = await get('oferty', el.dataset.id); if (!o) return; const x = await get('transporty', o.ref); if (!x) return;
+  const o = await get('oferty', el.dataset.id); if (!o || o.stan === 'przyjeta') return; const x = await get('transporty', o.ref); if (!x) return;
   await save('transporty', { ...x, status: 'przypisany', kierowca: o.imie }); await save('oferty', { ...o, stan: 'przyjeta', przyjeto: Date.now() });
   closeSheet(); toast(`Kierowca: ${o.imie}`);
 };
@@ -158,7 +158,7 @@ export async function sobotyWol() {
 }
 actions['sob-bede'] = (el) => {
   const key = el.dataset.key, t = +el.dataset.t;
-  zglosSie({ tytul: `Spacery: ${fmtDayLong(t)}`, opis: `<p class="hint" style="margin:0 0 12px">Godz. ${esc(fmtTime(t))} pod bramą schroniska.</p>`, przycisk: 'Będę' },
+  zglosSie({ tytul: `Spacery: ${fmtDayLong(t)}`, opis: `<p class="hint" style="margin:0 0 12px">Godz. ${esc(fmtTime(t))} pod bramą schroniska.</p>`, przycisk: 'Będę', dzieki: 'Dziękujemy! Do zobaczenia pod bramą' },
     ({ imie, tel }) => nowe('zgloszenia', { key, status: 'tak' }, imie, tel));
 };
 
@@ -173,7 +173,7 @@ export async function zgloszeniaAdmin() {
   const seen = +(localStorage.getItem(ZGL_SEEN) || 0); try { localStorage.setItem(ZGL_SEEN, String(Date.now())); } catch { /* */ }
   const P = Object.fromEntries(psy.map((d) => [d.id, d])), N = Object.fromEntries(nd.map((n) => [n.id, n])), T = Object.fromEntries(tr.map((x) => [x.id, x]));
   const nowy = (r) => ((r.ts || 0) > seen && z.tel[r.id] ? ' <span class="chip gold" style="min-height:22px;padding:0 8px;font-size:11.5px">nowe</span>' : '');
-  const wiersz = (r, col, co, extra = '') => `<div class="zglr"><span><span class="zco">${co}</span><b>${esc(r.imie || '')}</b>${nowy(r)} ${telLink(z.tel[r.id])}<small>zgłoszone ${r.ts ? esc(fmtDate(r.ts)) : ''}</small></span><span class="zgla">${extra}<button class="iconbtn sm" data-act="zg-usun" data-col="${col}" data-id="${esc(r.id)}" aria-label="Usuń zgłoszenie">${icon('trash').s}</button></span></div>`;
+  const wiersz = (r, col, co, extra = '') => `<div class="zglr"><span><span class="zco">${co}</span><b>${esc(r.imie || '')}</b>${nowy(r)} ${telLink(z.tel[r.id])}<small>zgłoszone ${r.ts ? esc(fmtDate(r.ts)) : ''}</small></span><span class="zgla">${extra}<button class="btn sm ghost" data-act="zg-usun" data-col="${col}" data-id="${esc(r.id)}" aria-label="Usuń zgłoszenie">${icon('trash').s}</button></span></div>`;
   const sekcja = (tytul, rows, pusto) => `<div class="sec"><h2>${tytul}</h2></div><div class="pad">${rows.length ? `<div class="card zgl" style="padding:6px 14px">${rows.join('')}</div>` : `<p class="hint" style="margin:0 4px">${pusto}</p>`}</div>`;
   const nowsze = (a) => a.sort((x, y) => (y.ts || 0) - (x.ts || 0));
   const dek = nowsze(z.dek.filter((r) => P[r.pies_id])).map((r) => wiersz(r, 'deklaracje', `<a href="#/psy/${esc(r.pies_id)}">${esc(P[r.pies_id].imie)}</a>: ${esc(NEED_LABELS[r.potrzeba] || r.potrzeba)}`));

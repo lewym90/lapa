@@ -8,7 +8,7 @@ cd "$APP"
 
 # 1) Hasło administratora (tylko gdy jeszcze go nie ma). Musi być inne niż hasło wolontariusza i koordynatora.
 if ! grep -q "^PASS_ADMIN_HASH=" "$ENVF"; then
-  echo "== Ustaw hasło ADMINISTRATORA (min. 8 znaków, inne niż hasło wolontariusza i koordynatora)"
+  echo "== Ustaw hasło ADMINISTRATORA (min. 8 znaków, inne niż hasło wolontariusza)"
   read -rsp "Hasło administratora: " P1; echo; read -rsp "Powtórz: " P2; echo
   [ "$P1" = "$P2" ] || { echo "PRZERWANO: hasła się różnią. Nic nie zostało zmienione."; exit 1; }
   # porównanie z istniejącymi hasłami (skróty scrypt z $ENVF)
@@ -23,7 +23,7 @@ if ! grep -q "^PASS_ADMIN_HASH=" "$ENVF"; then
   echo "Hasło administratora zapisane (tylko jego skrót)."
 fi
 
-# 2) Skrypt zmiany hasła: wolontariusz, koordynator, administrator
+# 2) Skrypt zmiany hasła: wolontariusz, administrator
 cat > "$APP/zmien-haslo.sh" <<'Z'
 #!/usr/bin/env bash
 # Zmiana hasła. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|administrator
@@ -32,6 +32,14 @@ case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; administrator) KEY=PASS
 [ "$(id -u)" = 0 ] || { echo "uruchom jako root"; exit 1; }
 read -rsp "Nowe hasło (min. 8 znaków): " P1; echo; read -rsp "Powtórz hasło: " P2; echo
 [ "$P1" = "$P2" ] || { echo "Hasła się różnią."; exit 1; }
+# hasło administratora i wolontariusza muszą być różne (inaczej każdy wolontariusz byłby administratorem)
+case "$KEY" in PASS_ADMIN_HASH) INNE=PASS_VOLUNTEER_HASH;; *) INNE=PASS_ADMIN_HASH;; esac
+SAME="$(set -a; . /etc/lapa.env; set +a; printf '%s' "$P1" | INNE="$INNE" /opt/lapa/node/bin/node -e '
+  const c=require("node:crypto");let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
+    const h=String(process.env[process.env.INNE]||"");let ok=false;
+    try{const[a,n,salt,hh]=h.split("$");if(a==="scrypt"){const w=Buffer.from(hh,"base64");ok=c.timingSafeEqual(c.scryptSync(s,Buffer.from(salt,"base64"),w.length,{N:+n,r:8,p:1,maxmem:64*1024*1024}),w);}}catch{}
+    console.log(ok?"1":"0");});')"
+[ "$SAME" = "0" ] || { echo "PRZERWANO: hasło administratora i wolontariusza muszą być różne. Nic nie zostało zmienione."; exit 1; }
 H="$(printf '%s' "$P1" | /opt/lapa/node/bin/node /opt/lapa/hash-password.mjs)" || exit 1
 grep -v "^$KEY=" /etc/lapa.env > /etc/lapa.env.new; printf "%s='%s'\n" "$KEY" "$H" >> /etc/lapa.env.new
 chmod 600 /etc/lapa.env.new; mv /etc/lapa.env.new /etc/lapa.env
@@ -44,6 +52,8 @@ if [ -f "$APP/data/lapa.db" ]; then
   KOP="$APP/data/kopia-przed-aktualizacja-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$KOP"
   systemctl stop lapa; cp -a "$APP"/data/lapa.db* "$KOP"/; systemctl start lapa
   echo "Kopia bazy: $KOP"
+  # zostawiamy 5 ostatnich kopii (starsze usuwamy, żeby nie zapełnić dysku)
+  ls -1dt "$APP"/data/kopia-przed-aktualizacja-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
 fi
 
 # 4) Kod serwera (z kopią i sprawdzeniem; przy błędzie wraca poprzednia wersja)
