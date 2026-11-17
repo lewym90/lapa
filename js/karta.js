@@ -20,7 +20,7 @@ const TRI = [['tak', 'Tak'], ['nie', 'Nie'], ['?', 'Nie wiem']];
 const OCENY = [['ok', 'Bardzo dobrze'], ['neutral', 'Neutralnie'], ['ostroznie', 'Ostrożnie'], ['nie', 'Słabo']];
 const CECHY = [['przyjazny', 'przyjazna'], ['spokojny', 'spokojna'], ['energiczny', 'energiczna'], ['wesoły', 'wesoła'], ['łagodny', 'łagodna'], ['przytulas', 'przytulaska'],
   ['nieśmiały', 'nieśmiała'], ['czujny', 'czujna'], ['mądry', 'mądra'], ['posłuszny', 'posłuszna'], ['lubi zabawę', 'lubi zabawę'], ['lubi spacery', 'lubi spacery'], ['kanapowiec', 'kanapowa'], ['zna komendy', 'zna komendy']];
-const STATUSY = ['schronisko', 'do_adopcji', 'pilne', 'w_trakcie'];
+const STATUSY = ['schronisko', 'do_adopcji', 'pilne']; // adopcja, adoptowany i archiwum: „Zmień status” na karcie psa
 const OPISY_KROKOW = [
   'Wystarczy imię. Resztę wpisz, jeśli wiesz. Możesz wrócić w każdej chwili.',
   'Zaznacz, co wiadomo. „Nie wiem” też jest odpowiedzią.',

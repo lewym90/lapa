@@ -38,6 +38,7 @@ export async function remove(col, id) {
   if (!LOCAL_ONLY.has(col)) await db.addOutbox({ col, id, data: rec.data, updated_at: rec.updated_at, deleted: true, by: rec.by });
   emit('change', { col }); kick();
 }
-export async function list(col) { const out = (await db.getAll(col)).filter((r) => !r.deleted).map((r) => r.data); return col === 'psy' ? withOzn(out) : out; }
+// Psy w archiwum (zniknęli ze strony schroniska) są pomijani wszędzie; { archiwum: true } – razem z nimi (np. do podpisania starych wpisów imieniem psa).
+export async function list(col, { archiwum = false } = {}) { let out = (await db.getAll(col)).filter((r) => !r.deleted).map((r) => r.data); if (col === 'psy') { if (!archiwum) out = out.filter((d) => !d.archiwum); return withOzn(out); } return out; }
 export async function listRecs(col) { return (await db.getAll(col)).filter((r) => !r.deleted); }
 export async function get(col, id) { const r = await db.getRec(col, id); const d = r && !r.deleted ? r.data : null; if (d && col === 'psy') await withOzn([d]); return d; }

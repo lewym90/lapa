@@ -40,6 +40,20 @@ dogs[9].opis='Zmieniony opis dziewiątego psa, który został usunięty w aplika
 lim=5; const before=JSON.stringify((await all()).map(x=>x.id).sort()); dogs[1].opis='NIE POWINNO SIĘ ZAPISAĆ, bo strona wygląda na zepsutą i nic nie zapisujemy.'; s=await run();
 ck('7: zepsuta lista => błąd, bez zmian '+s.blad.slice(0,60),s.ok===false&&!(await dog(1)).opis.includes('NIE POWINNO'));
 lim=999; s=await run(); ck('8: po naprawie znów działa',s.ok&&(await dog(1)).opis.includes('NIE POWINNO'));
+// 1.17: pies znika ze strony → od razu „Adoptowane”; wraca → status ze strony; archiwum (decyzja administratora) zostaje
+await edit(6,(x)=>({...x,poza_strona:Date.now()-86400e3})); // znacznik z poprzedniej wersji („Adoptowany?” w Dziś i do zrobienia)
+await edit(8,(x)=>({...x,archiwum:Date.now(),archiwum_los:'zmarl'}));
+const z2=dogs[2], z6=dogs[6], z8=dogs[8]; delete dogs[2]; delete dogs[6]; delete dogs[8];
+s=await run(); d=await dog(2); ck('9: zniknął → od razu adoptowany '+JSON.stringify({st:d.status,m:d.miejsce,z:!!d.zniknal_ze_strony}),d.status==='adoptowany'&&d.miejsce==='adoptowany'&&!!d.zniknal_ze_strony&&!d.archiwum&&s.zniknelo===2&&s.zniknelo_nazwy.includes('Burek2'));
+d=await dog(6); ck('9b: stary znacznik → adoptowany, bez poza_strona',d.status==='adoptowany'&&!d.poza_strona);
+d=await dog(8); ck('9c: archiwum zostaje archiwum',!!d.archiwum&&d.status!=='adoptowany');
+s=await run(); ck('9d: drugie sprawdzenie bez zmian',s.zniknelo===0);
+dogs[2]=z2; dogs[8]=z8; s=await run(); d=await dog(2); ck('10: wrócił na stronę → status ze strony '+JSON.stringify({st:d.status,m:d.miejsce}),d.status==='do_adopcji'&&d.miejsce==='schronisko'&&!d.zniknal_ze_strony&&s.wrocilo===1);
+d=await dog(8); ck('10b: archiwum nie wraca samo',!!d.archiwum);
+// administrator potwierdził adopcję psa, który zniknął; pies wraca na stronę (np. wrócił z adopcji) → wraca do aplikacji
+await edit(6,(x)=>({...x,adopcja_potw:Date.now()})); dogs[6]=z6; s=await run(); d=await dog(6); ck('11: potwierdzony adoptowany wraca na stronę → wraca',d.status==='do_adopcji'&&!d.adopcja_potw);
+// ręcznie adoptowany, ale wciąż na stronie → zostaje adoptowany
+await edit(7,(x)=>({...x,status:'adoptowany',miejsce:'adoptowany'})); s=await run(); ck('12: ręcznie adoptowany, nadal na stronie → bez zmian',(await dog(7)).status==='adoptowany');
 // uszkodzony układ strony (brak pól)
 const orig=page; 
 srv.kill(); site.close(); console.log(fails?'BŁĘDY: '+fails:'WSZYSTKO OK'); process.exit(fails?1:0);

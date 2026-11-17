@@ -3,7 +3,7 @@
 #   adres:  https://<domena>/lapa-test/app/
 #   usługa: lapa-test (port 8798), katalog /opt/lapa-test, ustawienia /etc/lapa-test.env, trasa /etc/caddy/conf.d/lapa-test.caddy
 #   dane:   osobna baza = KOPIA prawdziwych danych z chwili instalacji (zmiany w teście nie trafiają do wolontariuszy)
-#   hasła:  takie same jak w prawdziwej aplikacji; strona schroniska NIE jest czytana; powiadomienia nie idą na prawdziwe telefony
+#   hasła:  takie same jak w prawdziwej aplikacji; strona schroniska jest czytana jak w prawdziwej (zmienia tylko dane testowe; SITE_SYNC=0 wyłącza); powiadomienia nie idą na prawdziwe telefony
 # Użycie (jako root):
 #   LAPA_REF=<gałąź lub commit> bash <(curl -fsSL https://raw.githubusercontent.com/lewym90/lapa/<to samo>/server/test-srodowisko.sh)            instalacja / nowa wersja testowa
 #   ... test-srodowisko.sh nowe-dane     to samo + świeża kopia prawdziwych danych (testowe zmiany przepadają)
@@ -61,7 +61,7 @@ fi
 # 3) Ustawienia (hasła jak w prawdziwej aplikacji)
 ( umask 077
   { echo "PORT=$PORT"; echo "HOST=127.0.0.1"; echo "DB_FILE=$T/data/lapa.db"; echo "ALLOWED_ORIGINS=https://$DOM"
-    echo "STATIC_DIR=$T/www"; echo "SITE_SYNC=0"; echo "VAPID_SUB=https://$DOM/lapa-test"
+    echo "STATIC_DIR=$T/www"; echo "SITE_SYNC=${SITE_SYNC:-1}"; echo "VAPID_SUB=https://$DOM/lapa-test"
     grep -E '^PASS_(VOLUNTEER|ADMIN)_HASH=' /etc/lapa.env; } > "$ENVT" )
 chmod 600 "$ENVT"
 

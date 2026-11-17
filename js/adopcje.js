@@ -1,10 +1,11 @@
 // Droga adopcji i domy tymczasowe: dane osobowe, tylko dla administratora (kolekcje p_*).
 import { raw } from './ui-core.js';
-import { wybCls, imieZnaki } from './znak.js';
+import { wybCls, imieZnaki, boksPill } from './znak.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
-import { MS_DAY, fmtDate } from './util.js';
+import { MS_DAY, fmtDate, uid } from './util.js';
+import { aktywny, ustawLos } from './teczka.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 
@@ -22,101 +23,68 @@ const d10 = (t) => { const d = new Date(t || Date.now()); return d.getFullYear()
 const tel = (t) => String(t || '').replace(/[^\d+]/g, '');
 const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title)}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` });
 
-// Pies zmienia status razem z postępem adopcji.
-async function syncDog(a, prevEtap) {
-  const d = await get('psy', a.pies_id); if (!d) return;
-  const e = etapOf(a), all = (await list('p_adopcje')).filter((x) => x.pies_id === a.pies_id && x.id !== a.id).concat([a]);
-  let n = { ...d };
-  if (e === 'wydanie' || e === 'po' || e === 'koniec') { n.status = 'adoptowany'; n.miejsce = 'adoptowany'; n.data_adopcji = n.data_adopcji || Date.now(); }
-  else if (['poznanie', 'wizyta', 'umowa'].includes(e) && ['do_adopcji', 'pilne', 'schronisko'].includes(d.status)) n.status = 'w_trakcie';
-  else if (e === 'rez' && d.status === 'w_trakcie' && !all.some((x) => AKTYWNE.includes(etapOf(x)) && ['poznanie', 'wizyta', 'umowa'].includes(etapOf(x)))) n.status = n.www_status && n.www_status !== 'w_trakcie' ? n.www_status : 'do_adopcji';
-  if (JSON.stringify(n) !== JSON.stringify(d)) await save('psy', n);
-}
-
-// ===== formularz nowej osoby =====
-actions['int-add'] = (el) => form({ pies_id: el.dataset.id });
-async function form(a) {
-  const dogs = (await list('psy')).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'));
-  openSheet(`<h2>${a.id ? 'Edytuj osobę' : 'Osoba zainteresowana adopcją'}</h2><form id="af" novalidate>
-    ${SEL('a_p', 'Pies', dogs.map((d) => [d.id, d.imie]), a.pies_id)}
-    <div class="field"><label for="a_i">Imię i nazwisko</label><input class="input" id="a_i" maxlength="80" value="${esc(a.imie || '')}"></div>
-    <div class="field"><label for="a_t">Telefon</label><input class="input" id="a_t" type="tel" maxlength="30" value="${esc(a.telefon || '')}"></div>
-    <div class="field"><label for="a_m">Miejscowość (opcjonalnie, ważne przy transporcie)</label><input class="input" id="a_m" maxlength="60" value="${esc(a.miasto || '')}"></div>
-    ${SEL('a_e', 'Etap', ETAPY, etapOf(a))}
-    <div class="field"><label for="a_n">Notatka (warunki, dzieci, inne zwierzęta…)</label><textarea class="textarea" id="a_n" maxlength="800">${esc(a.notatka || '')}</textarea></div><div class="err" id="a_x"></div>
-    <button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
-    s.querySelector('#af').addEventListener('submit', async (e) => {
-      e.preventDefault(); const imie = s.querySelector('#a_i').value.trim(); if (!imie) { s.querySelector('#a_x').textContent = 'Wpisz imię.'; return; }
-      const prev = etapOf(a), etap = s.querySelector('#a_e').value;
-      const o = { ...a, pies_id: s.querySelector('#a_p').value, imie, telefon: s.querySelector('#a_t').value.trim(), miasto: s.querySelector('#a_m').value.trim(), etap, notatka: s.querySelector('#a_n').value.trim(), prowadzi: a.prowadzi || getName(), ts: a.ts || Date.now(), autor: a.autor || getName(), log: a.log || [] };
-      if (!a.id || etap !== prev) { o.log = [...o.log, { ts: Date.now(), autor: getName(), text: a.id ? 'Etap: ' + ETAP[etap] : 'Dodano: ' + ETAP[etap] }]; if (!o.nastepny) autoNext(o); }
-      await save('p_adopcje', o); await syncDog(o, prev); closeSheet(); toast('Zapisane');
-    });
-  });
-}
-function autoNext(o) {
-  const e = etapOf(o), plus = { kontakt: [2, 'Oddzwonić i porozmawiać'], rozmowa: [7, 'Umówić poznanie z psem'], poznanie: [7, 'Umówić wizytę przedadopcyjną'], wizyta: [7, 'Przygotować umowę'], umowa: [7, 'Wydanie psa'], wydanie: [14, 'Wizyta poadopcyjna: jak się mają?'], po: [60, 'Kolejny kontakt: jak się mają?'] }[e];
-  if (plus) { o.nastepny = Date.now() + plus[0] * MS_DAY; o.nastepny_opis = plus[1]; } else { o.nastepny = null; o.nastepny_opis = ''; }
-}
-
-// ===== szczegóły osoby =====
-actions['adopcja-open'] = async (el) => {
-  const a = await get('p_adopcje', el.dataset.id); if (!a) return; const d = await get('psy', a.pies_id), e = etapOf(a), i = ORDER.indexOf(e), nx = AKTYWNE.includes(e) ? ORDER[i + 1] : null;
-  openSheet(`<h2>${esc(a.imie)}</h2><p class="sub" style="margin:0 0 8px">Pies: <b>${d ? imieZnaki(d) : '?'}</b> · ${esc(ETAP[e])}${a.miasto ? ' · ' + esc(a.miasto) : ''}</p>
-    ${a.telefon ? `<div class="btnrow"><a class="btn" href="tel:${esc(tel(a.telefon))}">Zadzwoń</a><a class="btn ghost" href="sms:${esc(tel(a.telefon))}">SMS</a><a class="btn ghost" target="_blank" rel="noopener" href="https://wa.me/${esc(tel(a.telefon).replace(/^\+/, '').replace(/^(\d{9})$/, '48$1'))}">WhatsApp</a></div>` : ''}
-    ${a.notatka ? `<div class="notebox" style="margin-top:10px">${esc(a.notatka)}</div>` : ''}
-    <div class="field" style="margin-top:12px"><label for="n_d">Następny krok</label><input class="input" id="n_o" maxlength="100" placeholder="co zrobić" value="${esc(a.nastepny_opis || '')}"><input class="input" id="n_t" type="date" style="margin-top:6px" value="${a.nastepny ? d10(a.nastepny) : ''}"></div>
-    <div class="field"><label for="n_p">Prowadzi</label><input class="input" id="n_p" maxlength="40" value="${esc(a.prowadzi || getName())}"></div>
-    <button class="btn block" id="n_s">Zapisz krok</button>
-    ${nx ? `<button class="btn ghost block" style="margin-top:8px" id="n_n">Przesuń dalej: ${esc(ETAP[nx])}</button>` : ''}
-    <div class="field" style="margin-top:12px"><label for="n_l">Dodaj wpis do historii</label><input class="input" id="n_l" maxlength="300" placeholder="np. rozmowa telefoniczna, zdjęcia z domu"><button class="btn ghost block sm" style="margin-top:6px" id="n_la">Dodaj wpis</button></div>
-    <div>${[...(a.log || [])].reverse().map((l) => `<div class="obs"><div class="oh"><b>${esc(l.autor || '')}</b><span>${esc(fmtDate(l.ts))}</span></div>${esc(l.text)}</div>`).join('')}</div>
-    <div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="n_e">Edytuj</button><button class="btn ghost" style="color:var(--terra-d)" id="n_x">Usuń</button></div>`, (s) => {
-    s.querySelector('#n_s').onclick = async () => { const t = s.querySelector('#n_t').value; await save('p_adopcje', { ...a, nastepny_opis: s.querySelector('#n_o').value.trim(), nastepny: t ? new Date(t + 'T12:00').getTime() : null, prowadzi: s.querySelector('#n_p').value.trim() }); closeSheet(); toast('Zapisane'); };
-    s.querySelector('#n_n')?.addEventListener('click', async () => { const o = { ...a, etap: nx, log: [...(a.log || []), { ts: Date.now(), autor: getName(), text: 'Etap: ' + ETAP[nx] }] }; autoNext(o); await save('p_adopcje', o); await syncDog(o, e); closeSheet(); toast('Etap: ' + ETAP[nx]); });
-    s.querySelector('#n_la').onclick = async () => { const t = s.querySelector('#n_l').value.trim(); if (!t) return; await save('p_adopcje', { ...a, log: [...(a.log || []), { ts: Date.now(), autor: getName(), text: t }] }); closeSheet(); actions['adopcja-open'](el); };
-    s.querySelector('#n_e').onclick = () => { closeSheet(); form(a); };
-    s.querySelector('#n_x').onclick = async () => { if (await confirmSheet('Usunąć?', 'Osoba zniknie z listy.', 'Usuń', true)) { await remove('p_adopcje', a.id); toast('Usunięto'); } };
-  });
-};
-
-// ===== lista przy karcie psa =====
-export async function dogBlock(dogId) {
-  const items = (await list('p_adopcje')).filter((z) => z.pies_id === dogId);
-  return html`<div class="sec"><h2>Zainteresowani adopcją</h2></div>${items.length ? items.map((z) => html`<button class="row" data-act="adopcja-open" data-id="${z.id}"><span class="rt"><b>${z.imie}</b><small>${ETAP[etapOf(z)]}${z.nastepny ? ' · ' + (z.nastepny_opis || 'krok') + ' ' + fmtDate(z.nastepny) : ''}</small></span>${icon('chev')}</button>`) : html`<p class="hint">Nikt jeszcze nie zapisany.</p>`}
-    <button class="btn ghost block sm" style="margin-top:10px" data-act="int-add" data-id="${dogId}">${icon('plus')} Dodaj osobę zainteresowaną</button>`;
-}
-
-// ===== ekran Adopcje =====
-let fAd = 'aktywne';
+// ===== Adopcje (od 1.17): prosto. Lista psów w procesie adopcji; o statusie psa decyduje wyłącznie administrator. =====
+// Pies trafia tu, gdy administrator wybierze „W procesie adopcji” (karta psa → Zmień status) albo gdy tak jest na stronie schroniska.
+// Stąd: „Adoptowany” (filtr Adoptowane w Psy) albo „Wraca do schroniska” (znów na liście Psy). Dane osoby adoptującej – opcjonalnie.
+const osobyDla = (osoby, id) => osoby.filter((o) => o.pies_id === id).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+const osobaHtml = (o) => `<div class="adosoba">Adoptuje: <b>${esc(o.imie || '')}</b>${o.telefon ? ` · <a class="kontakt" href="tel:${esc(tel(o.telefon))}">${esc(o.telefon)}</a>` : ''}${o.notatka ? `<br><span class="hint">${esc(o.notatka)}</span>` : ''}</div>`;
 export async function adopcje() {
-  if (!state.coordinator) return lockPage('Adopcje');
-  const [all, dogs] = await Promise.all([list('p_adopcje'), list('psy')]); const me = getName(), now = Date.now(), byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
-  let items = all.filter((a) => (fAd === 'aktywne' ? AKTYWNE.includes(etapOf(a)) : fAd === 'moje' ? a.prowadzi === me && AKTYWNE.includes(etapOf(a)) : ['koniec', 'rez'].includes(etapOf(a)) || fAd === 'wszystkie'));
-  items.sort((a, b) => (a.nastepny || 9e15) - (b.nastepny || 9e15));
-  const late = all.filter((a) => AKTYWNE.includes(etapOf(a)) && a.nastepny && a.nastepny < now).length;
+  if (!state.admin) return lockPage('Adopcje');
+  const [dogs, osoby] = await Promise.all([list('psy'), list('p_adopcje')]);
+  const w = dogs.filter((d) => d.status === 'w_trakcie').sort((a, b) => (b.w_trakcie_od || 0) - (a.w_trakcie_od || 0));
+  const nAdopt = dogs.filter((d) => !aktywny(d)).length;
   return {
     tab: 'start', title: 'Adopcje', live: true,
-    html: html`${pageBar('Adopcje', { right: html`${plusBtn('ad-new', 'Dodaj')}` })}
-    <div class="fchips">${[['aktywne', 'W toku'], ['moje', 'Moje'], ['zakonczone', 'Zakończone'], ['wszystkie', 'Wszystkie']].map(([k, l]) => html`<button class="chip dark ${fAd === k ? 'on' : ''}" data-act="ad-filter" data-k="${k}">${l}</button>`)}</div>
-    <div class="pad stack">${late ? html`<p class="hint" style="color:var(--gold-l);margin:0">Zaległe kroki: ${late}</p>` : ''}
-    ${items.length ? items.map((a) => { const d = byId[a.pies_id], over = a.nastepny && a.nastepny < now && AKTYWNE.includes(etapOf(a)); return html`<div class="card gap"><button class="gi" data-act="adopcja-open" data-id="${a.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp${d ? wybCls(d) : ''}">${d ? dogThumb(d) : ''}</span><span class="rt"><b>${a.imie} · ${d ? raw(imieZnaki(d)) : '?'}</b><small>${ETAP[etapOf(a)]}${a.prowadzi ? ' · ' + a.prowadzi : ''}</small><small style="${over ? 'color:var(--terra-d);font-weight:600' : ''}">${a.nastepny ? (over ? 'Zaległe: ' : '') + (a.nastepny_opis || 'Następny krok') + ' · ' + fmtDate(a.nastepny) : 'Brak ustalonego kroku'}</small></span></button></div>`; })
-      : html`<div class="empty">${icon('heart')}<h3>Nikogo tu nie ma</h3><p>Dodaj osobę przyciskiem + albo z karty psa.</p></div>`}</div>`,
+    html: html`${pageBar('Adopcje')}<div class="pad stack">
+      <p class="hint" style="color:var(--sage);margin:0">Psy w procesie adopcji. Wolontariusze ich nie widzą; w Bramie są oznaczone i można je wydać na spacer.</p>
+      ${w.length ? raw(w.map((d) => { const o = osobyDla(osoby, d.id)[0]; return `<div class="card adcard"><span class="avatar">${dogThumb(d).s}</span><div><h3>${esc(d.imie)} ${boksPill(d, 'in')}</h3>
+          <div class="hint">w procesie adopcji${d.w_trakcie_od ? ' od ' + esc(fmtDate(d.w_trakcie_od)) : ''}</div>${o ? osobaHtml(o) : ''}</div>
+          <div class="btnrow"><button class="btn" data-act="ad-adoptowany" data-id="${esc(d.id)}">${icon('check').s} Adoptowany</button><button class="btn ghost" data-act="ad-wraca" data-id="${esc(d.id)}">Wraca do schroniska</button></div>
+          <div class="btnrow" style="grid-column:1/-1;margin-top:6px"><button class="btn ghost sm" data-act="ad-osoba" data-id="${esc(d.id)}">${icon('user').s} ${o ? 'Zmień dane osoby' : 'Kto adoptuje (opcjonalnie)'}</button><a class="btn ghost sm" href="#/psy/${esc(d.id)}">Karta psa</a></div></div>`; }).join(''))
+        : html`<div class="empty">${icon('heart')}<h3>Nie ma psów w procesie adopcji</h3><p>Na karcie psa dotknij „Status” i wybierz „W procesie adopcji”.</p></div>`}
+      <a class="card" href="#/adoptowane" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span style="flex:1"><b>Adoptowane: ${nAdopt}</b><br><span class="hint">Lista Psy, filtr „Adoptowane”</span></span>${icon('chev')}</a></div>`,
     mount(root) { hydratePhotos(root); }
   };
 }
-actions['ad-filter'] = (el) => { fAd = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
-actions['ad-new'] = async () => { const dogs = await list('psy'); form({ pies_id: dogs[0]?.id }); };
-export async function zalegle() { // do licznika na Starcie (tylko po odblokowaniu)
-  if (!state.coordinator) return 0; const now = Date.now();
-  return (await list('p_adopcje')).filter((a) => AKTYWNE.includes(etapOf(a)) && a.nastepny && a.nastepny < now).length;
+actions['ad-adoptowany'] = async (el) => {
+  const d = await get('psy', el.dataset.id); if (!d) return;
+  if (!(await confirmSheet(`${d.imie} adoptowany?`, 'Pies przejdzie do „Adoptowanych” (lista Psy, filtr Adoptowane).', 'Tak, adoptowany'))) return;
+  await save('psy', ustawLos(d, 'adoptowany')); toast(`${d.imie}: adoptowany. Brawo!`);
+};
+actions['ad-wraca'] = async (el) => {
+  const d = await get('psy', el.dataset.id); if (!d) return;
+  if (!(await confirmSheet(`${d.imie} wraca do schroniska?`, 'Adopcja nie doszła do skutku. Pies będzie znów na liście Psy, widoczny dla wolontariuszy.', 'Wraca do schroniska'))) return;
+  await save('psy', ustawLos(d, 'dostepny')); toast(`${d.imie} jest znów na liście Psy`);
+};
+actions['ad-osoba'] = async (el) => {
+  const id = el.dataset.id, d = await get('psy', id); if (!d) return;
+  const o = osobyDla(await list('p_adopcje'), id)[0] || {};
+  openSheet(`<h2>Kto adoptuje: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Opcjonalnie. Widzi to tylko administrator.</p><form id="af" novalidate>
+    <div class="field"><label for="a_i">Imię i nazwisko</label><input class="input" id="a_i" maxlength="80" value="${esc(o.imie || '')}"></div>
+    <div class="field"><label for="a_t">Telefon</label><input class="input" id="a_t" type="tel" maxlength="30" value="${esc(o.telefon || '')}"></div>
+    <div class="field"><label for="a_n">Notatka</label><textarea class="textarea" id="a_n" maxlength="800" placeholder="np. dom z ogrodem, umówiona wizyta w sobotę">${esc(o.notatka || '')}</textarea></div>
+    <button class="btn block" type="submit">Zapisz</button>${o.id ? '<button type="button" class="btn ghost block" style="margin-top:8px;color:var(--terra-d)" id="a_x">Usuń dane osoby</button>' : ''}</form>`, (s) => {
+    s.querySelector('#af').addEventListener('submit', async (e) => {
+      e.preventDefault(); const imie = s.querySelector('#a_i').value.trim();
+      await save('p_adopcje', { ...o, id: o.id || 'a' + uid(), pies_id: id, imie, telefon: s.querySelector('#a_t').value.trim(), notatka: s.querySelector('#a_n').value.trim(), ts: Date.now(), autor: getName() });
+      closeSheet(); toast('Zapisane');
+    });
+    s.querySelector('#a_x')?.addEventListener('click', async () => { await remove('p_adopcje', o.id); closeSheet(); toast('Usunięto'); });
+  });
+};
+// Na karcie psa (administrator): osoba adoptująca, gdy pies jest w procesie adopcji albo adoptowany
+export async function dogBlock(dogId) {
+  const d = await get('psy', dogId); if (!d || !['w_trakcie', 'adoptowany'].includes(d.status)) return null;
+  const o = osobyDla(await list('p_adopcje'), dogId)[0];
+  return html`<div class="sec"><h2>Adopcja</h2></div>${o ? raw(osobaHtml(o)) : ''}<button class="btn ghost block sm" style="margin-top:10px" data-act="ad-osoba" data-id="${dogId}">${icon('user')} ${o ? 'Zmień dane osoby adoptującej' : 'Kto adoptuje (opcjonalnie)'}</button>`;
 }
+export async function zalegle() { return 0; } // dawne „zaległe kroki adopcji” – od 1.17 adopcja nie ma etapów
 
 // ===== Domy tymczasowe =====
 const UMIE = [['szczeniaki', 'Szczenięta'], ['chore', 'Chore / po zabiegach'], ['behawioralne', 'Psy z problemami'], ['duze', 'Duże psy'], ['seniorzy', 'Seniorzy'], ['koty', 'Ma koty'], ['dzieci', 'Ma dzieci'], ['ogrod', 'Ogród']];
 export async function dt() {
   if (!state.coordinator) return lockPage('Domy tymczasowe');
-  const [people, dogs] = await Promise.all([list('p_dt'), list('psy')]);
+  const [people, dogs] = await Promise.all([list('p_dt'), list('psy', { archiwum: true })]);
   const living = (p) => dogs.filter((d) => d.miejsce === 'dt' && (d.opiekun || '').trim().toLowerCase() === p.imie.trim().toLowerCase());
   const rows = people.sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   return {

@@ -119,7 +119,7 @@ async function load() {
 }
 
 async function paint(open = false) {
-  PSY = Object.fromEntries((await list('psy')).map((d) => [d.id, d]));
+  PSY = Object.fromEntries((await list('psy', { archiwum: true })).map((d) => [d.id, d]));
   const box = document.getElementById('c-msgs'); if (!box) return;
   const { all, byId, re } = await load(), me = getName();
   const nb = innerHeight + scrollY >= document.documentElement.scrollHeight - 180;

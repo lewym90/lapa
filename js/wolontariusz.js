@@ -169,7 +169,7 @@ export async function noweZgloszenia() {
   return (await list('p_tel')).filter((t) => (t.ts || 0) > seen).length;
 }
 export async function zgloszeniaAdmin() {
-  const [z, psy, nd, tr, sob] = await Promise.all([zglDane(), list('psy'), list('potrzeby'), list('transporty'), soboty(10)]);
+  const [z, psy, nd, tr, sob] = await Promise.all([zglDane(), list('psy', { archiwum: true }), list('potrzeby'), list('transporty'), soboty(10)]);
   const seen = +(localStorage.getItem(ZGL_SEEN) || 0); try { localStorage.setItem(ZGL_SEEN, String(Date.now())); } catch { /* */ }
   const P = Object.fromEntries(psy.map((d) => [d.id, d])), N = Object.fromEntries(nd.map((n) => [n.id, n])), T = Object.fromEntries(tr.map((x) => [x.id, x]));
   const nowy = (r) => ((r.ts || 0) > seen && z.tel[r.id] ? ' <span class="chip gold" style="min-height:22px;padding:0 8px;font-size:11.5px">nowe</span>' : '');
@@ -189,7 +189,7 @@ export async function zgloszeniaAdmin() {
 // ===== Start wolontariusza: pies dnia + kafelki =====
 export async function startWol() {
   const [dogs, walks, nd, tr, kom, zag, sob] = await Promise.all([list('psy'), list('spacery'), list('potrzeby'), list('transporty'), list('komunikaty'), list('zaginiecia'), soboty(1)]);
-  const act = dogs.filter((d) => d.status !== 'adoptowany' && d.miejsce !== 'adoptowany' && d.miejsce !== 'zmarl');
+  const act = dogs.filter((d) => !['adoptowany', 'w_trakcie'].includes(d.status) && d.miejsce !== 'adoptowany' && d.miejsce !== 'zmarl');
   const help = act.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).length;
   const potrz = nd.filter((n) => n.status !== 'zrealizowana').length, trans = tr.filter((x) => x.status === 'szuka').length;
   const lost = zag.filter((z) => z.status !== 'znaleziony').length, next = sob[0], dog = dogOfDay(dogs);

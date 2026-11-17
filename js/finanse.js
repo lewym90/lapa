@@ -16,7 +16,7 @@ let rok = new Date().getFullYear();
 
 export async function finanse() {
   if (!state.coordinator) return { tab: 'start', title: 'Finanse', html: html`${pageBar('Finanse')}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Finanse</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` };
-  const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
+  const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy', { archiwum: true })]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const inY = (t) => new Date(t).getFullYear() === rok;
   const wp = fin.filter((x) => x.typ === 'wplata' && inY(x.data)), wy = fin.filter((x) => x.typ === 'wydatek' && inY(x.data)), zk = zdr.filter((z) => z.koszt && inY(z.data));
   const sum = (a, f = 'kwota') => a.reduce((s, x) => s + (+x[f] || 0), 0);
@@ -60,7 +60,7 @@ async function form(x) {
   });
 }
 actions['fin-csv'] = async () => {
-  const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d.imie]));
+  const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy', { archiwum: true })]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d.imie]));
   const rows = [['data', 'rodzaj', 'kwota', 'kategoria', 'pies', 'opis']];
   fin.filter((x) => new Date(x.data).getFullYear() === rok).forEach((x) => rows.push([d10(x.data), x.typ, x.kwota, L[x.kat || x.zrodlo] || '', byId[x.pies_id] || '', x.opis || '']));
   zdr.filter((z) => z.koszt && new Date(z.data).getFullYear() === rok).forEach((z) => rows.push([d10(z.data), 'wydatek', z.koszt, 'Leczenie i weterynarz', byId[z.pies_id] || '', z.typ + (z.notatka ? ': ' + z.notatka : '')]));

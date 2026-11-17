@@ -25,7 +25,7 @@ const GROUPS = [
 export async function pick() {
   const w = readWalk();
   if (w) { location.hash = '#/spacer/' + w.dogId; return { tab: 'start', nav: false, html: html`` }; }
-  const dogs = (await list('psy')).filter((d) => d.status !== 'adoptowany').sort(kolejnosc('spacer') === 'boks' ? poBoksie : (a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  const dogs = (await list('psy')).filter((d) => d.status !== 'adoptowany' && (state.admin || d.status !== 'w_trakcie')).sort(kolejnosc('spacer') === 'boks' ? poBoksie : (a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   const walks = await list('spacery');
   const last = (id) => { const x = walks.filter((v) => v.pies_id === id); return x.length ? Math.max(...x.map((v) => v.start)) : 0; };
   return {

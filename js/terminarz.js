@@ -64,7 +64,7 @@ export async function soboty(n = 10) {
 // ===== dane na dziś (Start, Do zrobienia, komunikat poranny) =====
 export async function dzisItems() {
   await migruj();
-  const [tm, tr, sb, psyL] = await Promise.all([list('terminarz'), list('transporty'), soboty(10), list('psy')]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
+  const [tm, tr, sb, psyL] = await Promise.all([list('terminarz'), list('transporty'), soboty(10), list('psy', { archiwum: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), t1 = t0 + DAY, items = [], overdue = [];
   for (const e of tm.filter(visible)) {
     if (e.status === 'odwolany') continue;
@@ -164,7 +164,7 @@ actions['sb-edit'] = async (el) => { const x = (await soboty(10)).find((y) => y.
 
 // ===== terminarz =====
 async function terView(zg) {
-  const [tm, tr, psyL] = await Promise.all([list('terminarz'), list('transporty'), list('psy')]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
+  const [tm, tr, psyL] = await Promise.all([list('terminarz'), list('transporty'), list('psy', { archiwum: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), to = t0 + 90 * DAY, name = me(), rows = [], undated = [], over = [];
   const mine = (e) => e.owner === name || e.autor === name || forKey(zg, evKey('tm', e.id)).some((z) => z.imie === name && z.status === 'tak');
   for (const e of tm.filter(visible)) {

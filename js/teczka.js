@@ -24,6 +24,27 @@ export const days = (t) => Math.max(0, Math.floor((Date.now() - t) / MS_DAY));
 export const miejsce = (d) => d.miejsce || (d.status === 'adoptowany' ? 'adoptowany' : d.status === 'dt' ? 'dt' : d.status === 'hotelik' ? 'hotelik' : 'schronisko');
 const hasPics = (d) => (d.zdjecia || []).length + (d.moje_zdjecia || []).length > 0;
 export const aktywny = (d) => !['adoptowany', 'zmarl'].includes(miejsce(d)) && d.status !== 'adoptowany';
+// Dostępny = czeka na dom (schronisko, dom tymczasowy, hotelik). Psy w procesie adopcji są w zakładce Adopcje (widzi je tylko administrator, także w Bramie).
+export const dostepny = (d) => aktywny(d) && d.status !== 'w_trakcie' && !d.archiwum;
+// Los psa – jedno miejsce, w którym administrator zmienia, „co z psem”: dostępny / w procesie adopcji / adoptowany / archiwum (z przyczyną).
+export const LOSY = [
+  ['dostepny', 'Dostępny do adopcji', 'W schronisku, w domu tymczasowym lub w hoteliku. Widoczny na liście Psy.'],
+  ['w_trakcie', 'W procesie adopcji', 'Przenosi psa do zakładki Adopcje. Wolontariusze go nie widzą (administrator widzi go w Bramie).'],
+  ['adoptowany', 'Adoptowany', 'Filtr „Adoptowane” na liście Psy.'],
+  ['zmarl', 'Za Tęczowym Mostem', 'Do archiwum (Ustawienia → Archiwum psów).'],
+  ['wlasciciel', 'Wrócił do właściciela', 'Do archiwum.'],
+  ['inne', 'Inne', 'Do archiwum.']
+];
+export const losPsa = (d) => (d.archiwum ? d.archiwum_los || 'inne' : d.status === 'w_trakcie' ? 'w_trakcie' : !aktywny(d) ? 'adoptowany' : 'dostepny');
+export function ustawLos(d, k) {
+  const n = { ...d }, now = Date.now();
+  const bezArch = () => { delete n.archiwum; delete n.archiwum_los; delete n.archiwum_zrodlo; };
+  if (k === 'dostepny') { bezArch(); delete n.adopcja_potw; if (['adoptowany', 'w_trakcie'].includes(n.status) || !n.status) n.status = n.status_www && !['adoptowany', 'w_trakcie'].includes(n.status_www) ? n.status_www : 'do_adopcji'; if (!['schronisko', 'dt', 'hotelik'].includes(n.miejsce)) n.miejsce = 'schronisko'; }
+  else if (k === 'w_trakcie') { bezArch(); delete n.adopcja_potw; n.status = 'w_trakcie'; n.w_trakcie_od = d.status === 'w_trakcie' ? d.w_trakcie_od || now : now; if (!['schronisko', 'dt', 'hotelik'].includes(n.miejsce)) n.miejsce = 'schronisko'; }
+  else if (k === 'adoptowany') { bezArch(); n.status = 'adoptowany'; n.miejsce = 'adoptowany'; n.data_adopcji = n.data_adopcji || now; n.adopcja_potw = now; }
+  else { n.archiwum = d.archiwum || now; n.archiwum_los = k; n.archiwum_zrodlo = 'admin'; if (k === 'zmarl') n.miejsce = 'zmarl'; }
+  return n;
+}
 
 // ===== Wspólne zasady postępu psa =====
 // Jedno miejsce, z którego korzystają: karta przyjęcia (Nowe psy), Droga psa na karcie, lista Psy i „Dziś i do zrobienia”.
@@ -110,7 +131,8 @@ export function teczkaRows(d, zdr, ctx = {}) {
 actions['dog-miejsce'] = async (el) => {
   const d = await get('psy', el.dataset.id);
   openSheet(`<h2>Gdzie jest ${esc(d.imie)}?</h2><form id="mf" novalidate>
-    ${SEL('mm', 'Miejsce pobytu', MIEJSCA, miejsce(d))}
+    ${SEL('mm', 'Miejsce pobytu', MIEJSCA.filter(([k]) => ['schronisko', 'dt', 'hotelik', 'zaginiony'].includes(k) || k === miejsce(d)), miejsce(d))}
+    <p class="hint" style="margin:-4px 0 12px">Adopcję, adoptowanie i odejście psa zmieniasz przyciskiem „Status psa” na karcie.</p>
     <div class="field"><label for="mb">Boks (gdy pies jest w schronisku): numer lub numer z literą</label><input class="input" id="mb" maxlength="8" autocomplete="off" autocapitalize="off" placeholder="np. 12, 7a, A3" value="${esc(d.boks || '')}"></div>
     <div class="field"><label for="mo">Opiekun / dom tymczasowy / hotelik (opcjonalnie)</label><input class="input" id="mo" maxlength="80" value="${esc(d.opiekun || '')}"></div>
     <div class="field"><label for="md">Data przyjęcia do schroniska</label><input class="input" id="md" type="date" value="${d.data_przyjecia ? d10(d.data_przyjecia) : ''}"></div>
@@ -119,12 +141,26 @@ actions['dog-miejsce'] = async (el) => {
     s.querySelector('#mf').addEventListener('submit', async (e) => {
       e.preventDefault(); const mm = s.querySelector('#mm').value, dd = s.querySelector('#md').value;
       const o = { ...d, boks: czyscBoks(s.querySelector('#mb').value), miejsce: mm, opiekun: s.querySelector('#mo').value.trim(), chip: s.querySelector('#mc').value.trim(), data_przyjecia: dd ? new Date(dd + 'T12:00').getTime() : null };
-      if (mm === 'adoptowany') o.status = 'adoptowany'; else if (mm === 'dt') o.status = o.status === 'adoptowany' ? 'dt' : o.status === 'pilne' ? 'pilne' : 'dt'; else if (mm === 'hotelik') o.status = 'hotelik';
+      if (mm === 'adoptowany') o.status = 'adoptowany';
       await save('psy', o); closeSheet(); toast('Zapisane');
     });
   });
 };
 
+// ===== status psa („co z psem”): dostępny / w procesie adopcji / adoptowany / archiwum – tylko administrator =====
+actions['dog-los'] = async (el) => {
+  if (!state.admin) { toast('To może zmienić tylko administrator', true); return; }
+  const d = await get('psy', el.dataset.id); if (!d) return; const cur = losPsa(d);
+  const intro = d.zniknal_ze_strony && !d.adopcja_potw && cur === 'adoptowany' ? `Zniknął${d.plec === 'suka' ? 'a' : ''} ze strony schroniska ${esc(fmtDate(d.zniknal_ze_strony))}. Co się naprawdę stało?` : 'Wybierz, co teraz dzieje się z psem.';
+  openSheet(`<h2>Status: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">${intro}</p><div class="losy">${LOSY.map(([k, l, o]) => `<button type="button" class="los${k === cur ? ' on' : ''}" data-los="${k}"><b>${esc(l)}${k === cur ? ' ✓' : ''}</b><small>${esc(o)}</small></button>`).join('')}</div>`, (s) => {
+    s.querySelectorAll('[data-los]').forEach((b) => b.addEventListener('click', async () => {
+      const k = b.dataset.los, fresh = (await get('psy', d.id)) || d;
+      if (k === cur && !(k === 'adoptowany' && fresh.zniknal_ze_strony && !fresh.adopcja_potw)) { closeSheet(); return; }
+      await save('psy', ustawLos(fresh, k)); closeSheet();
+      toast(k === 'w_trakcie' ? `${d.imie}: w procesie adopcji (zakładka Adopcje)` : k === 'adoptowany' ? `${d.imie}: adoptowany` : k === 'dostepny' ? `${d.imie} jest znów na liście Psy` : `${d.imie}: w archiwum`);
+    }));
+  });
+};
 // ===== oznaczenie i krótki opis psa: wyłącznie administrator (kolekcja „oznaczenia”, bez podpisu autora) =====
 actions['dog-oznacz'] = async (el) => {
   if (!state.admin) { toast('To może zmienić tylko administrator', true); return; }
@@ -348,8 +384,6 @@ export function gaps(dogs, zdrAll, walksAll = []) {
     // Nowy pies (karta przyjęcia w toku): jedno przypomnienie zamiast osobnych o ocenie, zdjęciach, opisie i ogłoszeniu.
     // Po zamknięciu karty nowy pies jest traktowany jak każdy inny (bez osobnych przypomnień „dla nowych”).
     if (nt && !quiet) { const sk = stanKarty(d); out.push({ d, kind: 'karta', sev: 2, text: `Karta psa: ${sk.done} z ${sk.total}. Brakuje: ${sk.brak.join(', ')}`, act: 'karta-open', k: sk.pierwszy }); }
-    if (d.poza_strona && d.status !== 'adoptowany') out.push({ d, kind: 'zniknal', sev: 1, text: 'Nie ma już na liście strony. Adoptowany?', act: 'dog-miejsce' });
-    if (d.auto_dodany && Date.now() - d.auto_dodany < 5 * MS_DAY) out.push({ d, kind: 'autonowy', sev: 2, text: 'Dodany automatycznie ze strony. Sprawdź dane i miejsce pobytu', act: 'dog-miejsce' });
     if (!quiet && !nt && (!hasPics(d))) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
     if (k.fb && !k.www && days(k.fb) >= 2) out.push({ d, kind: 'www', sev: 2, text: `Na Facebooku od ${days(k.fb)} dni, nie ma na stronie`, act: 'dog-kanaly' });
     if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko' && d.status !== 'w_trakcie') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });

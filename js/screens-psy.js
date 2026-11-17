@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview, pageBar } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
 import { api, ApiError } from './api.js';
@@ -9,7 +9,7 @@ import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
 import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
-import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty, OCENA_POLA, OCENA_LBL } from './teczka.js';
+import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, dostepny, miejsce, days, wToku, stanKarty, OCENA_POLA, OCENA_LBL, LOSY, losPsa } from './teczka.js';
 import { zglDane, chipyPotrzeb } from './wolontariusz.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -26,16 +26,18 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Do uzupełnienia'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+const FILTERS = [['aktywne', 'Wszystkie dostępne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['nowe', 'Do uzupełnienia'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane']];
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
-    if (ff === 'aktywne') return aktywny(d);
+    if (d.archiwum) return false;
+    if (ff === 'adoptowany') return !aktywny(d);
+    if (!dostepny(d)) return false; // w procesie adopcji → zakładka Adopcje
+    if (ff === 'aktywne') return true;
     if (ff === 'nowe') return wToku(d);
-    if (ff === 'zaufanie') return aktywny(d) && zaufanieAktywne(d, walks.filter((w) => w.pies_id === d.id));
+    if (ff === 'zaufanie') return zaufanieAktywne(d, walks.filter((w) => w.pies_id === d.id));
     if (ff === 'ulubione') return f.has(d.id);
-    if (ff === 'wszystkie') return true;
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
   }).sort(kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
@@ -44,11 +46,11 @@ function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); 
 function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); const tok = state.admin && wToku(d), sk = tok ? stanKarty(d) : null; return html`<a class="dcard${wybCls(d)}" href="${tok ? `#/karta/${d.id}/${sk.pierwszy}` : '#/psy/' + d.id}"><div class="pic">${tok ? html`<span class="kuzup">Uzupełnij ${sk.done}/5</span>` : ''}${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : ''}</span></div>
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); const tok = state.admin && wToku(d), sk = tok ? stanKarty(d) : null; return html`<a class="dcard${wybCls(d)}" href="${tok ? `#/karta/${d.id}/${sk.pierwszy}` : '#/psy/' + d.id}"><div class="pic">${tok ? html`<span class="kuzup">Uzupełnij ${sk.done}/5</span>` : state.admin && d.zniknal_ze_strony && !d.adopcja_potw && d.status === 'adoptowany' ? html`<span class="kuzup">Co się stało?</span>` : ''}${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : ''}</span></div>
     <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
-  if (!state.admin && ['nowe', 'zaufanie'].includes(ff)) ff = 'aktywne'; // filtry tylko dla administratora (np. po wyłączeniu trybu administratora)
+  if (!FILTERS.some(([k]) => k === ff) || (!state.admin && ['nowe', 'zaufanie'].includes(ff))) ff = 'aktywne'; // filtry tylko dla administratora (np. po wyłączeniu trybu administratora)
   const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
   return {
     tab: 'psy', title: 'Psy',
@@ -66,6 +68,20 @@ export async function list_() {
   };
 }
 export { list_ as list };
+// #/adoptowane – lista Psy z filtrem „Adoptowane” (także z zakładki Adopcje)
+export async function adoptowane() { ff = 'adoptowany'; return list_(); }
+// Archiwum psów (Ustawienia, tylko administrator): psy za Tęczowym Mostem, które wróciły do właściciela itp. Status zmienia się na karcie psa.
+export async function archiwum() {
+  if (!state.admin) { location.replace('#/start'); return { tab: 'start', html: html`` }; }
+  const dogs = (await list('psy', { archiwum: true })).filter((d) => d.archiwum).sort((a, b) => b.archiwum - a.archiwum);
+  return {
+    tab: 'start', title: 'Archiwum psów', live: true,
+    html: html`${pageBar('Archiwum psów')}<div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Tych psów nie widać nigdzie w aplikacji. Żeby to zmienić, otwórz psa i dotknij „Zmień status”.</p>
+      ${dogs.length ? dogs.map((d) => html`<a class="row card" href="#/psy/${d.id}" style="gap:12px;text-decoration:none;color:inherit"><span class="avatar sm">${dogThumb(d)}</span><span class="rt"><b>${d.imie}</b><small>${(LOSY.find((x) => x[0] === losPsa(d)) || [])[1] || ''} · ${fmtDate(d.archiwum)}</small></span>${icon('chev')}</a>`)
+        : html`<div class="empty">${icon('box')}<h3>Archiwum jest puste</h3></div>`}</div>`,
+    mount(r) { hydratePhotos(r); }
+  };
+}
 export const ustawFiltr = (k) => { ff = k; };
 actions['dog-filter'] = (el) => { ff = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 
@@ -103,7 +119,7 @@ export async function card(id) {
         <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
       <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
       ${pics.length > 1 ? html`<div class="dots" id="dots" style="">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
-    <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
+    <section class="dogsheet">${raw(losBox(d))}<h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
       <div class="meta">${boks(d) ? raw(boksPill(d, 'big')) : miejsce(d) === 'schronisko' && aktywny(d) ? html`<button class="boks add big" data-act="dog-miejsce" data-id="${id}">+ Boks</button>` : ''}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
       <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
       ${state.admin && wybrani(d) ? html`<div class="wybbox"><b>Tylko dla wybranych wolontariuszy</b><p>Powód: ${powody(d).join(', ') || 'nie podano'}${kto(d) ? html`<br>Mogą wychodzić: ${kto(d)}` : ''}</p></div>` : ''}
@@ -246,9 +262,19 @@ actions['dog-usun'] = (el) => usunPsa(el.dataset.id);
 
 // ========== karta psa dla wolontariusza: tylko podgląd ==========
 // Zdjęcia, dane, cechy, opis, charakter, czego potrzebuje (ze zgłoszeniem), historia spacerów, link do ogłoszenia, Udostępnij.
+// Status psa na karcie (administrator): w procesie adopcji / adoptowany / zniknął ze strony / archiwum + przycisk zmiany
+function losBox(d) {
+  if (!state.admin) return '';
+  const k = losPsa(d), lab = (LOSY.find((x) => x[0] === k) || [])[1] || '';
+  const tekst = d.archiwum ? `W archiwum: ${lab}${d.archiwum ? ' · ' + fmtDate(d.archiwum) : ''}. Nie widać go nigdzie w aplikacji.`
+    : k === 'w_trakcie' ? 'W procesie adopcji. Prowadzone w zakładce Adopcje. Wolontariusze go nie widzą.'
+    : k === 'adoptowany' && d.zniknal_ze_strony && !d.adopcja_potw ? `Zniknął${d.plec === 'suka' ? 'a' : ''} ze strony schroniska ${fmtDate(d.zniknal_ze_strony)}, dlatego jest w „Adoptowanych”. Co się naprawdę stało?`
+    : k === 'adoptowany' ? `Adoptowany${d.plec === 'suka' ? 'a' : ''}${d.data_adopcji ? ' · ' + fmtDate(d.data_adopcji) : ''}.` : '';
+  return `<div class="losbox${k === 'dostepny' ? ' cichy' : ''}">${tekst ? `<p>${esc(tekst)}</p>` : ''}<button class="btn sm${k === 'dostepny' ? ' ghost' : ''}" data-act="dog-los" data-id="${esc(d.id)}">${k === 'dostepny' ? 'Status: dostępny · zmień (adopcja, adoptowany…)' : 'Zmień status'}</button>${k === 'w_trakcie' ? ` <a class="btn sm ghost" href="#/adopcje">Adopcje</a>` : ''}</div>`;
+}
 async function cardWol(id) {
   const [d, walks, z] = await Promise.all([get('psy', id), list('spacery'), zglDane()]);
-  if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
+  if (!d || d.archiwum || d.status === 'w_trakcie') return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
   const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start), km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
   const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks), o = d.ocena || {};
   const ocena = OCENA_POLA.filter(([p]) => o[p]).map(([p, l]) => `<div class="ocr"><span>${esc(l)}</span><b class="oc-${esc(o[p])}">${esc(OCENA_LBL[o[p]] || '')}</b></div>`).join('');
@@ -287,7 +313,7 @@ export async function importOne(url) {
   const id = imp.id ? 'd' + imp.id : null;
   let old = (id && (await get('psy', id))) || {};
   if (!old.id) { // pies dodany wcześniej ręcznie (np. przyjęty, jeszcze bez strony) – połącz po imieniu
-    const same = (await list('psy')).find((x) => !x.zrodlo_id && (x.imie || '').trim().toLowerCase() === (imp.name || '').trim().toLowerCase());
+    const same = (await list('psy', { archiwum: true })).find((x) => !x.zrodlo_id && (x.imie || '').trim().toLowerCase() === (imp.name || '').trim().toLowerCase());
     if (same) old = same;
   }
   const dog = dogFromImport(imp, old);

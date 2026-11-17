@@ -33,12 +33,12 @@ const routes = [
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
   [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => NW.nowe(m[1])], [/^\/karta\/(nowy|[\w-]+)(?:\/(\d))?$/, (m) => K.karta(m[1], m[2])], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
-  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()]
+  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/adoptowane$/, () => P.adoptowane()], [/^\/archiwum$/, () => P.archiwum()]
 ];
 // Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
 const ROUTES_WOL = [
   [/^\/?$/, () => WO.startWol()], [/^\/start$/, () => WO.startWol()],
-  [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/psy$/, () => P.list()], [/^\/adoptowane$/, () => P.adoptowane()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/pomoc$/, () => WO.pomocWol()], [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/transport$/, () => X.transport()],
   [/^\/sobotnie$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];

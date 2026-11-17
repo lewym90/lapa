@@ -92,7 +92,7 @@ actions['a-event'] = () => eventForm();
 // ================= transport =================
 const TS = { szuka: 'Poszukiwany kierowca', przypisany: 'Przypisany', zrealizowany: 'Zrealizowany', anulowany: 'Anulowany' };
 export async function transport() {
-  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy), psy = Object.fromEntries((await list('psy')).map((d) => [d.id, d])), of = await list('oferty');
+  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy), psy = Object.fromEntries((await list('psy', { archiwum: true })).map((d) => [d.id, d])), of = await list('oferty');
   const act = all.filter((x) => x.status === 'szuka' || x.status === 'przypisany'), old = all.filter((x) => x.status === 'zrealizowany' || x.status === 'anulowany').reverse().slice(0, 8);
   const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${raw(imieZnaki(psy[x.pies_id], x.pies_imie || 'Pies'))}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : x.status === 'przypisany' ? '' : 'gold'}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}${(() => { const o = of.filter((y) => y.typ === 'transport' && y.ref === x.id && y.stan !== 'odrzucona'); return o.length && x.status === 'szuka' ? html`<div class="who">Mogą pojechać: ${o.map((y) => y.imie).join(', ')}</div>` : ''; })()}</button>`;
   return {
@@ -197,6 +197,7 @@ export async function settings() {
         <div class="btnrow"><button class="btn ghost" data-act="set-site">${icon('refresh')} Sprawdź stronę teraz</button></div></section>
       <section class="card"><h3>Kopia zapasowa</h3><p class="sub" style="margin:2px 0 8px" id="bkst">Kopie na serwerze: sprawdzam…</p><p class="sub" style="margin:2px 0 12px">Plik z danymi widocznymi na tym telefonie (razem z danymi osobowymi). Przechowuj go bezpiecznie.</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-export">${icon('download')} Zapisz kopię</button><button class="btn ghost" data-act="set-import">${icon('upload')} Wczytaj kopię</button></div></section>
+      <a class="card" href="#/archiwum" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('box')}<span style="flex:1"><b>Archiwum psów</b><br><span class="hint">Za Tęczowym Mostem, wróciły do właściciela, inne. Tylko administrator.</span></span>${icon('chev')}</a>
       ${oAplikacji()}
       <button class="btn line block" data-act="set-logout">${icon('logout')} Wyloguj z tego telefonu</button></div>`,
     mount(root) { api('/health').then((h) => { const b = h && h.backup; root.querySelector('#sitest').textContent = siteText(h && h.site); root.querySelector('#bkst').textContent = b && b.t && b.ok ? `Serwer robi kopię bazy co 30 minut. Ostatnia: ${fmtTime(b.t)}.` : 'Serwer robi kopię bazy co 30 minut (pierwsza po aktualizacji serwera).'; }).catch(() => { const e = root.querySelector('#bkst'); if (e) e.textContent = 'Kopie na serwerze: brak połączenia.'; }); imieForm(root); }
@@ -226,13 +227,13 @@ async function settingsWol() {
     }
   };
 }
-const siteText = (s) => !s ? 'Serwer nie ma jeszcze automatycznego sprawdzania strony. Zaktualizuj serwer.' : s.enabled === false ? 'Serwer nie ma pliku do sprawdzania strony. Zaktualizuj serwer.' : s.running ? 'Sprawdzam stronę teraz…' : !s.t ? 'Serwer sprawdza stronę 3 razy dziennie (3:00, 11:00, 17:00). Pierwsze sprawdzenie nastąpi zaraz po aktualizacji serwera.' : s.ok ? `Serwer sprawdza stronę 3 razy dziennie. Ostatnio: ${fmtDate(s.t)} ${fmtTime(s.t)}. Psów na stronie: ${s.razem}, nowych: ${s.nowych}, zmienionych: ${s.zmienionych}.${s.nazwy && s.nazwy.length ? ' Nowe: ' + s.nazwy.join(', ') + '.' : ''}` : `Ostatnie sprawdzenie strony (${fmtDate(s.t)} ${fmtTime(s.t)}) nie udało się: ${s.blad}`;
+const siteText = (s) => !s ? 'Serwer nie ma jeszcze automatycznego sprawdzania strony. Zaktualizuj serwer.' : s.enabled === false ? 'Serwer nie ma pliku do sprawdzania strony. Zaktualizuj serwer.' : s.running ? 'Sprawdzam stronę teraz…' : !s.t ? 'Serwer sprawdza stronę 3 razy dziennie (3:00, 11:00, 17:00). Pierwsze sprawdzenie nastąpi zaraz po aktualizacji serwera.' : s.ok ? `Serwer sprawdza stronę 3 razy dziennie. Ostatnio: ${fmtDate(s.t)} ${fmtTime(s.t)}. Psów na stronie: ${s.razem}, nowych: ${s.nowych}, zmienionych: ${s.zmienionych}${s.zniknelo ? ', zniknęło ze strony (→ Adoptowane): ' + s.zniknelo : ''}${s.wrocilo ? ', wróciło na stronę: ' + s.wrocilo : ''}.${s.nazwy && s.nazwy.length ? ' Nowe: ' + s.nazwy.join(', ') + '.' : ''}${s.zniknelo_nazwy && s.zniknelo_nazwy.length ? ' Zniknęły: ' + s.zniknelo_nazwy.join(', ') + '.' : ''}` : `Ostatnie sprawdzenie strony (${fmtDate(s.t)} ${fmtTime(s.t)}) nie udało się: ${s.blad}`;
 actions['set-site'] = async () => {
   const h0 = await api('/health').catch(() => null), t0 = (h0 && h0.site && h0.site.t) || 0; toast('Sprawdzam stronę schroniska…');
   try { await api('/site/sync', { method: 'POST', body: {} }); } catch { toast('Brak połączenia z serwerem', true); return; }
   for (let i = 0; i < 120; i++) {
     await new Promise((r) => setTimeout(r, 2500)); const h = await api('/health').catch(() => null), s = h && h.site, el = document.getElementById('sitest'); if (!s) continue; if (el) el.textContent = siteText(s);
-    if (!s.running && s.t > t0) { resetSiteStatus(); kick(10); if (location.hash === '#/zrobic') dispatchEvent(new HashChangeEvent('hashchange')); toast(s.ok ? (s.nowych ? `Nowych psów: ${s.nowych}` : 'Sprawdzone. Brak nowych psów') : 'Nie udało się sprawdzić strony', !s.ok); return; }
+    if (!s.running && s.t > t0) { resetSiteStatus(); kick(10); if (location.hash === '#/zrobic') dispatchEvent(new HashChangeEvent('hashchange')); toast(s.ok ? ([s.nowych ? `nowych psów: ${s.nowych}` : '', s.zniknelo ? `zniknęło ze strony: ${s.zniknelo}` : '', s.wrocilo ? `wróciło: ${s.wrocilo}` : ''].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase()) || 'Sprawdzone. Bez zmian') : 'Nie udało się sprawdzić strony', !s.ok); return; }
     if (i >= 3 && !s.running && s.t === t0) { toast('Serwer sprawdzał stronę przed chwilą'); return; }
   }
 };
