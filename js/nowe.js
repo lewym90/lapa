@@ -93,6 +93,8 @@ export async function przyjecie(id) {
       <div class="card" style="padding:4px 16px"><div class="rows">${st.map((s, i) => html`<div class="stp"><button class="row" data-act="nw-step" data-k="${s.k}" data-id="${id}"><span class="stk ${s.done ? 'ok' : s.now ? 'now' : ''}">${s.done ? icon('check') : String(i + 1)}</span><span class="rt"><b>${s.l}${s.req ? html` <em class="req">wymagane</em>` : ''}</b><small>${opis(d, s, ctx)}</small></span>${icon('chev')}</button>${s.k === 'charakter' && !d.ocena ? html`<button class="link stp-skip" data-act="nw-skip" data-id="${id}">${s.skipped ? 'Cofnij pominięcie' : 'Pomiń na razie (np. pies jeszcze nie wychodzi)'}</button>` : ''}</div>`)}</div></div>
       <a class="btn ghost block" href="#/psy/${id}">${icon('paw')} Otwórz kartę psa</a>
       <a class="btn ghost block" href="#/nowe">Wróć do listy Nowe psy</a>
+      <button class="btn ghost block" style="color:var(--terra-d)" data-act="dog-usun" data-id="${id}">${icon('trash')} Usuń tego psa (pomyłka)</button>
+      <p class="hint" style="color:var(--sage);margin:-4px 4px 0;text-align:center">Imię możesz zmienić w kroku 1 „Przyjęcie”.</p>
     </div>`
   };
 }

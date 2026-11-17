@@ -246,10 +246,27 @@ export function dogForm(d = {}) {
       if (!o.id) { o.id = 'm' + uid(); o.dodany = Date.now(); }
       await save('psy', o); closeSheet(); toast('Zapisane'); if (!d.id) location.hash = '#/psy/' + o.id;
     });
-    s.querySelector('#dd')?.addEventListener('click', async () => { if (await confirmSheet('Usunąć psa?', `Pies „${d.imie}” zniknie z listy u wszystkich wolontariuszy. Historia spacerów zostanie.`, 'Usuń', true)) { await remove('psy', d.id); location.hash = '#/psy'; } });
+    s.querySelector('#dd')?.addEventListener('click', () => usunPsa(d.id));
   });
 }
 actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
+// Usunięcie psa (pomyłka, zmiana koncepcji): razem z jego spacerami, notatkami, zdrowiem, zgłoszeniami, transportami i oznaczeniem.
+// Tylko administrator. Na serwerze zostaje historia wersji (można odtworzyć), a pies ze strony nie zostanie dodany ponownie.
+export async function usunPsa(id) {
+  const d = await get('psy', id); if (!d) return;
+  const [sp, ob, zd, dk, tr, of] = await Promise.all(['spacery', 'obserwacje', 'zdrowie', 'deklaracje', 'transporty', 'oferty'].map((c) => list(c)));
+  const L = { spacery: sp.filter((x) => x.pies_id === id), obserwacje: ob.filter((x) => x.pies_id === id), zdrowie: zd.filter((x) => x.pies_id === id), deklaracje: dk.filter((x) => x.pies_id === id), transporty: tr.filter((x) => x.pies_id === id) };
+  const trIds = new Set(L.transporty.map((x) => x.id)); L.oferty = of.filter((o) => o.typ === 'transport' && trIds.has(o.ref));
+  const ile = [[L.spacery.length, 'spacer', 'spacery', 'spacerów'], [L.obserwacje.length, 'notatka', 'notatki', 'notatek'], [L.zdrowie.length, 'wpis zdrowia', 'wpisy zdrowia', 'wpisów zdrowia'], [L.deklaracje.length, 'zgłoszenie pomocy', 'zgłoszenia pomocy', 'zgłoszeń pomocy'], [L.transporty.length, 'transport', 'transporty', 'transportów']]
+    .filter(([n]) => n).map(([n, a, b, c]) => `${n} ${plural(n, a, b, c)}`);
+  const tekst = `Pies „${d.imie}” zniknie z aplikacji u wszystkich${ile.length ? ', razem z: ' + ile.join(', ') : ''}.${d.zrodlo_id ? ' Ten pies jest na stronie schroniska. Po usunięciu aplikacja nie doda go ponownie przy sprawdzaniu strony.' : ''}`;
+  if (!(await confirmSheet('Usunąć psa?', tekst, 'Usuń psa', true))) return;
+  for (const [col, arr] of Object.entries(L)) for (const x of arr) { await remove(col, x.id); if (col === 'deklaracje' || col === 'oferty') await remove('p_tel', x.id).catch(() => {}); }
+  if (await get('oznaczenia', id)) await remove('oznaczenia', id);
+  await remove('psy', id);
+  closeSheet(); toast(`Usunięto: ${d.imie}`); location.hash = '#/psy';
+}
+actions['dog-usun'] = (el) => usunPsa(el.dataset.id);
 
 // ========== karta psa dla wolontariusza: tylko podgląd ==========
 // Zdjęcia, dane, cechy, opis, charakter, czego potrzebuje (ze zgłoszeniem), historia spacerów, link do ogłoszenia, Udostępnij.

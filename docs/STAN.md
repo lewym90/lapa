@@ -176,3 +176,8 @@ Prośba właściciela: pracownicy schroniska = administratorzy (wszystko), wolon
 - Zgłoszenia: „Przyjmij”/„Przypisz” odporne na podwójne dotknięcie; przycisk „Usuń” na ekranie Zgłoszenia wolontariuszy był niewidoczny (jasna ikona na jasnej karcie); na wąskich ekranach przyciski schodzą pod tekst, telefon w jednej linii; po „Będę” podziękowanie „Do zobaczenia pod bramą”.
 - Lista Psy: po wyłączeniu trybu administratora filtr „Nowe psy”/„Zdobywamy zaufanie” wraca do „Aktywne”.
 - Testy: upgrade1.py (telefon z poprzedniej wersji: wolontariusz czyszczony i pobiera okrojone dane, odrzucone zmiany psów, administrator pobiera wszystko), wol1 rozszerzony (okna wolontariusza tylko z dozwolonymi przyciskami, raport spaceru, pies, który odszedł).
+
+## 1.16.2 (2026-11-17): usuwanie psa dodanego przez pomyłkę
+- Karta przyjęcia (`#/nowe/:id`): przycisk „Usuń tego psa (pomyłka)” i podpowiedź, że imię zmienia się w kroku „Przyjęcie”. Na karcie psa bez zmian: „Edytuj” → „Usuń psa z aplikacji”.
+- Wspólne `usunPsa(id)` (screens-psy.js, akcja `dog-usun`, tylko administrator): okno pokazuje, co zniknie; usuwa psa razem z jego spacerami, notatkami, wpisami zdrowia, zgłoszeniami pomocy (z telefonami), transportami (z ofertami) i oznaczeniem. Pies ze strony po usunięciu nie zostanie dodany ponownie (serwer pomija usunięte). Poprzednie wersje zostają w historii na serwerze.
+- Test usun1.py.
