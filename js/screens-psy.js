@@ -1,7 +1,6 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
-import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS } from './util.js';
 import { hydratePhotos } from './photos.js';
@@ -13,7 +12,7 @@ import { zglDane, chipyPotrzeb } from './wolontariusz.js';
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const favs = () => new Set(lsGet('lapa.fav', []));
-const dogPics = (d) => { const all = [...(d.zdjecia || []).map((u) => ({ url: u })), ...(d.moje_zdjecia || []).map((id) => ({ id }))]; const i = d.glowne ? all.findIndex((p) => p.id === d.glowne) : -1; if (i > 0) all.unshift(all.splice(i, 1)[0]); return all; }; // „główne” zdjęcie wybrane w sesji jest pierwsze
+const dogPics = (d) => (d.zdjecia || []).map((u) => ({ url: u })); // zdjęcia ze strony schroniska
 const picImg = (p, alt, cls = '') => (p.url ? dogImg(p.url, alt, cls) : raw(`<img class="${esc(cls)}" data-photo="${esc(p.id)}" alt="${esc(alt)}" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">`));
 export const dogThumb = (d) => {
   const p = dogPics(d)[0];
@@ -24,9 +23,13 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-// Filtry listy Psy: Wszystkie, W schronisku, Ulubione i „Byli u nas” (psy, których nie ma już na stronie schroniska).
+// Filtry listy Psy: Wszystkie, W schronisku, Ulubione i „Byli u nas” (psy z zakładki „Adoptowane” na stronie schroniska).
 const FILTERS = [['aktywne', 'Wszystkie'], ['schronisko', 'W schronisku'], ['ulubione', 'Ulubione'], ['byli', 'Byli u nas']];
-const lata = (d) => { const a = new Date(d.od_www || d.data_przyjecia || d.dodany || Date.now()).getFullYear(), b = new Date(d.zniknal_ze_strony || d.archiwum || Date.now()).getFullYear(); return a === b ? 'u nas w ' + a : `u nas ${a}–${b}`; };
+const lata = (d) => {
+  if (!d.od_www) return '';
+  const a = new Date(d.od_www).getFullYear(), b = d.adoptowany_od ? new Date(d.adoptowany_od).getFullYear() : 0;
+  return !b ? 'u nas od ' + a : a === b ? 'u nas w ' + a : `u nas ${a}–${b}`;
+};
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
@@ -37,7 +40,7 @@ function filterDogs(dogs, walks = []) {
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
-  }).sort(ff === 'byli' ? (a, b) => (b.zniknal_ze_strony || b.archiwum || 0) - (a.zniknal_ze_strony || a.archiwum || 0) : kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  }).sort(ff === 'byli' ? (a, b) => (b.adoptowany_od || 0) - (a.adoptowany_od || 0) || (b.od_www || 0) - (a.od_www || 0) : kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
 }
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
 function grid(dogs, walks, zdr = []) {
@@ -86,11 +89,12 @@ export async function pickDog(cb) {
 }
 
 // ========== karta psa ==========
+const brakPsa = () => ({ tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` });
 export async function card(id) {
-  if (!state.admin) return cardWol(id);
   const d = await get('psy', id);
-  const v = d && await cardAdm(id, { pics: dogPics(d), picImg, isFav: favs().has(id) });
-  return v || { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
+  if (!d || d.zniknal_ze_strony) return brakPsa(); // psa nie ma nigdzie na stronie schroniska
+  if (!state.admin) return cardWol(id);
+  return (await cardAdm(id, { pics: dogPics(d), picImg, isFav: favs().has(id) })) || brakPsa();
 }
 const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
 
@@ -180,22 +184,6 @@ async function cardWol(id) {
   };
 }
 
-// ========== import ze strony schroniska ==========
-import { dogFromImport } from './dogmerge.js';
-export { dogFromImport };
-export async function importOne(url) {
-  const imp = await api('/import?url=' + encodeURIComponent(url));
-  if (!imp.name) throw new Error('Nie udało się odczytać imienia psa z tej strony.');
-  const id = imp.id ? 'd' + imp.id : null;
-  let old = (id && (await get('psy', id))) || {};
-  if (!old.id) { // pies dodany wcześniej ręcznie (np. przyjęty, jeszcze bez strony) – połącz po imieniu
-    const same = (await list('psy', { archiwum: true })).find((x) => !x.zrodlo_id && (x.imie || '').trim().toLowerCase() === (imp.name || '').trim().toLowerCase());
-    if (same) old = same;
-  }
-  const dog = dogFromImport(imp, old);
-  await save('psy', dog);
-  return { dog, updated: !!old.id };
-}
 // ========== udostępnianie ==========
 actions['dog-share'] = async (el) => {
   const d = await get('psy', el.dataset.id), url = d.zrodlo_url || SITE + '/psy-do-adopcji';
@@ -203,14 +191,3 @@ actions['dog-share'] = async (el) => {
   if (navigator.share) { try { await navigator.share({ title: `${d.imie} — Schronisko Nowodwór`, text, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Skopiowano opis i link'); } catch { toast('Nie udało się skopiować', true); }
 };
-// Jednorazowe odświeżenie psów zaimportowanych starszym parserem (błędne opisy, brak cech)
-let refreshing = false, lastTry = 0;
-export async function refreshStale() {
-  if (refreshing || !navigator.onLine || Date.now() - lastTry < 3600e3) return; refreshing = true; lastTry = Date.now();
-  try {
-    const stale = (await list('psy')).filter((d) => d.zrodlo_url && (d.parser || 0) < 3);
-    let n = 0;
-    for (const d of stale) { try { await importOne(d.zrodlo_url); n++; } catch (e) { if (e instanceof ApiError && (e.status === 401 || e.status === 0 || e.status >= 500)) break; } }
-    if (n) { toast(`Odświeżono opisy psów ze strony: ${n}`); dispatchEvent(new HashChangeEvent('hashchange')); }
-  } finally { refreshing = false; }
-}

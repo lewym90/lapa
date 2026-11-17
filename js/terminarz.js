@@ -6,6 +6,7 @@ import { uid, dayKey, startOfDay, fmtDayLong, fmtTime, nextSaturdays } from './u
 import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 import * as db from './db.js';
 import { imieZnaki } from './znak.js';
+import { aktywny } from './teczka.js';
 
 const DAY = 864e5;
 const pad = (n) => String(n).padStart(2, '0');
@@ -34,22 +35,6 @@ export function occs(e, from, to) {
 }
 const isDone = (e, t) => (e.powtarzaj && e.powtarzaj.jedn ? !!(e.zr && e.zr[dayKey(t)]) : !!e.zrobione);
 
-// ===== migracja ze starych list (wydarzenia, moje_zadania) =====
-let migrating = null;
-export function migruj() {
-  migrating ||= (async () => {
-    for (const e of await list('wydarzenia')) {
-      await save('terminarz', { id: 'm' + e.id, tytul: e.tytul, start: e.start, miejsce: e.miejsce || '', notatka: e.opis || '', widocznosc: 'wszyscy', owner: e.autor || '', autor: e.autor || '', ts: Date.now() });
-      await remove('wydarzenia', e.id);
-    }
-    for (const t of await list('moje_zadania')) {
-      await save('terminarz', { id: 'z' + t.id, tytul: t.tytul, start: t.termin || null, widocznosc: 'ja', owner: me(), autor: me(), zadanie: true, zrobione: !!t.done, ts: Date.now() });
-      await remove('moje_zadania', t.id);
-    }
-  })().catch(() => {}).finally(() => { migrating = null; });
-  return migrating;
-}
-
 // ===== sobotnie spacery =====
 export async function soboty(n = 10) {
   const recs = await list('spacery_sob'), byId = new Map(recs.map((r) => [r.id, r])), out = [], today = startOfDay(Date.now());
@@ -63,8 +48,7 @@ export async function soboty(n = 10) {
 
 // ===== dane na dziś (Start, Do zrobienia, komunikat poranny) =====
 export async function dzisItems() {
-  await migruj();
-  const [tm, tr, sb, psyL] = await Promise.all([list('terminarz'), list('transporty'), soboty(10), list('psy', { archiwum: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
+  const [tm, tr, sb, psyL] = await Promise.all([list('terminarz'), list('transporty'), soboty(10), list('psy', { wszystkie: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), t1 = t0 + DAY, items = [], overdue = [];
   for (const e of tm.filter(visible)) {
     if (e.status === 'odwolany') continue;
@@ -120,7 +104,6 @@ export function dzisCard(d) {
 let tab = 'ter', filt = 'wszystko';
 export async function wydarzenia(opts = {}) {
   if (opts.tab) tab = opts.tab; if (opts.filt) filt = opts.filt;
-  await migruj();
   const zg = await zgloszenia();
   const body = tab === 'sob' ? await sobView(zg) : await terView(zg);
   const tb = (k, l) => `<button class="chip dark ${tab === k ? 'on' : ''}" data-act="tm-tab" data-t="${k}" style="flex:1;justify-content:center;padding:11px 6px">${l}</button>`;
@@ -173,7 +156,7 @@ actions['sb-edit'] = async (el) => { const x = (await soboty(10)).find((y) => y.
 
 // ===== terminarz =====
 async function terView(zg) {
-  const [tm, tr, psyL] = await Promise.all([list('terminarz'), list('transporty'), list('psy', { archiwum: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
+  const [tm, tr, psyL] = await Promise.all([list('terminarz'), list('transporty'), list('psy', { wszystkie: true })]); const psy = Object.fromEntries(psyL.map((x) => [x.id, x]));
   const t0 = startOfDay(Date.now()), to = t0 + 90 * DAY, name = me(), rows = [], undated = [], over = [];
   const mine = (e) => e.owner === name || e.autor === name || forKey(zg, evKey('tm', e.id)).some((z) => z.imie === name && z.status === 'tak');
   for (const e of tm.filter(visible)) {
@@ -234,7 +217,7 @@ actions['tm-open'] = async (el) => {
 // ===== formularz wpisu (nowy/edycja) =====
 export async function terForm(e0, preset = {}) {
   const isNew = !e0; const e = e0 || { widocznosc: preset.widocznosc || 'wszyscy', zadanie: preset.widocznosc === 'ja', ...preset };
-  const dogs = (await list('psy')).filter((d) => !d.zniknal_ze_strony && !d.archiwum && d.status !== 'adoptowany').sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  const dogs = (await list('psy')).filter(aktywny).sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   const p = e.powtarzaj, sel = !p ? '' : p.co === 1 ? '1' + p.jedn : 'x';
   openSheet(`<h2>${isNew ? 'Nowy wpis' : 'Edytuj wpis'}</h2><form id="tf" novalidate>
     <div class="field"><label for="tt">Co? (dowolny tekst)</label><input class="input" id="tt" maxlength="140" value="${esc(e.tytul || '')}" placeholder="np. lek dla Alfa, adopcja o 17:00, kastracja Alfa"></div>

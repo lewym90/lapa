@@ -18,10 +18,10 @@ def seed(pg):
     # spacery z Bramy z „przed chwilą”, żeby test działał też tuż po północy (Brama pokazuje tylko dzisiejsze)
     now = pg.evaluate('Date.now()')
     psy = [
-        {'id': 'd1', 'imie': 'Saba', 'plec': 'suka', 'wiek': '5 lat', 'wielkosc': 'duża', 'boks': '7', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'haslo': 'SABA - w cieniu strachu', 'data_przyjecia': now - 300 * D, 'kanaly': {'www': now}, 'opis': 'Potrzebuje czasu. ' * 20, 'zdjecia': ['https://example.invalid/s_l.jpg'], 'potrzeby': ['transport'], 'zrodlo_url': 'https://www.schronisko-nowodwor.com.pl/psy-do-adopcji/saba/1'},
-        {'id': 'd2', 'imie': 'Bardzo Długie Imię Psa Testowego', 'plec': 'samiec', 'wiek': 'ok. 10 lat', 'wielkosc': 'bardzo duży', 'boks': '1234', 'status': 'pilne', 'miejsce': 'schronisko', 'haslo': 'X - ' + 'bardzo długie hasło ' * 5, 'kanaly': {}, 'zdjecia': []},
-        {'id': 'd3', 'imie': 'Luna', 'plec': 'suka', 'status': 'dt', 'miejsce': 'dt', 'opiekun': 'Kasia', 'kanaly': {'www': now}, 'zdjecia': []},
-        {'id': 'm1', 'imie': 'Nowy', 'plec': 'samiec', 'wiek': '1 rok', 'nowy': True, 'status': 'schronisko', 'miejsce': 'schronisko', 'data_przyjecia': now, 'dodany': now, 'zdjecia': []},
+        {'id': 'd1', 'imie': 'Saba', 'plec': 'suka', 'wiek': '5 lat', 'wielkosc': 'duża', 'boks': '7', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'haslo': 'SABA - w cieniu strachu', 'od_www': now - 300 * D, 'opis': 'Potrzebuje czasu. ' * 20, 'zdjecia': ['https://example.invalid/s_l.jpg'], 'potrzeby': ['transport'], 'zrodlo_url': 'https://www.schronisko-nowodwor.com.pl/psy-do-adopcji/saba/1'},
+        {'id': 'd2', 'imie': 'Bardzo Długie Imię Psa Testowego', 'plec': 'samiec', 'wiek': 'ok. 10 lat', 'wielkosc': 'bardzo duży', 'boks': '1234', 'status': 'pilne', 'miejsce': 'schronisko', 'haslo': 'X - ' + 'bardzo długie hasło ' * 5, 'zdjecia': []},
+        {'id': 'd3', 'imie': 'Luna', 'plec': 'suka', 'status': 'dt', 'miejsce': 'dt',  'zdjecia': []},
+        {'id': 'm1', 'imie': 'Nowy', 'plec': 'samiec', 'wiek': '1 rok', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'od_www': now, 'zdjecia': []},
     ]
     for d in psy: save(pg, 'psy', d)
     save(pg, 'spacery', {'id': 'w1', 'tryb': 'brama', 'pies_id': 'd1', 'pies_imie': 'Saba', 'start': now - 60000, 'end': None, 'autor': 'A', 'osoba': 'Kasia', 'kontakt': '600 100 200'})

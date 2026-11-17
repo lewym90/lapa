@@ -50,6 +50,22 @@ async function pull(priv) {
   return total;
 }
 
+// Epoka bazy na serwerze: gdy serwer ma nową bazę (np. aplikacja wystartowała od zera), telefon czyści swoje dane
+// i niewysłane zmiany ze starej bazy, a potem pobiera wszystko od nowa. Sprawdzane raz po uruchomieniu aplikacji.
+let epokaOk = false;
+async function sprawdzEpoke() {
+  if (epokaOk) return;
+  const r = await api('/sync?since=999999999999999&private=0');
+  if (!r.epoka) { epokaOk = true; return; }
+  const moja = await db.metaGet('epoka');
+  if (moja !== r.epoka) {
+    // dane ze starej bazy: znana inna epoka albo telefon pobierał już dane z serwera sprzed epok (świeża instalacja nic nie traci)
+    if (moja || (await db.metaGet('cursor'))) { await db.wipeAll(); emit('change', { col: '*' }); }
+    await db.metaSet('epoka', r.epoka); await db.metaSet('rola', state.admin ? 'admin' : 'wolontariusz');
+  }
+  epokaOk = true;
+}
+
 export async function run() {
   if (running) { again = true; return; }
   if (!getToken() || !state.loggedIn) return;
@@ -60,6 +76,7 @@ export async function run() {
   running = true; setStatus({ state: 'busy' });
   let changed = 0;
   try {
+    await sprawdzEpoke();
     await push();
     await uploadPending().catch((e) => { if (e instanceof ApiError && e.status === 401) throw e; });
     changed += await pull(false);

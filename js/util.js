@@ -37,8 +37,8 @@ export function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++)
 
 // Pies dnia: wszyscy widzą tego samego psa tego samego dnia; każdy pies po kolei, zanim któryś się powtórzy.
 export function dogOfDay(dogs, now = Date.now()) {
-  // tylko psy, które są z nami (bez adoptowanych, zaginionych i tych, które odeszły)
-  const pool = dogs.filter((d) => (d.zdjecia || []).length && !['adoptowany', 'w_trakcie'].includes(d.status) && !d.archiwum && !d.zniknal_ze_strony && !['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce));
+  // tylko psy czekające na dom (bez adoptowanych i tych w trakcie adopcji)
+  const pool = dogs.filter((d) => (d.zdjecia || []).length && !['adoptowany', 'w_trakcie'].includes(d.status) && !d.zniknal_ze_strony);
   if (!pool.length) return null;
   pool.sort((a, b) => hash(a.id + 'lapa') - hash(b.id + 'lapa') || (a.id < b.id ? -1 : 1));
   const dn = Math.floor((startOfDay(now) - new Date(2026, 0, 1).getTime()) / MS_DAY + 0.5);
@@ -73,7 +73,7 @@ export const NEED_LABELS = { spacer: 'Spokojny spacer', zdjecia: 'Aktualne zdję
 // Potrzeby psa: ręcznie zaznaczone + wyliczone regułami (bez AI).
 export function dogNeeds(d, walks = []) {
   const out = new Set(d.potrzeby || []);
-  if (['adoptowany', 'w_trakcie'].includes(d.status) || d.archiwum || d.zniknal_ze_strony || ['adoptowany', 'zmarl'].includes(d.miejsce)) return [];
+  if (['adoptowany', 'w_trakcie'].includes(d.status) || d.zniknal_ze_strony) return [];
   if (!(d.zdjecia || []).length) out.add('zdjecia');
   const mine = walks.filter((w) => w.pies_id === d.id);
   if (mine.length) {
@@ -120,9 +120,8 @@ export function ileCzasu(ts, tylkoRok = false) {
 export function odKiedy(d) {
   const r = d.od ? parseData(d.od) : null;
   if (r) return { txt: r.txt, ile: ileCzasu(r.ts, /^\d{4}$/.test(r.txt)) };
-  const ts = d.data_przyjecia || d.od_www;
-  return ts ? { txt: dataTs(ts), ile: ileCzasu(ts) } : null;
+  return d.od_www ? { txt: dataTs(d.od_www), ile: ileCzasu(d.od_www) } : null;
 }
 
-// Potrzeba rzeczowa jako jeden tekst. Starsze wpisy (z liczbą i jednostką) sklejamy, np. „Karma mokra 60 puszek”.
-export const opisPotrzeby = (n) => (n.nazwa || '') + (n.potrzeba && !/\d/.test(n.nazwa || '') ? ` ${n.potrzeba}${n.jednostka ? ' ' + n.jednostka : ''}` : '');
+// Potrzeba rzeczowa jako jeden tekst (np. „karma mokra 20 kg”).
+export const opisPotrzeby = (n) => n.nazwa || '';

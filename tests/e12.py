@@ -22,7 +22,7 @@ def srv(path, tok):
 
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'administrator-haslo-3','Ania')
-    pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('moje_zadania',{id:'old1',tytul:'Zawieźć Alfa do weta',termin:Date.now()+86400e3});await s.save('wydarzenia',{id:'oldev',tytul:'Stary wspólny',start:Date.now()+2*86400e3,autor:'Michał'});await s.save('psy',{id:'d1',imie:'Alf',status:'do_adopcji',zdjecia:[]});}""")
+    pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('terminarz',{id:'old1',tytul:'Zawieźć Alfa do weta',start:Date.now()+86400e3,widocznosc:'ja',owner:'Ania',autor:'Ania',zadanie:true,ts:Date.now()});await s.save('terminarz',{id:'oldev',tytul:'Stary wspólny',start:Date.now()+2*86400e3,widocznosc:'wszyscy',owner:'Michał',autor:'Michał',ts:Date.now()});await s.save('psy',{id:'d1',imie:'Alf',status:'do_adopcji',zdjecia:[]});}""")
     go(pg,'#/wydarzenia'); pg.wait_for_selector('[data-act=tm-tab]'); pg.wait_for_timeout(800)
     check('zakładka Terminarz domyślnie (pierwsza)', pg.locator('[data-act=tm-tab]').first.get_attribute('data-t')=='ter' and pg.locator('[data-act=tm-tab].on[data-t=ter]').count()==1)
     go(pg,'#/spacery'); pg.wait_for_timeout(800)
@@ -35,7 +35,7 @@ with sync_playwright() as p:
     pg.click('[data-act=sb-extra]'); pg.wait_for_selector('#sd'); pg.fill('#sd','2026-12-24'); pg.click('#sf button[type=submit]'); pg.wait_for_timeout(700)
     check('dodatkowy termin', 'dodatkowy termin' in pg.inner_text('#app'))
     pg.click('[data-t=ter]'); pg.wait_for_timeout(800); t=pg.inner_text('#app')
-    check('migracja: zadanie i wydarzenie', 'Zawieźć Alfa' in t and 'Stary wspólny' in t)
+    check('zadanie prywatne i wpis wspólny', 'Zawieźć Alfa' in t and 'Stary wspólny' in t)
     pg.click('[data-act=tm-new]'); pg.wait_for_selector('#tt'); pg.fill('#tt','Lek dla Alfa 8:00'); pg.fill('#td', dt.date.today().isoformat()); pg.fill('#th','08:00'); pg.select_option('#tw','ja'); pg.select_option('#tp','1d'); pg.fill('#tl','rano\nwieczór'); pg.fill('#tpy','Alf'); pg.click('#tf button[type=submit]'); pg.wait_for_timeout(800)
     t=pg.inner_text('#app'); check('wpis prywatny, codziennie', 'Lek dla Alfa 8:00' in t and 'Codziennie' in t and 'tylko ja' in t)
     n=pg.locator('.ev:has-text("Lek dla Alfa")').count(); check('powtarzanie: wiele dni', n>=30); print('wystąpień',n)

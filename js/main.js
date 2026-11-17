@@ -29,12 +29,12 @@ const routes = [
   [/^\/brama$/, () => B.brama()], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/(?:pomoc|potrzeby|transport)$/, () => X.help()],
   [/^\/(?:terminarz|zadania)$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/(?:sobotnie|spacery)$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/dt$/, () => A.dt()], [/^\/dt\/([\w-]+)$/, (m) => A.dtKarta(m[1])], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/zaginiecia\/([\w-]+)$/, (m) => Z.karta(m[1])], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
-  [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/(?:byli|adoptowane|archiwum)$/, () => P.byli()]
+  [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/byli$/, () => P.byli()]
 ];
 // Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
 const ROUTES_WOL = [
   [/^\/?$/, () => WO.startWol()], [/^\/start$/, () => WO.startWol()],
-  [/^\/psy$/, () => P.list()], [/^\/(?:byli|adoptowane)$/, () => P.byli()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/psy$/, () => P.list()], [/^\/byli$/, () => P.byli()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/(?:pomoc|potrzeby|transport)$/, () => WO.pomocWol()],
   [/^\/(?:sobotnie|spacery)$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/zaginiecia\/([\w-]+)$/, (m) => Z.karta(m[1])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
@@ -191,7 +191,6 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   initUpdates();
   C.initChat();
   if (state.loggedIn && getName() && state.admin) { setTimeout(syncPush, 2000); setTimeout(firstPrompt, 4500); }
-  setTimeout(() => { if (state.loggedIn && state.admin) P.refreshStale(); }, 4000);
   setTimeout(() => { if (state.admin) TM.poranny(); }, 3000);
 })();
 export { render, lock, unlock, emit, logout, raw };

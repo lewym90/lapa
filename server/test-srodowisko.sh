@@ -7,6 +7,7 @@
 # Użycie (jako root):
 #   LAPA_REF=<gałąź lub commit> bash <(curl -fsSL https://raw.githubusercontent.com/lewym90/lapa/<to samo>/server/test-srodowisko.sh)            instalacja / nowa wersja testowa
 #   ... test-srodowisko.sh nowe-dane     to samo + świeża kopia prawdziwych danych (testowe zmiany przepadają)
+#   ... test-srodowisko.sh od-zera       to samo + pusta baza, jak nowa aplikacja (psy pobiorą się ze strony)
 #   ... test-srodowisko.sh usun          usuwa wersję testową w całości
 set -euo pipefail
 REF="${LAPA_REF:-test}"; T=/opt/lapa-test; ENVT=/etc/lapa-test.env; PORT=8798; NODE=/opt/lapa/node/bin/node; PROD=/opt/lapa
@@ -44,8 +45,12 @@ rm -rf "$T/www.new"; mkdir -p "$T/www.new"
 ( cd "$TMP" && for x in *; do case "$x" in server|tests|docs|README.md|bump.sh|tmpimg) ;; *) cp -r "$x" "$T/www.new/";; esac; done )
 cp "$TMP/server/lapa-server.mjs" "$T/lapa-server.new.mjs"; cp "$TMP/js/dogmerge.js" "$T/dogmerge.new.mjs"
 
-# 2) Dane: kopia prawdziwej bazy (przy pierwszej instalacji albo „nowe-dane”)
-if [ ! -f "$T/data/lapa.db" ] || [ "$TRYB" = nowe-dane ]; then
+# 2) Dane: „od-zera” – pusta baza (psy pobiorą się same ze strony), inaczej kopia prawdziwej bazy (pierwsza instalacja albo „nowe-dane”)
+if [ "$TRYB" = od-zera ]; then
+  say "Zaczynam od zera: pusta baza, psy pobiorą się ze strony schroniska"
+  systemctl stop lapa-test >/dev/null 2>&1 || true
+  rm -rf "$T"/data/lapa.db "$T"/data/lapa.db-* "$T"/data/site-status.json "$T"/data/photos "$T"/data/backups
+elif [ ! -f "$T/data/lapa.db" ] || [ "$TRYB" = nowe-dane ]; then
   say "Kopiuję prawdziwe dane do wersji testowej"
   systemctl stop lapa-test >/dev/null 2>&1 || true
   rm -f "$T"/data/lapa.db "$T"/data/lapa.db-* "$T"/data/site-status.json

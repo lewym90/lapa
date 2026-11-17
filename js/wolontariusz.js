@@ -8,6 +8,7 @@ import { opisPotrzeby, uid, dogOfDay, dogNeeds, needLabel, greeting, fmtDayLong,
 import { boksPill, wybCls, linie } from './znak.js';
 import { soboty } from './terminarz.js';
 import { hydratePhotos } from './photos.js';
+import { aktywny } from './teczka.js';
 
 // ----- moje zgłoszenia (ten telefon) -----
 const MK = 'lapa.moje.zgl';
@@ -152,7 +153,7 @@ export async function noweZgloszenia() {
   return (await list('p_tel')).filter((t) => (t.ts || 0) > seen).length;
 }
 export async function zgloszeniaAdmin() {
-  const [z, psy, nd, tr, sob] = await Promise.all([zglDane(), list('psy', { archiwum: true }), list('potrzeby'), list('transporty'), soboty(10)]);
+  const [z, psy, nd, tr, sob] = await Promise.all([zglDane(), list('psy', { wszystkie: true }), list('potrzeby'), list('transporty'), soboty(10)]);
   const seen = +(localStorage.getItem(ZGL_SEEN) || 0); try { localStorage.setItem(ZGL_SEEN, String(Date.now())); } catch { /* */ }
   const P = Object.fromEntries(psy.map((d) => [d.id, d])), N = Object.fromEntries(nd.map((n) => [n.id, n])), T = Object.fromEntries(tr.map((x) => [x.id, x]));
   const nowy = (r) => ((r.ts || 0) > seen && z.tel[r.id] ? ' <span class="chip gold" style="min-height:22px;padding:0 8px;font-size:11.5px">nowe</span>' : '');
@@ -172,7 +173,7 @@ export async function zgloszeniaAdmin() {
 // ===== Start wolontariusza: komunikat, pies dnia, karta „Najbliżej” (bez kafelków – reszta jest na dolnym pasku) =====
 export async function startWol() {
   const [dogs, walks, nd, tr, kom, zag, sob, z] = await Promise.all([list('psy'), list('spacery'), list('potrzeby'), list('transporty'), list('komunikaty'), list('zaginiecia'), soboty(1), zglDane()]);
-  const act = dogs.filter((d) => !d.zniknal_ze_strony && !d.archiwum && d.status !== 'adoptowany' && !['adoptowany', 'zmarl'].includes(d.miejsce));
+  const act = dogs.filter(aktywny);
   const help = act.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).length;
   const potrz = nd.filter((n) => n.status !== 'zrealizowana').length, trans = tr.filter((x) => x.status === 'szuka').length;
   const lost = zag.filter((x) => x.status !== 'znaleziony'), next = sob[0], dog = dogOfDay(dogs);

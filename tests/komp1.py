@@ -17,7 +17,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     ca, pa = newpage(b); login(pa, 'Ania')
     now = pa.evaluate('Date.now()')
-    save(pa, 'psy', {'id': 'd1', 'imie': 'Wilma', 'plec': 'suka', 'wiek': 'ok. 6 lat', 'waga': '18 kg', 'wielkosc': 'średnia', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'boks': '12', 'zdjecia': [], 'zrodlo_id': '1', 'zrodlo_url': 'https://example.com/psy/1', 'od_www': pa.evaluate('new Date(2021,10,18,12).getTime()'), 'haslo': 'WILMA - spokojna dama', 'opis': 'Spokojna suczka.', 'zdr': {'kastr': 'tak'}})
+    save(pa, 'psy', {'id': 'd1', 'imie': 'Wilma', 'plec': 'suka', 'wiek': 'ok. 6 lat', 'waga': '18 kg', 'wielkosc': 'średnia', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'boks': '12', 'zdjecia': [], 'zrodlo_id': '1', 'zrodlo_url': 'https://example.com/psy/1', 'od_www': pa.evaluate('new Date(2021,10,18,12).getTime()'), 'haslo': 'WILMA - spokojna dama', 'opis': 'Spokojna suczka.'})
     go(pa, '#/psy/d1', 1000); t = text(pa)
     for s_ in ['Dane', 'Wydawanie na spacer', 'Zdrowie', 'Dokumenty', 'Dla wolontariuszy', 'Notatki']:
         check('sekcja ' + s_, s_ in t)
@@ -42,7 +42,7 @@ with sync_playwright() as p:
     edit(pa, 'leki', 'Vetmedin 5 mg rano i wieczorem'); edit(pa, 'choroby', 'Alergia na kurczaka')
     t = text(pa); check('stałe leki i choroby', 'Vetmedin 5 mg' in t and 'Alergia na kurczaka' in t)
     # zdrowie: kafelki
-    check('kafelek kastracji z dawnej karty: „tak”', pa.locator('.kafel[data-typ=kastracja]', has_text='tak').count() == 1)
+    check('kafelek kastracji bez wpisu: „brak wpisu”', pa.locator('.kafel[data-typ=kastracja]', has_text='brak wpisu').count() == 1)
     pa.click('.kafel[data-typ=szczepienie]'); pa.wait_for_selector('#kz_d')
     check('kafelek otwiera wpis z wybranym rodzajem', pa.eval_on_selector('#kz_t', 'e=>e.value') == 'szczepienie')
     pa.fill('#kz_d', '03.2024'); pa.fill('#kz_n', 'Wścieklizna'); pa.fill('#kz_k', '80,50'); pa.fill('#kz_x', '03.2030'); pa.click('#kzf button[type=submit]'); pa.wait_for_timeout(700)
@@ -58,7 +58,7 @@ with sync_playwright() as p:
     pa.fill('#kz_n', 'Wścieklizna, Biocan'); pa.click('#kzf button[type=submit]'); pa.wait_for_timeout(700)
     check('edycja wpisu zapisana (bez duplikatu)', pa.locator('.kwpis').count() == 2 and 'Biocan' in text(pa))
     pa.click('.kwpis:has-text("Kastracja")'); pa.wait_for_selector('#kz_del'); pa.click('#kz_del'); pa.wait_for_selector('.sheet [data-yes]'); pa.click('.sheet [data-yes]'); pa.wait_for_timeout(700)
-    check('usunięcie wpisu (kafelek wraca do „tak” z dawnej karty)', pa.locator('.kwpis').count() == 1 and pa.locator('.kafel[data-typ=kastracja]', has_text='tak').count() == 1)
+    check('usunięcie wpisu (kafelek wraca do „brak wpisu”)', pa.locator('.kwpis').count() == 1 and pa.locator('.kafel[data-typ=kastracja]', has_text='brak wpisu').count() == 1)
     # dokumenty
     pa.set_input_files('[data-kdok]', ['/tmp/sc/dok.jpg']); pa.wait_for_timeout(2500)
     check('dokument dodany', len(dog(pa).get('dokumenty') or []) == 1 and pa.locator('.kdokp').count() == 1)

@@ -15,7 +15,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 export async function start() {
   const [dogs, kom, zdr, zag] = await Promise.all([list('psy'), list('komunikaty'), list('zdrowie'), list('zaginiecia')]);
   const todo = gaps(dogs, zdr), dog = dogOfDay(dogs), dzis = await dzisItems(), nZgl = await noweZgloszenia(), lost = zag.filter((z) => z.status !== 'znaleziony');
-  const st = await siteStatus(), err = st && st.enabled !== false && st.ok === false ? st.blad || 'Nieznany błąd.' : null;
+  const st = await siteStatus(), err = st && st.enabled !== false ? (st.ok === false ? st.blad || 'Nieznany błąd.' : st.uwaga || null) : null;
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
   const now = Date.now();

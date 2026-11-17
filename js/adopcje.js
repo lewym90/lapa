@@ -9,7 +9,7 @@ import { hydratePhotos } from './photos.js';
 const tel = (t) => String(t || '').replace(/[^\d+]/g, '');
 const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title)}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` });
 const RODZ = { dt: 'Dom tymczasowy', hotelik: 'Hotelik' };
-const adres = (p) => p.adres || p.miasto || '';
+const adres = (p) => p.adres || '';
 const pen = () => icon('pencil').s.replace('class="ico', 'class="ico kpen');
 // U kogo jest pies (karta psa administratora)
 export const uKogo = (osoby, dogId) => osoby.find((p) => (p.psy || []).includes(dogId)) || null;
@@ -69,7 +69,7 @@ actions['dt-edit'] = async (el) => {
     <button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
     const v = s.querySelector('#tev'); v.focus();
     s.querySelector('#tef').addEventListener('submit', async (e) => {
-      e.preventDefault(); const n = { ...((await get('p_dt', p.id)) || p), [f]: v.value.trim() }; if (f === 'adres') delete n.miasto;
+      e.preventDefault(); const n = { ...((await get('p_dt', p.id)) || p), [f]: v.value.trim() };
       await save('p_dt', n); closeSheet(); toast('Zapisane');
     });
   });

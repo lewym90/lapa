@@ -14,7 +14,6 @@ const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n %
 const zl = (v) => (+v || 0).toFixed(2).replace('.', ',').replace(',00', '') + ' zł';
 const dz = (z) => z.data_txt || (z.data ? dataTs(z.data) : '');
 const KAFLE = [['szczepienie', 'Szczepienie'], ['odrobaczanie', 'Odrobaczenie'], ['pchly', 'Pchły i kleszcze'], ['kastracja', 'Kastracja']];
-const STARE_ZDR = { szczepienie: 'szczep', odrobaczanie: 'odrob', kastracja: 'kastr' }; // „tak/nie” z dawnej karty psa (1.17)
 
 // Znaczek ze strony: w procesie adopcji / dom tymczasowy / hotelik / byli u nas
 export function znaczekStrony(d) {
@@ -36,8 +35,7 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
   const obs = obsAll.filter((o) => o.pies_id === id).sort((a, b) => b.ts - a.ts), needs = dogNeeds(d, walks), od = odKiedy(d);
   const najn = (typ) => zdr.find((z) => z.typ === typ);
   const kafle = KAFLE.map(([k, l]) => {
-    const z = najn(k), stare = (d.zdr || {})[STARE_ZDR[k]];
-    const v = z ? esc(dz(z)) : stare === 'tak' ? 'tak' : stare === 'nie' ? 'nie' : '';
+    const z = najn(k), v = z ? esc(dz(z)) : '';
     return `<button type="button" class="kafel${v ? ' jest' : ''}" data-act="k-zdr" data-id="${esc(id)}" data-typ="${k}"><span>${l}</span><b>${v || 'brak wpisu'}</b></button>`;
   }).join('');
   const koszt = zdr.reduce((s, z) => s + (+z.koszt || 0), 0), dok = d.dokumenty || [];
@@ -121,8 +119,8 @@ actions['k-edit'] = async (el) => {
     s.querySelector('#kef').addEventListener('submit', async (e) => {
       e.preventDefault(); const val = v.value.trim(), n = { ...((await get('psy', d.id)) || d) };
       if (f === 'od') {
-        if (!val) { delete n.od; delete n.data_przyjecia; }
-        else if (val !== cur) { const r = parseData(val); if (!r) { s.querySelector('#kee').textContent = 'Nie rozumiem tej daty. Wpisz np. 2019, 03.2019 albo 12.03.2019.'; return; } n.od = r.txt; delete n.data_przyjecia; }
+        if (!val) delete n.od;
+        else if (val !== cur) { const r = parseData(val); if (!r) { s.querySelector('#kee').textContent = 'Nie rozumiem tej daty. Wpisz np. 2019, 03.2019 albo 12.03.2019.'; return; } n.od = r.txt; }
       } else if (f === 'boks') n.boks = czyscBoks(val);
       else if (val) n[f] = val; else delete n[f];
       await save('psy', n); closeSheet(); toast('Zapisane');

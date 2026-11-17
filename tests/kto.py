@@ -1,7 +1,7 @@
 exec(open('e13.py').read().split("with sync_playwright()")[0])
 with sync_playwright() as p:
     b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'administrator-haslo-3','Ania')
-    pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'k1',imie:'Nimus',plec:'samiec',status:'zwykly',miejsce:'schronisko'});await s.save('zaginiecia',{id:'zk1',imie:'Ares',kiedy:Date.now(),gdzie:'Test',status:'poszukiwany',akt:[],autor:'Basia'});await s.save('potrzeby',{id:'pk1',nazwa:'Karma',kategoria:'Karma mokra',potrzeba:10,zapewniono:1,autor:'Basia'});}""")
+    pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'k1',imie:'Nimus',plec:'samiec',status:'zwykly',miejsce:'schronisko'});await s.save('zaginiecia',{id:'zk1',imie:'Ares',kiedy:Date.now(),gdzie:'Test',status:'poszukiwany',akt:[],autor:'Basia'});await s.save('potrzeby',{id:'pk1',nazwa:'Karma 10 kg',autor:'Basia'});}""")
     go(pg,'#/zaginiecia'); pg.wait_for_timeout(500)
     go(pg,'#/zaginiecia/zk1'); pg.wait_for_timeout(500); pg.click('[data-act=zag-tekst]'); pg.wait_for_selector('#z_pt')
     check('post bez autora', 'Basia' not in pg.input_value('#z_pt'))

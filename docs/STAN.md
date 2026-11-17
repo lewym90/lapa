@@ -1,4 +1,4 @@
-# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 1.19.4, 2026-11-17)
+# ŁAPA – Nowodwór: stan projektu i przekazanie pracy (wersja 2.0.0, 2026-11-17)
 
 Ten plik pozwala kontynuować pracę z innego konta lub sesji. Nie ma tu haseł ani kluczy (hasła wolontariusza i koordynatora ustawił właściciel na serwerze, zapisane są tylko jako hashe w usłudze systemd).
 
@@ -22,7 +22,7 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - `js/ui.js`: `html`, `esc`, `openSheet`, `closeSheet`, `toast`, `actions` (obsługa `data-act`), `pageBar`, `plusBtn`, szkice formularzy w arkuszach, blokada wygaszania ekranu.
 - `js/dogmerge.js`: wspólna logika (aplikacja + serwer): z odczytu strony schroniska powstaje rekord psa, ocena zachowania z opisu, miejsce z hasła.
 - `js/kompendium.js` (karta psa administratora), `js/teczka.js` (wspólne zasady psa, Wydawanie na spacer, zdrowie), `js/terminarz.js` (terminarz, sobotnie spacery, poranny komunikat), `js/udzial.js` (zgłoszenia „będę”), `js/brama.js`, `js/adopcje.js` (domy tymczasowe i hoteliki), `js/zaginiecia.js`, `js/finanse.js`, `js/screens-inne.js` (Pomoc, ustawienia), `js/photos.js`, `js/screens-*.js`.
-- Serwer: SQLite (tabele records, history, sessions), `/sync`, `/import`, `/import/links`, `/photo/:id` (JPEG do 1,5 MB), `/health`, `POST /site/sync`. Kopie bazy co 30 minut (VACUUM INTO, katalog `backups`, 48 h wszystkie, potem 1 na dobę do 60 dni). Automatyczne sprawdzanie strony schroniska 3 razy dziennie (3:00, 11:00, 17:00 czasu warszawskiego, zmienna `SITE_SYNC_HOURS`).
+- Serwer: SQLite (tabele records, history, sessions, meta – epoka bazy i lista starych adopcji), `/sync`, `/photo/:id` (JPEG do 1,5 MB), `/health`, `POST /site/sync`. Kopie bazy co 30 minut (VACUUM INTO, katalog `backups`, 48 h wszystkie, potem 1 na dobę do 60 dni). Automatyczne sprawdzanie strony schroniska 3 razy dziennie (3:00, 11:00, 17:00 czasu warszawskiego, zmienna `SITE_SYNC_HOURS`).
 
 ## Decyzje i preferencje właściciela
 - Pisać po polsku, prosto i krótko. Jeden temat naraz. Komendy do Termius podawać pojedynczo i mówić, na którym serwerze.
@@ -32,6 +32,14 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - Od 1.18 strona schroniska jest jedynym źródłem psów: status, miejsce, opis i dane zawsze jak na stronie; pies, którego nie ma na stronie, jest w „Byli u nas” (bez klikania), wraca, gdy znów się pojawi. Aplikacja nie dodaje psów, nie zmienia statusów i nie robi postów do social mediów.
 - Prosto i bez powtórzeń; bez „dopisków” w interfejsie; „Ważne” na karcie psa pomarańczowe (czerwony jest dla „Tylko wybrani”).
 - **Właściciel odrzucił** dopisywanie kolejnych funkcji z badania obowiązków wolontariuszy (zaświadczenia, umowa adopcyjna, ostrzeżenia na Bramie, statystyki, etykiety ról): „zaśmieci aplikację”. Nie wdrażać bez wyraźnej prośby. Opis badania: `docs/obowiazki-wolontariuszy.md`.
+
+## 2.0.0 (2026-11-17) – nowa aplikacja (gałąź `test`)
+- Właściciel: wersję testową wypuszczamy jako całkiem nową aplikację, bez zgodności ze starą (nikt nie używał starej). Usunięty cały kod zgodności: dawne archiwum, ręczne „adoptowany/zmarł”, migracja terminarza (wydarzenia, moje_zadania), `data_przyjecia`, `kanaly.www`, `moje_zdjecia`/`glowne`, `tagi` psa, potrzeby z liczbą i jednostką, stare kategorie finansów, `miasto` w DT, kafelki zdrowia „tak/nie”, ręczne odświeżanie psów (`importOne`, `refreshStale`) i endpointy `/import`, `/import/links`.
+- „Byli u nas” = psy z zakładki „Adoptowane” na stronie schroniska (`${SITE}/adoptowane?start=`, 9 na stronę). Pies przeniesiony na stronie do „Adoptowanych” trafia do „Byli u nas” przy najbliższym odczycie (z `adoptowany_od`, notatki administratora zostają). Nieznane wcześniej adoptowane psy dodajemy tylko z ostatnich 3 lat (data publikacji); starsze trafiają do listy `adopt_stare` w tabeli meta i nie są pobierane ponownie. Znanych adoptowanych nie pobieramy co godzinę.
+- Psa, którego nie ma nigdzie na stronie (ani do adopcji, ani w „Adoptowanych”), aplikacja chowa (`zniknal_ze_strony`, `store.list` go pomija, karta: „Nie ma takiego psa”). Dane zostają, a gdy pies pojawi się znowu, wraca sam ze wszystkimi wpisami. Gdy zakładki „Adoptowane” nie da się odczytać, nic nie chowamy, a Start/Ustawienia pokazują uwagę.
+- Naprawione: data publikacji była odczytywana tylko dla maja, października i listopada (nazwy miesięcy w dopełniaczu, np. „marca”).
+- Epoka bazy: serwer losuje znacznik nowej bazy (`/health`, `/sync`). Telefon z danymi ze starszej bazy czyści je (także niewysłane zmiany) i pobiera wszystko od nowa.
+- Adres zakładki „Adoptowane” nie był sprawdzony z piaskownicy (strona niedostępna) – sprawdzić na serwerze `curl -s https://schronisko-nowodwor.com.pl/adoptowane | grep -c '/adoptowane/'`.
 
 ## Dla kolejnej sesji
 - Potwierdzić, że serwer jest po aktualizacji 1.14.0 (hasło administratora działa). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.

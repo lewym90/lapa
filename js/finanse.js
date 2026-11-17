@@ -6,9 +6,8 @@ import { state, getName } from './auth.js';
 import { parseData, dataTs } from './util.js';
 import { TYP } from './teczka.js';
 
-const STARE = { leczenie: 'Leczenie i weterynarz', karma: 'Karma', hotel: 'Hotelik / dom tymczasowy', transport: 'Transport', kastracja: 'Kastracje', przelew: 'Przelew / darowizna', podatek: '1,5% podatku', licytacja: 'Licytacja / bazarek', zbiorka: 'Zbiórka', gotowka: 'Gotówka', inne: 'Inne' };
 const zl = (n) => n.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' zł';
-const opisW = (x) => x.opis || STARE[x.kat || x.zrodlo] || (x.typ === 'wplata' ? 'Wpłata' : 'Wydatek');
+const opisW = (x) => x.opis || (x.typ === 'wplata' ? 'Wpłata' : 'Wydatek');
 const kiedy = (x) => x.data_txt || dataTs(x.data);
 let rok = new Date().getFullYear();
 
@@ -51,7 +50,6 @@ async function form(x) {
       if (!(kw > 0)) { er.textContent = 'Wpisz kwotę.'; return; }
       const d = parseData(s.querySelector('#f_d').value); if (!d) { er.textContent = 'Wpisz datę, np. 12.03.2026.'; return; }
       const o = { ...x, typ, kwota: Math.round(kw * 100) / 100, data: d.ts, data_txt: d.txt, opis: s.querySelector('#f_o').value.trim(), pies_id: s.querySelector('#f_p').value || null, autor: x.autor || getName() };
-      delete o.kat; delete o.zrodlo;
       await save('p_finanse', o); closeSheet(); toast('Zapisane');
     });
     s.querySelector('#f_del')?.addEventListener('click', async () => { if (await confirmSheet('Usunąć wpis?', 'Nie da się tego cofnąć.', 'Usuń', true)) { await remove('p_finanse', x.id); toast('Usunięto'); } });

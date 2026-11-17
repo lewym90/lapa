@@ -59,7 +59,7 @@ try {
   // zapis wolontariusza
   const zakazane = await push(w.token, [ch('psy', 'd1', { imie: 'Zmiana' }), ch('psy', 'nowy', { imie: 'X' }), ch('potrzeby', 'n1', { zapewniono: 10 }), ch('transporty', 'tr1', { status: 'przypisany' }), ch('terminarz', 't2', {}), ch('spacery', 'w2', {}), ch('oznaczenia', 'd1', {}), ch('p_adopcje', 'a2', {})], DEV1);
   ck('wolontariusz nic nie edytuje', zakazane.every((x) => x === 'forbidden'), zakazane.join(','));
-  ck('import i sprawdzenie strony tylko dla administratora', (await call('/site/sync', { method: 'POST', tok: w.token })).s === 403 && (await call('/import/links', { tok: w.token })).s === 403);
+  ck('sprawdzenie strony tylko dla administratora', (await call('/site/sync', { method: 'POST', tok: w.token })).s === 403);
   ck('zdjęcia wysyła tylko administrator', (await call('/photo/abc123', { method: 'POST', tok: w.token, raw: Buffer.alloc(200, 0xff) })).s === 403);
   const moje = await push(w.token, [ch('deklaracje', 'dA', { pies_id: 'd1', potrzeba: 'spacer', imie: 'Ola' }), ch('zgloszenia', 'zA', { key: 's1', imie: 'Ola', status: 'tak' }),
     ch('oferty', 'oA', { typ: 'potrzeba', ref: 'n1', imie: 'Ola', ilosc: 5, stan: 'przyjeta' }), ch('p_tel', 'oA', { ref_col: 'oferty', ref_id: 'oA', tel: '600 700 800', imie: 'Ola', ts: Date.now() })], DEV1);

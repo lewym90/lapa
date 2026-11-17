@@ -34,13 +34,13 @@ export function ocenaZOpisu(opis) {
 export const normPlec = (t = '') => (/suk|samic|dziewcz/i.test(t) ? 'suka' : /pies|samiec|piesek|chłop/i.test(t) ? 'samiec' : '');
 export const czysc = (x = '') => String(x).replace(/&nbsp;|\u00a0/gi, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 // Strona nie ma pola „miejsce”: jedynym sygnałem jest hasło (np. „ADINA - w domu tymczasowym 🏠”).
-// Od 1.18 strona jest jedynym źródłem: miejsce, status, opis i dane zawsze są takie jak na stronie (ręcznie w aplikacji się ich nie zmienia).
+// Strona jest jedynym źródłem: miejsce, status, opis i dane zawsze są takie jak na stronie (ręcznie w aplikacji się ich nie zmienia).
 export function miejsceZHasla(haslo) {
   return { miejsce: /domu tymczasow|dom tymczasow/i.test(haslo) ? 'dt' : /hotelik/i.test(haslo) ? 'hotelik' : 'schronisko' };
 }
 export function dogFromImport(imp, old = {}) {
   const f = imp.fields || {}; const haslo = czysc(imp.haslo || old.haslo || '');
-  const statusWww = /procesie adopcji/i.test(haslo) ? 'w_trakcie' : (imp.status === 'w_trakcie' ? 'do_adopcji' : imp.status) || 'do_adopcji';
+  const statusWww = imp.status === 'adoptowany' ? 'adoptowany' : /procesie adopcji/i.test(haslo) ? 'w_trakcie' : (imp.status === 'w_trakcie' ? 'do_adopcji' : imp.status) || 'do_adopcji';
   const n = {
     ...old,
     id: old.id || (imp.id ? 'd' + imp.id : 'm' + Math.random().toString(36).slice(2, 10)),
@@ -50,11 +50,14 @@ export function dogFromImport(imp, old = {}) {
     zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
     haslo, status_www: statusWww, status: statusWww, ...miejsceZHasla(haslo),
     // „W schronisku od”: data publikacji ogłoszenia na stronie (administrator może ją zmienić w karcie psa – pole „od”).
-    od_www: imp.opublikowano || old.od_www || (old.kanaly || {}).www || null,
+    od_www: old.od_www || imp.opublikowano || null,
     ocena: ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji'
   };
-  // Pies jest na stronie: na pewno nie jest w „Byli u nas”.
-  for (const k of ['zniknal_ze_strony', 'archiwum', 'archiwum_los', 'archiwum_zrodlo', 'adopcja_potw', 'miejsce_auto']) delete n[k];
+  // Pies jest na stronie (na liście do adopcji albo w „Adoptowanych”): nie jest ukryty.
+  delete n.zniknal_ze_strony;
+  // Kiedy aplikacja zobaczyła, że pies trafił do „Adoptowanych” (tylko gdy znaliśmy go wcześniej jako psa do adopcji).
+  if (n.status === 'adoptowany') { if (old.id && old.status !== 'adoptowany' && !old.adoptowany_od) n.adoptowany_od = Date.now(); }
+  else delete n.adoptowany_od;
   if (!n.ocena) delete n.ocena;
   return n;
 }

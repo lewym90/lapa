@@ -15,9 +15,9 @@ export const OCENA_LBL = Object.fromEntries(OCENA_OPC);
 export const days = (t) => Math.max(0, Math.floor((Date.now() - t) / MS_DAY));
 
 export const miejsce = (d) => d.miejsce || 'schronisko';
-// „Byli u nas”: pies zniknął ze strony schroniska (albo był tak oznaczony w starszych wersjach). Dzieje się samo.
-export const byl = (d) => !!(d.zniknal_ze_strony || d.archiwum || d.status === 'adoptowany' || ['adoptowany', 'zmarl'].includes(d.miejsce));
-export const aktywny = (d) => !byl(d);
+// „Byli u nas”: pies z zakładki „Adoptowane” na stronie schroniska. Pies, którego nie ma nigdzie na stronie, jest ukryty (store.list go pomija).
+export const byl = (d) => d.status === 'adoptowany';
+export const aktywny = (d) => !byl(d) && !d.zniknal_ze_strony;
 export const dostepny = aktywny;
 
 // ===== oznaczenie i krótki opis psa: wyłącznie administrator (kolekcja „oznaczenia”, bez podpisu autora) =====

@@ -31,7 +31,7 @@ const VOL_WRITE = new Set(['deklaracje', 'zgloszenia', 'oferty', 'p_tel']);
 // Odczyt: tylko to, co widzi wolontariusz (Psy, Pomoc, Potrzeby, Transport, Sobotnie spacery, Zaginięcia, komunikaty).
 const VOL_READ = new Set(['psy', 'spacery', 'potrzeby', 'transporty', 'deklaracje', 'zgloszenia', 'oferty', 'spacery_sob', 'zaginiecia', 'komunikaty']);
 // Z danych psa wolontariusz dostaje tylko te pola (bez czipa, opiekuna DT, kanałów, karty przyjęcia, notatek).
-const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id', 'status_www', 'od_www', 'zniknal_ze_strony', 'archiwum'];
+const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'ocena', 'potrzeby', 'boks', 'zrodlo_url', 'zaimportowano', 'id', 'status_www', 'od_www', 'zniknal_ze_strony', 'adoptowany_od'];
 function dlaWolontariusza(col, data) {
   if (!data || typeof data !== 'object') return data;
   if (col === 'psy') { const o = {}; for (const k of PSY_POLA) if (k in data) o[k] = data[k]; return o; }
@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS sessions(
 try { db.exec("ALTER TABLE sessions ADD COLUMN fp_admin TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
 try { db.exec('ALTER TABLE push ADD COLUMN admin INTEGER NOT NULL DEFAULT 0'); } catch { /* kolumna już jest */ }
 try { db.exec("ALTER TABLE push ADD COLUMN th TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
+// Epoka bazy: losowy znacznik nowej bazy. Telefony z danymi ze starszej bazy (np. po starcie od zera) same je czyszczą i pobierają wszystko od nowa.
+db.exec('CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT)');
+const metaGet = (k) => (db.prepare('SELECT v FROM meta WHERE k=?').get(k) || {}).v;
+const metaSet = (k, v) => db.prepare('INSERT OR REPLACE INTO meta(k,v) VALUES(?,?)').run(k, v);
+if (!metaGet('epoka')) metaSet('epoka', crypto.randomBytes(9).toString('base64url'));
+const EPOKA = metaGet('epoka');
 // Kto utworzył zgłoszenie wolontariusza (skrót identyfikatora telefonu): tylko on może je zmienić albo wycofać.
 db.exec('CREATE TABLE IF NOT EXISTS owners(col TEXT NOT NULL, id TEXT NOT NULL, dev TEXT NOT NULL, ts INTEGER, PRIMARY KEY(col,id))');
 
@@ -285,7 +291,7 @@ const textLines = (h) => decode(h.replace(/<(script|style|noscript|svg)[\s\S]*?<
 const norm = (x) => x.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9]/g, '');
 const titleCase = (x) => x ? x.charAt(0).toUpperCase() + x.slice(1).toLowerCase() : x;
 const LABELS = { 'Płeć': 'plec', 'Wiek': 'wiek', 'Wielkość': 'wielkosc', 'Waga': 'waga', 'Wysokość w kłębie': 'wzrost', 'Wzrost': 'wzrost', 'Sierść': 'siersc', 'Status': 'status_txt' };
-const MIESIACE = { stycze: 1, luty: 2, marzec: 3, kwiecie: 4, maj: 5, czerwiec: 6, lipiec: 7, sierpie: 8, wrzesie: 9, pa: 10, listopad: 11, grudzie: 12 };
+const MIESIACE = { sty: 1, lut: 2, mar: 3, kwi: 4, maj: 5, cze: 6, lip: 7, sie: 8, wrz: 9, pa: 10, lis: 11, gru: 12 }; // początki nazw (także „marca”, „września”)
 const strip = (x) => decode(String(x).replace(/<[^>]+>/g, ' ')).replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 // Struktura strony (Joomla TZ Portfolio): h2.TzArticleTitle, lista pól .tz_extrafield-item, hasło w .intro, opis w .text, galeria a[data-fancybox].
 function parseDog(h, u) {
@@ -302,7 +308,7 @@ function parseDog(h, u) {
     if (LABELS[lab] && val && !fields[LABELS[lab]]) fields[LABELS[lab]] = val;
   }
   const st = (fields.status_txt || '').toLowerCase(); delete fields.status_txt;
-  if (/pilny|pilne/.test(st)) status = 'pilne'; else if (/adoptowan/.test(st)) status = 'adoptowany'; else if (/w trakcie|zarezerw/.test(st)) status = 'w_trakcie'; else if (/do adopcji/.test(st)) status = status === 'pilne' ? 'pilne' : 'do_adopcji';
+  if (status === 'adoptowany') { /* zakładka „Adoptowane” rozstrzyga */ } else if (/pilny|pilne/.test(st)) status = 'pilne'; else if (/adoptowan/.test(st)) status = 'adoptowany'; else if (/w trakcie|zarezerw/.test(st)) status = 'w_trakcie'; else if (/do adopcji/.test(st)) status = status === 'pilne' ? 'pilne' : 'do_adopcji';
   const body = h.slice(Math.max(0, h.search(/TzArticleTitle/)));
   const intro = (/class="[^"]*\bintro\b[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(body) || [])[1];
   const haslo = intro ? strip(intro).replace(new RegExp('^' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[-–—:]\\s*', 'i'), '') : '';
@@ -333,6 +339,19 @@ async function dogLinks(fresh = false, info = {}) {
   }
   return [...links].slice(0, 500);
 }
+// Zakładka „Adoptowane” na stronie: lista linków (9 na stronę, kolejne przez ?start=). Gdy zakładki nie da się odczytać – błąd (nic nie chowamy).
+async function adoptedLinks() {
+  const links = new Set();
+  for (let start = 0; start < 9 * 150; start += 9) {
+    let h; try { h = await fetchHtml(`${SITE}/adoptowane${start ? '?start=' + start : ''}`, true); } catch (e) { if (e.status404 && start > 0) break; throw new Error('Nie udało się odczytać zakładki „Adoptowane” na stronie schroniska: ' + e.message); }
+    const before = links.size, re = /href=["']((?:https?:\/\/(?:www\.)?schronisko-nowodwor\.com\.pl)?\/adoptowane\/[^"'\/\s]+\/\d+)\/?["']/gi; let m;
+    while ((m = re.exec(h))) links.add(new URL(m[1], SITE).href);
+    if (links.size === before) break;
+    await sleep(250);
+  }
+  return [...links];
+}
+const TRZY_LATA = 3 * 365.25 * 86400e3;
 // ===== Kopie zapasowe: baza co 30 minut (VACUUM INTO), zdjęcia kopiowane przyrostowo =====
 const BACKUP_DIR = path.join(path.dirname(DB_FILE), 'backups');
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -374,63 +393,55 @@ async function syncSite(reason = 'auto') {
   if (!SITE_SYNC) return siteSt;
   if (siteSt.running) return siteSt;
   siteSt.running = true;
-  const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', nazwy: [], pominietych: 0, nieudanych: 0, zniknelo: 0, wrocilo: 0, zniknelo_nazwy: [] };
+  const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', uwaga: '', nazwy: [], pominietych: 0, nieudanych: 0, zniknelo: 0, wrocilo: 0, zniknelo_nazwy: [] };
   try {
     runBackup(); // kopia bazy tuż przed zmianami
-    const info = {}, links = await dogLinks(true, info);
+    const info = {}, links = await dogLinks(true, info); let adopt = [], adoptOk = true;
+    try { adopt = await adoptedLinks(); } catch (e) { adoptOk = false; res.uwaga = e.message; console.error(e.message); } // bez „Adoptowanych” nic nie chowamy
     const getRow = db.prepare("SELECT * FROM records WHERE col='psy' AND id=?");
     const allDogs = db.prepare("SELECT id,data,deleted FROM records WHERE col='psy'").all().map((r) => ({ id: r.id, deleted: !!r.deleted, d: JSON.parse(r.data) }));
-    const known = allDogs.filter((x) => !x.deleted && x.d.zrodlo_id).length;
-    res.razem = links.length;
-    if (links.length < 20 || (known >= 20 && links.length < known * (info.partial ? 0.85 : 0.6))) throw new Error(`Na liście strony znalazłem tylko ${links.length} psów (w aplikacji jest ${known}). Nie zmieniam nic, bo to wygląda na błąd strony albo zmianę jej układu.`);
+    const known = allDogs.filter((x) => !x.deleted && x.d.status !== 'adoptowany' && !x.d.zniknal_ze_strony).length;
+    res.razem = links.length; res.razem_adopt = adopt.length; res.adoptowanych = 0;
+    if (links.length < 20 || (known >= 20 && links.length < known * (info.partial ? 0.85 : 0.6))) throw new Error(`Na liście strony znalazłem tylko ${links.length} psów (w aplikacji jest ${known}). Nie zmieniam nic, bo to wygląda na błąd strony albo zmianę jej wyglądu. Spróbuję przy następnym sprawdzeniu.`);
     const hist = db.prepare('INSERT INTO history(col,id,data,updated_at,deleted,by,replaced_at) VALUES(?,?,?,?,?,?,?)');
     const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
-    for (const link of links) {
+    const idOf = (l) => /\/(\d+)\/?$/.exec(l)?.[1];
+    const stare = new Set(JSON.parse(metaGet('adopt_stare') || '[]')); // adoptowane ponad 3 lata temu (nie pobieramy ich ponownie)
+    const naLiscie = new Set(links.map(idOf));
+    // „Adoptowane”: pobieramy tylko psy, których jeszcze nie mamy jako adoptowane (raz), i tylko z ostatnich 3 lat
+    const doPobrania = [...links.map((l) => ({ l, adopt: false })), ...adopt.filter((l) => {
+      const id = idOf(l); if (!id || naLiscie.has(id) || stare.has(id)) return false;
+      const r = getRow.get('d' + id); if (!r) return true; if (r.deleted) return false;
+      const d = JSON.parse(r.data); return d.status !== 'adoptowany' || !!d.zniknal_ze_strony;
+    }).map((l) => ({ l, adopt: true }))];
+    for (const { l: link, adopt: zAdopt } of doPobrania) {
       try {
         const u = new URL(link), h = await fetchHtml(u.origin + u.pathname, true), imp = parseDog(h, new URL(u.origin + u.pathname));
         const sensowny = imp.name && imp.id && (imp.opis || imp.zdjecia.length || Object.keys(imp.fields).length);
         if (!sensowny) { res.nieudanych++; continue; }
-        let row = getRow.get('d' + imp.id), old = {};
+        const row = getRow.get('d' + imp.id); let old = {};
         if (row) { if (row.deleted) { res.pominietych++; continue; } old = JSON.parse(row.data); }
-        else { // pies dodany wcześniej ręcznie (jeszcze bez strony): łączymy po imieniu
-          const same = allDogs.find((x) => !x.deleted && !x.d.zrodlo_id && (x.d.imie || '').trim().toLowerCase() === imp.name.trim().toLowerCase());
-          if (same) { row = getRow.get(same.id); old = same.d; }
-        }
+        if (zAdopt && !old.id && imp.opublikowano && Date.now() - imp.opublikowano > TRZY_LATA) { stare.add(String(imp.id)); continue; }
         const dog = merge.dogFromImport(imp, old);
         if (!old.id) dog.auto_dodany = Date.now();
         if (old.id && cmpDog(dog) === cmpDog(old)) continue;
         const now = Date.now();
         if (row) hist.run(row.col, row.id, row.data, row.updated_at, row.deleted, row.by, now);
         put.run('psy', dog.id, JSON.stringify(dog), now, 0, 'strona');
-        if (old.id) res.zmienionych++; else { res.nowych++; res.nazwy.push(dog.imie); }
-        if (old.zniknal_ze_strony || old.archiwum) res.wrocilo++;
+        if (zAdopt) res.adoptowanych++;
+        else if (old.id) { res.zmienionych++; if (old.zniknal_ze_strony || old.status === 'adoptowany') res.wrocilo++; } else { res.nowych++; res.nazwy.push(dog.imie); }
       } catch (e) { res.nieudanych++; console.error('Sprawdzanie strony, pies', link, e.message); }
       await sleep(400);
     }
-    if (!info.partial && res.nieudanych <= Math.max(3, links.length * 0.25)) {
-      // Pies, którego nie ma już na liście strony, trafia do „Byli u nas” (znacznik zniknal_ze_strony). Nikt nic nie klika.
-      // Gdy pies wróci na stronę, sam wraca do aplikacji ze wszystkimi notatkami (status i miejsce ze strony).
-      const ids = new Set(links.map((l) => /\/(\d+)\/?$/.exec(l)?.[1]).filter(Boolean)), now = Date.now();
+    metaSet('adopt_stare', JSON.stringify([...stare]));
+    if (adoptOk && !info.partial && res.nieudanych <= Math.max(3, doPobrania.length * 0.25)) {
+      // Pies, którego nie ma ani na liście psów do adopcji, ani w „Adoptowanych”, znika z aplikacji (znacznik zniknal_ze_strony, dane zostają).
+      // Gdy pojawi się znów na stronie, wraca sam, ze wszystkimi wpisami administratora.
+      const jest = new Set([...links, ...adopt].map(idOf).filter(Boolean)), now = Date.now();
       for (const x of db.prepare("SELECT * FROM records WHERE col='psy' AND deleted=0").all()) {
         const d = JSON.parse(x.data);
-        // Pies dodany kiedyś ręcznie w aplikacji (bez ogłoszenia na stronie): od 1.19 strona jest jedynym źródłem, więc trafia do „Byli u nas”.
-        // Gdy pojawi się na stronie pod tym samym imieniem, wyżej zostaje połączony z ogłoszeniem i wraca.
-        if (!d.zrodlo_id) {
-          if (d.zniknal_ze_strony) continue;
-          d.zniknal_ze_strony = now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie);
-          hist.run(x.col, x.id, x.data, x.updated_at, x.deleted, x.by, now); put.run('psy', x.id, JSON.stringify(d), now, 0, 'strona'); continue;
-        }
-        let ch = false;
-        if (d.poza_strona || d.poza_n) { delete d.poza_strona; delete d.poza_n; ch = true; } // znaczniki z wcześniejszych wersji
-        if (!ids.has(String(d.zrodlo_id))) {
-          if (!d.zniknal_ze_strony) { d.zniknal_ze_strony = now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie); ch = true; }
-        } else if (d.zniknal_ze_strony || d.archiwum || d.status === 'adoptowany') {
-          for (const k of ['zniknal_ze_strony', 'archiwum', 'archiwum_los', 'archiwum_zrodlo', 'adopcja_potw', 'miejsce_auto']) delete d[k];
-          if (d.status === 'adoptowany') d.status = d.status_www && d.status_www !== 'adoptowany' ? d.status_www : 'do_adopcji';
-          if (['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce)) Object.assign(d, merge.miejsceZHasla(d.haslo || ''));
-          res.wrocilo++; ch = true;
-        }
-        if (!ch) continue;
+        if (!d.zrodlo_id || jest.has(String(d.zrodlo_id)) || d.zniknal_ze_strony) continue;
+        d.zniknal_ze_strony = now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie);
         hist.run(x.col, x.id, x.data, x.updated_at, x.deleted, x.by, now); put.run('psy', x.id, JSON.stringify(d), now, 0, 'strona');
       }
     }
@@ -483,7 +494,7 @@ async function handle(req, res) {
   const p = url.pathname.replace(/\/+$/, '') || '/';
   if (STATIC_DIR && (p === '/app' || url.pathname.startsWith('/app/')) && req.method === 'GET') return serveStatic(url.pathname, res);
 
-  if (p === '/health') return send2(200, { ok: true, backup: lastBackup, site: { t: siteSt.t, ok: siteSt.ok, running: siteSt.running, nowych: siteSt.nowych, zmienionych: siteSt.zmienionych, zniknelo: siteSt.zniknelo || 0, wrocilo: siteSt.wrocilo || 0, zniknelo_nazwy: siteSt.zniknelo_nazwy || [], razem: siteSt.razem, blad: siteSt.blad, nazwy: siteSt.nazwy, enabled: !!merge } });
+  if (p === '/health') return send2(200, { ok: true, epoka: EPOKA, backup: lastBackup, site: { t: siteSt.t, ok: siteSt.ok, running: siteSt.running, nowych: siteSt.nowych, zmienionych: siteSt.zmienionych, adoptowanych: siteSt.adoptowanych || 0, zniknelo: siteSt.zniknelo || 0, wrocilo: siteSt.wrocilo || 0, zniknelo_nazwy: siteSt.zniknelo_nazwy || [], razem: siteSt.razem, razem_adopt: siteSt.razem_adopt || 0, uwaga: siteSt.uwaga || '', blad: siteSt.blad, nazwy: siteSt.nazwy, enabled: !!merge } });
 
   if (p === '/auth/login' && req.method === 'POST') {
     const ip = clientIp(req), wait = blocked(ip);
@@ -523,7 +534,7 @@ async function handle(req, res) {
     const last = rows.length ? rows[rows.length - 1].seq : since; // kursor przesuwa się także za rekordami, których wolontariusz nie dostaje
     const widac = s.admin ? rows : rows.filter((r) => VOL_READ.has(r.col));
     const changes = widac.map((r) => ({ seq: r.seq, col: r.col, id: r.id, data: s.admin ? JSON.parse(r.data) : dlaWolontariusza(r.col, JSON.parse(r.data)), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by }));
-    return send2(200, { changes, seq: last, more, server_time: Date.now(), admin: s.admin });
+    return send2(200, { changes, seq: last, more, server_time: Date.now(), admin: s.admin, epoka: EPOKA });
   }
 
   // POST /sync {changes:[{col,id,data,updated_at,deleted,by}]}
@@ -600,17 +611,8 @@ async function handle(req, res) {
     if (p === '/push/test') { const ok = await sendPush(row, { t: 'ŁAPA', b: 'Powiadomienia działają. Dostaniesz je, gdy ktoś napisze na czacie.', url: '#/czat', tag: 'test', badge: 0 }, true); return send2(200, { ok }); }
   }
 
-  // GET /import?url=...  — pobiera i odczytuje stronę jednego psa ze strony schroniska
-  if (!s.admin && (p === '/import' || p === '/import/links' || p === '/site/sync' || (/^\/photo\//.test(p) && req.method === 'POST'))) return send2(403, { error: 'Tylko administrator' });
-  if (p === '/import' && req.method === 'GET') {
-    let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return send2(422, { error: 'To nie jest poprawny adres' }); }
-    if (u.protocol === 'http:') u.protocol = 'https:';
-    if (!SITE_HOSTS.has(u.hostname) || !DOG_PATH.test(u.pathname)) return send2(422, { error: 'To nie jest link do psa na stronie schronisko-nowodwor.com.pl' });
-    const h = await fetchHtml(u.origin + u.pathname);
-    return send2(200, parseDog(h, new URL(u.origin + u.pathname)));
-  }
+  if (!s.admin && (p === '/site/sync' || (/^\/photo\//.test(p) && req.method === 'POST'))) return send2(403, { error: 'Tylko administrator' });
   if (p === '/site/sync' && req.method === 'POST') { if (!siteSt.running && Date.now() - (siteSt.t || 0) > (FAST ? 0 : 20e3)) syncSite('reczne').catch((e) => console.error(e)); return send2(200, { ok: true, started: true }); }
-  if (p === '/import/links' && req.method === 'GET') return send2(200, { links: await dogLinks() });
 
   // POST /photo/:id (JPEG ≤ 1,5 MB), GET /photo/:id
   const pm = /^\/photo\/([A-Za-z0-9_-]{1,64})$/.exec(p);
