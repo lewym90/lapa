@@ -643,3 +643,4 @@ small .adbadge{display:table;margin:3px 0 4px}
 .pad.komp .kbadge{background:rgba(244,240,231,.14);color:var(--ivory)}
 .pad.komp .kbadge.szuk{background:var(--terra);color:#fff}
 .pomhint{margin:0 4px 2px;color:var(--sage);font-size:13.5px}
+.field[hidden]{display:none}

@@ -67,6 +67,8 @@ export async function compressImage(file, max = 1280, q = 0.82, maxBytes = 0) {
   return blob;
 }
 
+// „Inne”: potrzeba z dowolnym tekstem, zapisana w psie jako 'inne:tekst' (tak samo widzą ją wolontariusze).
+export const needLabel = (k) => NEED_LABELS[k] || (String(k).startsWith('inne:') ? String(k).slice(5) : k);
 export const NEED_LABELS = { spacer: 'Spokojny spacer', zdjecia: 'Aktualne zdjęcia', obserwacja: 'Obserwacja zachowania', dt: 'Dom tymczasowy', transport: 'Transport', promocja: 'Promocja adopcyjna', specjalista: 'Pomoc specjalisty' };
 // Potrzeby psa: ręcznie zaznaczone + wyliczone regułami (bez AI).
 export function dogNeeds(d, walks = []) {

@@ -198,6 +198,10 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.19.1 (wersja testowa): „Inne” w „Czego potrzebuje”
+
+- Karta psa → „Czego potrzebuje”: przycisk „Inne” pokazuje pole na dowolny tekst. Zapis w `potrzeby` jako `inne:tekst` (bez zmian na serwerze, wolontariusze widzą tekst jako zwykłą potrzebę i mogą się zgłosić). `util.js` `needLabel`.
+
 ## 1.19.0 (wersja testowa): nic się nie powtarza; Pomoc w jednym miejscu; bazy danych
 
 Zasada właściciela: każda rzecz jest w aplikacji w jednym miejscu (kafelki, „+”, dolny pasek i menu się nie dublują). Prosto, bez komplikacji.

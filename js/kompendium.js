@@ -3,7 +3,7 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, confirmSheet, sexSymbol, safeUrl } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { getName } from './auth.js';
-import { dogNeeds, NEED_LABELS, ago, parseData, dataTs, odKiedy } from './util.js';
+import { dogNeeds, NEED_LABELS, needLabel, ago, parseData, dataTs, odKiedy } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { boksPill, wybCls, wybrani, powody, kto, opis as opisAdm, opisLine, czyscBoks } from './znak.js';
 import { ZDROWIE_TYPY, TYP, zdrowieDla, byl, miejsce } from './teczka.js';
@@ -80,7 +80,7 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
 
       <h2 class="kh">Dla wolontariuszy</h2>
       <div class="kbox">
-        <button type="button" class="kd ed" data-act="dog-needs" data-id="${id}"><span>Czego potrzebuje</span><b>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : raw('<i>nic pilnego</i>')}</b>${raw(pen())}</button>
+        <button type="button" class="kd ed" data-act="dog-needs" data-id="${id}"><span>Czego potrzebuje</span><b>${needs.length ? needs.map((k) => needLabel(k)).join(', ') : raw('<i>nic pilnego</i>')}</b>${raw(pen())}</button>
         <button type="button" class="kd ed" data-act="dog-walks" data-id="${id}"><span>Historia spacerów</span><b>${mine.length ? `${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' · ' + km.toFixed(1).replace('.', ',') + ' km' : ''} · ostatni ${ago(mine[0].start)}` : raw('<i>brak</i>')}</b>${icon('chev')}</button>
       </div>
 

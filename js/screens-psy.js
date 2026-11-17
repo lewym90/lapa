@@ -129,12 +129,18 @@ export function unlockSheet(after) {
   });
 }
 actions['dog-needs'] = async (el) => {
-  const d = await get('psy', el.dataset.id); const cur = new Set(d.potrzeby || []);
+  const d = await get('psy', el.dataset.id); const cur = new Set(d.potrzeby || []), inne = [...cur].find((k) => String(k).startsWith('inne:'));
   openSheet(`<h2>Czego potrzebuje ${esc(d.imie)}?</h2><p class="hint" style="margin:0 0 14px">Zaznacz, w czym wolontariusze mogą pomóc. Pojawi się to na ekranie „Pomoc”. Część potrzeb (np. brak zdjęć) aplikacja dodaje sama.</p>
-    <div class="chips" id="nc">${Object.entries(NEED_LABELS).map(([k, l]) => `<button class="chip outline ${cur.has(k) ? 'on' : ''}" data-k="${k}" aria-pressed="${cur.has(k)}">${l}</button>`).join('')}</div>
-    <button class="btn block" style="margin-top:18px" id="ns">Zapisz</button>`, (s) => {
-    s.querySelector('#nc').addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on')); });
-    s.querySelector('#ns').onclick = async () => { d.potrzeby = [...s.querySelectorAll('#nc .on')].map((b) => b.dataset.k); await save('psy', d); closeSheet(); toast('Zapisane'); };
+    <div class="chips" id="nc">${Object.entries(NEED_LABELS).map(([k, l]) => `<button class="chip outline ${cur.has(k) ? 'on' : ''}" data-k="${k}" aria-pressed="${cur.has(k)}">${l}</button>`).join('')}<button class="chip outline ${inne ? 'on' : ''}" data-k="inne" aria-pressed="${!!inne}">Inne</button></div>
+    <div class="field" id="ni_f" style="margin-top:12px"${inne ? '' : ' hidden'}><label for="ni">Czego jeszcze potrzebuje?</label><input class="input" id="ni" maxlength="80" autocomplete="off" placeholder="np. ciepły kocyk, kaganiec" value="${esc(inne ? inne.slice(5) : '')}"></div>
+    <div class="err" id="ne"></div><button class="btn block" style="margin-top:18px" id="ns">Zapisz</button>`, (s) => {
+    const pole = s.querySelector('#ni_f'), ni = s.querySelector('#ni');
+    s.querySelector('#nc').addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (!b) return; b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on')); if (b.dataset.k === 'inne') { pole.hidden = !b.classList.contains('on'); if (!pole.hidden) ni.focus(); } });
+    s.querySelector('#ns').onclick = async () => {
+      const wyb = [...s.querySelectorAll('#nc .on')].map((b) => b.dataset.k), t = ni.value.trim().replace(/\s+/g, ' ');
+      if (wyb.includes('inne') && !t) { s.querySelector('#ne').textContent = 'Wpisz, czego jeszcze potrzebuje, albo odznacz „Inne”.'; return; }
+      d.potrzeby = wyb.map((k) => (k === 'inne' ? 'inne:' + t : k)); await save('psy', d); closeSheet(); toast('Zapisane');
+    };
   });
 };
 

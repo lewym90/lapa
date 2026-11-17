@@ -68,6 +68,14 @@ with sync_playwright() as p:
     # potrzeby
     pa.click('.kd[data-act=dog-needs]'); pa.wait_for_selector('#nc'); pa.click('#nc [data-k=transport]'); pa.click('#ns'); pa.wait_for_timeout(600)
     check('czego potrzebuje', 'Transport' in text(pa))
+    pa.click('.kd[data-act=dog-needs]'); pa.wait_for_selector('#nc'); check('Inne: pole tekstu ukryte, dopóki nie zaznaczysz', pa.locator('#ni_f').is_hidden())
+    pa.click('#nc [data-k=inne]'); check('Inne: pole tekstu się pokazuje', pa.locator('#ni_f').is_visible())
+    pa.click('#ns'); pa.wait_for_timeout(200); check('Inne: bez tekstu nie zapisze', 'Wpisz, czego' in pa.inner_text('#ne'))
+    pa.fill('#ni', 'ciepły kocyk'); pa.click('#ns'); pa.wait_for_timeout(600)
+    check('Inne: zapisane jako dowolny tekst', 'inne:ciepły kocyk' in dog(pa)['potrzeby'] and 'ciepły kocyk' in text(pa))
+    pa.click('.kd[data-act=dog-needs]'); pa.wait_for_selector('#nc'); check('Inne: przy edycji tekst wraca', pa.input_value('#ni') == 'ciepły kocyk' and pa.locator('#ni_f').is_visible()); close_sheet(pa)
+    go(pa, '#/pomoc', 800); check('Pomoc: potrzeba „Inne” jako chip z tekstem', pa.locator('[data-act=decl][data-need="inne:ciepły kocyk"]', has_text='ciepły kocyk').count() == 1)
+    go(pa, '#/psy/d1', 900)
     # komputer
     cd, pd = newpage(b, {'width': 1366, 'height': 900}); login(pd, 'Ania'); save(pd, 'psy', dog(pa)); go(pd, '#/psy/d1', 1000)
     w = pd.evaluate("document.querySelector('.komp').getBoundingClientRect().width")

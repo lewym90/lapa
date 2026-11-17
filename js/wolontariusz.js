@@ -5,7 +5,7 @@ import { html, raw, esc, icon, openSheet, closeSheet, toast, actions, brandBar, 
 import { list, listRecs, save, remove, get } from './store.js';
 import { ktoText } from './kto.js';
 import { state, getName, getTel, setTel } from './auth.js';
-import { opisPotrzeby, uid, dogOfDay, dogNeeds, NEED_LABELS, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
+import { opisPotrzeby, uid, dogOfDay, dogNeeds, NEED_LABELS, needLabel, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
 import { boksPill, wybCls, linie } from './znak.js';
 import { soboty } from './terminarz.js';
 import { hydratePhotos } from './photos.js';
@@ -70,13 +70,13 @@ export const zglAdminList = (zgl, tel, col, extra = () => '') => (zgl.length ? `
 export function chipyPotrzeb(d, needs, dek) {
   return needs.map((k) => {
     const z = dek.filter((x) => x.pies_id === d.id && x.potrzeba === k), mine = z.find((x) => czyMoje(x.id));
-    return `<button class="chip outline ${mine ? 'on' : ''}" data-act="decl" data-dog="${esc(d.id)}" data-need="${esc(k)}" ${mine ? `data-mine="${esc(mine.id)}"` : ''} aria-pressed="${!!mine}">${esc(NEED_LABELS[k] || k)}${z.length ? ' · ' + esc(imiona(z)) : ''}</button>`;
+    return `<button class="chip outline ${mine ? 'on' : ''}" data-act="decl" data-dog="${esc(d.id)}" data-need="${esc(k)}" ${mine ? `data-mine="${esc(mine.id)}"` : ''} aria-pressed="${!!mine}">${esc(needLabel(k))}${z.length ? ' · ' + esc(imiona(z)) : ''}</button>`;
   }).join('');
 }
 actions.decl = async (el) => {
   if (el.dataset.mine) return actions['of-cofnij']({ dataset: { col: 'deklaracje', id: el.dataset.mine } });
   const d = await get('psy', el.dataset.dog); if (!d) return; const k = el.dataset.need;
-  zglosSie({ tytul: `${d.imie}: ${NEED_LABELS[k] || k}`, opis: `<p class="hint" style="margin:0 0 12px">Zgłoś, że możesz się tym zająć. Administrator schroniska skontaktuje się z Tobą i ustali szczegóły.</p>` },
+  zglosSie({ tytul: `${d.imie}: ${needLabel(k)}`, opis: `<p class="hint" style="margin:0 0 12px">Zgłoś, że możesz się tym zająć. Administrator schroniska skontaktuje się z Tobą i ustali szczegóły.</p>` },
     ({ imie, tel }) => nowe('deklaracje', { pies_id: d.id, potrzeba: k }, imie, tel));
 };
 export async function pomocPsyHtml() {
@@ -85,7 +85,7 @@ export async function pomocPsyHtml() {
   if (!help.length) return '<p class="pusto">Teraz żaden pies nie czeka na pomoc.</p>';
   return (state.admin ? '' : '<p class="pomhint">Dotknij potrzeby, żeby zgłosić, że się tym zajmiesz.</p>') + help.map(({ d, needs }) => `<div class="need"><a href="#/psy/${esc(d.id)}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit"><span class="avatar sm${wybCls(d)}">${dogImg(d.zdjecia?.[0], d.imie).s}</span><span style="flex:1"><b style="font-family:var(--serif);font-size:19px">${esc(d.imie)}</b> ${boksPill(d, 'in')}${d.status === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}${linie(d) ? `<span style="display:block">${linie(d)}</span>` : ''}</span>${icon('chev').s}</a>
     <div class="chips" style="margin-top:10px">${chipyPotrzeb(d, needs, z.dek)}</div>
-    ${state.admin ? zglAdminList(z.dek.filter((x) => x.pies_id === d.id), z.tel, 'deklaracje', (x) => `<span class="chip" style="min-height:26px;font-size:12px">${esc(NEED_LABELS[x.potrzeba] || x.potrzeba)}</span>`) : ''}</div>`).join('');
+    ${state.admin ? zglAdminList(z.dek.filter((x) => x.pies_id === d.id), z.tel, 'deklaracje', (x) => `<span class="chip" style="min-height:26px;font-size:12px">${esc(needLabel(x.potrzeba))}</span>`) : ''}</div>`).join('');
 }
 export async function pomocWol() { return (await import('./screens-inne.js')).pomocEkran(); }
 
@@ -160,7 +160,7 @@ export async function zgloszeniaAdmin() {
   const wiersz = (r, col, co, extra = '') => `<div class="zglr"><span><span class="zco">${co}</span><b>${esc(r.imie || '')}</b>${nowy(r)} ${telLink(z.tel[r.id])}<small>zgłoszone ${r.ts ? esc(fmtDate(r.ts)) : ''}</small></span><span class="zgla">${extra}<button class="btn sm ghost" data-act="zg-usun" data-col="${col}" data-id="${esc(r.id)}" aria-label="Usuń zgłoszenie">${icon('trash').s}</button></span></div>`;
   const sekcja = (tytul, rows, pusto) => `<div class="sec"><h2>${tytul}</h2></div><div class="pad">${rows.length ? `<div class="card zgl" style="padding:6px 14px">${rows.join('')}</div>` : `<p class="hint" style="margin:0 4px">${pusto}</p>`}</div>`;
   const nowsze = (a) => a.sort((x, y) => (y.ts || 0) - (x.ts || 0));
-  const dek = nowsze(z.dek.filter((r) => P[r.pies_id])).map((r) => wiersz(r, 'deklaracje', `<a href="#/psy/${esc(r.pies_id)}">${esc(P[r.pies_id].imie)}</a>: ${esc(NEED_LABELS[r.potrzeba] || r.potrzeba)}`));
+  const dek = nowsze(z.dek.filter((r) => P[r.pies_id])).map((r) => wiersz(r, 'deklaracje', `<a href="#/psy/${esc(r.pies_id)}">${esc(P[r.pies_id].imie)}</a>: ${esc(needLabel(r.potrzeba))}`));
   const pot = nowsze(z.of.filter((o) => o.typ === 'potrzeba' && N[o.ref] && o.stan !== 'odrzucona')).map((o) => wiersz(o, 'oferty', `${esc(opisPotrzeby(N[o.ref]))}${N[o.ref].status === 'zrealizowana' ? ' · już mamy' : ''}`));
   const tra = nowsze(z.of.filter((o) => o.typ === 'transport' && T[o.ref] && o.stan !== 'odrzucona')).map((o) => { const x = T[o.ref]; return wiersz(o, 'oferty', `<button class="zco zlink" data-act="tr-open" data-id="${esc(x.id)}">${esc(x.pies_imie || 'Transport')}: ${esc(x.skad)} → ${esc(x.dokad)}, ${esc(fmtShort(x.kiedy))}${o.stan === 'przyjeta' ? ' · jedzie' : ''}</button>`, x.status === 'szuka' && o.stan !== 'przyjeta' ? `<button class="btn sm" data-act="of-kierowca" data-id="${esc(o.id)}">Przypisz</button>` : ''); });
   const sb = sob.filter((x) => x.status !== 'odwolany').map((x) => { const L = nowsze(z.zg.filter((r) => r.key === x.key && r.status === 'tak')); return L.length ? `<h3 style="font-size:16px;margin:12px 4px 6px">${esc(fmtDayLong(x.start))}, ${esc(fmtTime(x.start))} · ${L.length} os.</h3><div class="card zgl" style="padding:6px 14px">${L.map((r) => wiersz(r, 'zgloszenia', 'Będzie na spacerach')).join('')}</div>` : ''; }).join('');
