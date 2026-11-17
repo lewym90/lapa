@@ -366,10 +366,12 @@ const warsaw = () => {
   const p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).formatToParts(new Date());
   const g = (t) => p.find((x) => x.type === t).value; return { day: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour') % 24 };
 };
+const SITE_SYNC = process.env.SITE_SYNC !== '0'; // środowisko testowe: SITE_SYNC=0 (nie czyta strony schroniska)
 const SYNC_HOURS = (process.env.SITE_SYNC_HOURS || '3,11,17').split(',').map(Number);
 const cmpDog = (o) => JSON.stringify(o, (k, v) => (k === 'zaimportowano' || k === 'ts' ? undefined : v));
 async function syncSite(reason = 'auto') {
   if (!merge) { siteSt = { ...siteSt, t: Date.now(), ok: false, blad: 'Serwer nie ma pliku dogmerge.mjs. Uruchom aktualizację serwera.' }; saveSiteSt(); return siteSt; }
+  if (!SITE_SYNC) return siteSt;
   if (siteSt.running) return siteSt;
   siteSt.running = true;
   const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', nazwy: [], pominietych: 0, nieudanych: 0 };
@@ -437,12 +439,30 @@ function corsFor(req) {
   return origin && ORIGINS.includes(origin)
     ? { 'access-control-allow-origin': origin, vary: 'Origin', 'access-control-allow-headers': 'authorization,content-type,x-active,x-lapa-dev', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-max-age': '600' } : {};
 }
+// ---------- Środowisko testowe: ten sam serwer podaje też pliki aplikacji spod /app/ (tylko gdy ustawiono STATIC_DIR) ----------
+const STATIC_DIR = process.env.STATIC_DIR ? path.resolve(process.env.STATIC_DIR) : '';
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
+function serveStatic(pathname, res) {
+  if (pathname === '/app') { res.writeHead(301, { location: 'app/' }); return res.end(); }
+  let rel; try { rel = decodeURIComponent(pathname.slice('/app/'.length)); } catch { rel = ''; }
+  if (!rel || rel.endsWith('/')) rel += 'index.html';
+  const file = path.resolve(STATIC_DIR, rel);
+  if (!file.startsWith(STATIC_DIR + path.sep) || rel.split('/').some((x) => x.startsWith('.'))) { res.writeHead(404); return res.end(); }
+  fs.readFile(file, (err, buf) => {
+    if (err) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); return res.end('Nie ma takiego pliku'); }
+    const ext = path.extname(file).toLowerCase();
+    res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': /\.(html|json)$|sw\.js$/.test(file) ? 'no-cache' : 'public, max-age=300', 'x-content-type-options': 'nosniff' });
+    res.end(buf);
+  });
+}
 async function handle(req, res) {
   const cors = corsFor(req);
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); return res.end(); }
   const send2 = (c, o) => send(res, c, o, cors);
   const url = new URL(req.url, 'http://x');
   const p = url.pathname.replace(/\/+$/, '') || '/';
+  if (STATIC_DIR && (p === '/app' || url.pathname.startsWith('/app/')) && req.method === 'GET') return serveStatic(url.pathname, res);
 
   if (p === '/health') return send2(200, { ok: true, backup: lastBackup, site: { t: siteSt.t, ok: siteSt.ok, running: siteSt.running, nowych: siteSt.nowych, zmienionych: siteSt.zmienionych, razem: siteSt.razem, blad: siteSt.blad, nazwy: siteSt.nazwy, enabled: !!merge } });
 

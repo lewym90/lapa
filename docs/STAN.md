@@ -181,3 +181,9 @@ Prośba właściciela: pracownicy schroniska = administratorzy (wszystko), wolon
 - Karta przyjęcia (`#/nowe/:id`): przycisk „Usuń tego psa (pomyłka)” i podpowiedź, że imię zmienia się w kroku „Przyjęcie”. Na karcie psa bez zmian: „Edytuj” → „Usuń psa z aplikacji”.
 - Wspólne `usunPsa(id)` (screens-psy.js, akcja `dog-usun`, tylko administrator): okno pokazuje, co zniknie; usuwa psa razem z jego spacerami, notatkami, wpisami zdrowia, zgłoszeniami pomocy (z telefonami), transportami (z ofertami) i oznaczeniem. Pies ze strony po usunięciu nie zostanie dodany ponownie (serwer pomija usunięte). Poprzednie wersje zostają w historii na serwerze.
 - Test usun1.py.
+
+## Wersja testowa (2026-11-17)
+- `server/test-srodowisko.sh`: osobna kopia ŁAPY na tym samym VPS pod `https://<domena>/lapa-test/app/` (usługa `lapa-test`, port 8798, `/opt/lapa-test`, `/etc/lapa-test.env`, trasa `/etc/caddy/conf.d/lapa-test.caddy`). Dane = kopia prawdziwej bazy (`VACUUM INTO`, bez subskrypcji push i sesji) + zdjęcia; hasła jak w prawdziwej; strona schroniska nie jest czytana (`SITE_SYNC=0`). Tryby: bez argumentu (instalacja/nowa wersja z `LAPA_REF`), `nowe-dane`, `usun`.
+- Serwer: `STATIC_DIR` – podaje pliki aplikacji spod `/app/` (tylko wersja testowa); `SITE_SYNC=0` wyłącza czytanie strony.
+- Klient: `TEST` w config.js (adres zawiera `/app/`) → API = ten sam serwer; czerwony pasek „WERSJA TESTOWA”. Inny adres = osobne dane w przeglądarce (nie miesza się z prawdziwą aplikacją).
+- Gałąź `test` w repozytorium = to, co jest na wersji testowej. GitHub Pages publikuje tylko `main`.

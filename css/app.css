@@ -549,3 +549,4 @@ button.zco.zlink{background:none;border:0;padding:0;text-align:left;font:inherit
 .zglr > span:first-child{flex:1 1 210px}
 .zgla{margin-left:auto}
 .zglr a.kontakt{white-space:nowrap}
+.testbar{position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:9999;background:#c0392b;color:#fff;font:700 11px/1 system-ui,sans-serif;letter-spacing:.06em;padding:4px 12px 5px;border-radius:0 0 10px 10px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.25);white-space:nowrap}

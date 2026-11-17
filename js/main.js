@@ -5,7 +5,7 @@ import { status as syncStatus, kick } from './sync.js';
 import { ApiError } from './api.js';
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, ustawRole } from './ui.js';
 ustawRole(() => state.admin);
-import { VERSION } from './config.js';
+import { VERSION, TEST } from './config.js';
 import { initUpdates } from './update.js';
 import * as T from './teczka.js';
 import * as A from './adopcje.js';
@@ -213,6 +213,7 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
 
 // ---------- start ----------
 (async function boot() {
+  if (TEST) { document.documentElement.classList.add('wersja-testowa'); const b = document.createElement('div'); b.className = 'testbar'; b.textContent = 'WERSJA TESTOWA · zmiany widać tylko tutaj'; document.body.appendChild(b); document.title = 'TEST · ' + document.title; }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   await init();
   if (new URLSearchParams(location.search).get('action') === 'walk' && state.loggedIn) location.hash = '#/spacer';
