@@ -526,7 +526,7 @@ details>summary{list-style:revert}
 }
 
 /* 1.16: wolontariusz (podgląd) i zgłoszenia „ja to ogarnę” */
-.nav.wol{grid-template-columns:repeat(5,1fr)}
+.nav.wol{grid-template-columns:repeat(4,1fr)}
 .wolh{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--graphite);margin:18px 0 8px}
 .ocena{display:grid;gap:6px}
 .ocr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;background:rgba(18,53,44,.05);font-size:15px}
@@ -611,3 +611,35 @@ small .adbadge{display:table;margin:3px 0 4px}
 .kdokbig{width:100%;border-radius:12px;display:block;background:#eee}
 .knotki .obs{margin:0;border:0;border-bottom:1px solid var(--line);border-radius:0}
 @media (min-width:860px){ .komp{max-width:760px;margin-left:auto;margin-right:auto} .kafle{grid-template-columns:repeat(4,1fr)} .kd{grid-template-columns:200px 1fr auto} }
+
+/* ===== 1.19: nawigacja bez powtórzeń ===== */
+.nav .plus{position:relative;text-decoration:none}
+.nav .plus .plbl{position:absolute;top:100%;margin-top:3px;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:600;color:var(--gold-l);white-space:nowrap}
+.nav .plus.on{box-shadow:0 0 0 3px rgba(203,165,108,.45),0 8px 20px rgba(0,0,0,.35)}
+.card.dzis h3{font-size:19px;margin:0 0 6px}
+.dzw{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);text-decoration:none;color:var(--graphite)}
+.dzw:first-of-type{border-top:0}
+.dzt{font-size:12.5px;font-weight:600;color:#5b625a;background:rgba(18,53,44,.06);border-radius:8px;padding:3px 8px;white-space:nowrap}
+.dzx{font-size:15px;font-weight:500;line-height:1.35}
+.dzw .ico{color:var(--sage-d)}
+.dzw.pilne .dzt{background:rgba(200,121,91,.16);color:var(--terra-d)}
+.dzw.zrob .dzx{color:#8a918a;text-decoration:line-through}
+.pusto{margin:0 4px;color:var(--sage);font-size:14.5px}
+.needh{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
+.needh .ico{color:var(--sage-d);flex:none}
+@media (min-width:860px){.topbar a[href="#/czat"]{display:none}}
+.kbadge.szuk{background:rgba(200,121,91,.18);color:var(--terra-d)}
+.kwk.plus{color:var(--green)}
+.dtc{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)}
+.dtc .rt{flex:1;min-width:0}.dtc .rt b{display:block;font-size:16.5px}.dtc .rt small{display:block;color:#5b625a;font-size:13.5px}
+.dtc .dtpsy{color:var(--green)!important;font-weight:600}
+.dtpies{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px 8px 14px;border-bottom:1px solid var(--line)}
+.dtpies a{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);font-size:15.5px}
+.dtpies .iconbtn{color:var(--sage-d);background:none}
+.komp .khead .chip{cursor:pointer}
+.pad.komp .kh{color:var(--gold-l)}
+.pad.komp .khead .chip.outline{background:rgba(244,240,231,.1);color:var(--ivory);border-color:var(--line-l)}
+.pad.komp .khead .chip.outline.on{background:var(--gold);color:var(--green-dd);border-color:var(--gold)}
+.pad.komp .kbadge{background:rgba(244,240,231,.14);color:var(--ivory)}
+.pad.komp .kbadge.szuk{background:var(--terra);color:#fff}
+.pomhint{margin:0 4px 2px;color:var(--sage);font-size:13.5px}

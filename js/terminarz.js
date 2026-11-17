@@ -99,6 +99,15 @@ export async function poranny() {
   openSheet(`<h2>Dziś: ${esc(fmtDayLong(Date.now()))}</h2><p class="hint" style="margin:0 0 10px">Zerknij, żeby nic Ci nie umknęło.</p><div class="rows">${dzisHtml(d)}</div>
     <div class="btnrow" style="margin-top:16px"><button class="btn" data-sheet-close>Rozumiem</button><a class="btn ghost" href="#/wydarzenia">Otwórz terminarz</a></div>`, (s) => { s.querySelectorAll('[data-sheet-close]').forEach((b) => b.addEventListener('click', closeSheet)); s.querySelector('a.btn')?.addEventListener('click', closeSheet); });
 }
+// Wiersze karty „Dziś” na Starcie administratora (spacery, transporty, wpisy, zaległe).
+export function dzisWiersze(d) {
+  const out = [];
+  if (d.walk) out.push({ href: '#/spacery', t: fmtTime(d.walk.start), txt: d.walk.status === 'odwolany' ? 'Sobotnie spacery ODWOŁANE' : 'Sobotnie spacery pod bramą' });
+  for (const x of d.trans) out.push({ href: '#/pomoc', t: fmtTime(x.kiedy), txt: 'Transport: ' + (x.pies_imie || 'pies') + ' · ' + x.skad + ' → ' + x.dokad });
+  for (const x of d.items) out.push({ href: '#/terminarz', t: hasTime(x.t) ? toTime(x.t) : 'cały dzień', txt: (x.done ? '✓ ' : '') + x.e.tytul, done: x.done });
+  for (const x of d.overdue) out.push({ href: '#/terminarz', t: new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short' }).format(x.t), txt: 'Zaległe: ' + x.e.tytul, late: true });
+  return out;
+}
 export function dzisCard(d) {
   const first = d.items.filter((x) => !x.done).slice(0, 3);
   return html`<section class="card" aria-label="Dziś"><div class="card-head"><h3>${icon('calendar')} Dziś w terminarzu</h3><a class="link" href="#/wydarzenia">Otwórz ${icon('arrow')}</a></div>
@@ -133,7 +142,7 @@ async function sobView(zg) {
     const who = udzialBlock(zg, x.key, 'walk', 'Spacery, ' + fmtDayLong(x.start)).s;
     return `<div class="ev walk" style="flex-wrap:wrap;${off ? 'opacity:.85' : ''}"><div class="when"><b>${p.n}</b><small>${esc(p.m)}</small></div><div class="what"><b>${esc(new Intl.DateTimeFormat('pl-PL', { weekday: 'long' }).format(x.start))}${x.extra ? ' (dodatkowy termin)' : ''}${off ? ' · <span style="color:var(--terra-d)">ODWOŁANY</span>' : ''}</b>
       <span>godz. ${esc(fmtTime(x.start))} pod bramą${moved ? ` · przesunięty z ${esc(new Intl.DateTimeFormat('pl-PL', { weekday: 'long', day: 'numeric', month: 'numeric' }).format(x.orig))}` : ''}</span>${off && x.powod ? `<span> · Powód: ${esc(x.powod)}</span>` : ''}${x.notatka ? `<span> · ${esc(x.notatka)}</span>` : ''}</div>
-      <div class="wbtns"><button class="btn sm ghost" data-act="sb-edit" data-id="${esc(x.id)}">Edytuj</button><button class="btn sm ghost" data-act="walk-post" data-k="${esc(x.dk)}" data-t="${x.start}" data-mode="${off ? 'odw' : moved ? 'prze' : 'przyp'}">Post</button></div>
+      <div class="wbtns"><button class="btn sm ghost" data-act="sb-edit" data-id="${esc(x.id)}">Edytuj</button></div>
       ${off ? '' : who}</div>`;
   }).join('');
 }

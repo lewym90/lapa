@@ -114,7 +114,7 @@ export const statusChip = (s) => {
 export const actions = {};
 // Akcje dostępne dla wolontariusza (podgląd i własne zgłoszenia). Każda inna akcja: tylko administrator.
 // To druga linia obrony – przyciski administratora i tak nie są wolontariuszowi pokazywane, a serwer odrzuca zapis.
-export const VOL_ACTIONS = new Set(['menu', 'back', 'dog-filter', 'kolejnosc', 'dog-fav', 'dog-share', 'dog-walks', 'tr-open', 'zag-open', 'decl', 'of-potrzeba', 'of-transport', 'of-cofnij', 'sob-bede', 'unlock-sheet', 'set-logout', 'set-update', 'set-sync', 'bell']);
+export const VOL_ACTIONS = new Set(['menu', 'back', 'dog-filter', 'kolejnosc', 'dog-fav', 'dog-share', 'dog-walks', 'tr-open', 'zag-open', 'decl', 'of-potrzeba', 'of-transport', 'of-cofnij', 'sob-bede', 'zag-tekst', 'unlock-sheet', 'set-logout', 'set-update', 'set-sync', 'bell']);
 const rola = { admin: () => true };
 export const ustawRole = (fn) => { rola.admin = fn; };
 const TYLKO_ADMIN = 'To może zrobić tylko administrator';
@@ -135,8 +135,7 @@ export const brandBar = (dot = false, czat = true) => html`<header class="topbar
     <span style="font-size:36px;color:var(--gold-l);display:grid">${icon('paw')}</span>
     <span><span class="brand-word">ŁAPA</span><span class="brand-sub">NOWODWÓR</span></span>
   </a>
-  <span style="display:flex">${czat ? html`<a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a>` : ''}<button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button>
-  <a class="iconbtn" href="#/ustawienia" aria-label="Ustawienia i profil">${icon('user')}</a></span>
+  <span style="display:flex">${czat ? html`<a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a>` : ''}<button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button></span>
 </header>`;
 export const pageBar = (title, { back = true, right = '' } = {}) => html`<header class="topbar">
   ${back ? html`<button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>` : html`<span style="width:44px"></span>`}

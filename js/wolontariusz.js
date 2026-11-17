@@ -5,7 +5,7 @@ import { html, raw, esc, icon, openSheet, closeSheet, toast, actions, brandBar, 
 import { list, listRecs, save, remove, get } from './store.js';
 import { ktoText } from './kto.js';
 import { state, getName, getTel, setTel } from './auth.js';
-import { uid, dogOfDay, dogNeeds, NEED_LABELS, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
+import { opisPotrzeby, uid, dogOfDay, dogNeeds, NEED_LABELS, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
 import { boksPill, wybCls, linie } from './znak.js';
 import { soboty } from './terminarz.js';
 import { hydratePhotos } from './photos.js';
@@ -82,47 +82,31 @@ actions.decl = async (el) => {
 export async function pomocPsyHtml() {
   const [dogs, walks, z] = await Promise.all([list('psy'), list('spacery'), zglDane()]);
   const help = dogs.map((d) => ({ d, needs: dogNeeds(d, walks) })).filter((x) => x.needs.length || x.d.status === 'pilne').sort((a, b) => (b.d.status === 'pilne') - (a.d.status === 'pilne'));
-  if (!help.length) return `<div class="empty" style="padding:24px 10px">${icon('heart').s}<h3>Nikt nie czeka na pomoc</h3><p>Gdy pies będzie potrzebował spaceru, zdjęć albo domu tymczasowego, pojawi się tutaj.</p></div>`;
-  return help.map(({ d, needs }) => `<div class="need"><a href="#/psy/${esc(d.id)}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit"><span class="avatar sm${wybCls(d)}">${dogImg(d.zdjecia?.[0], d.imie).s}</span><span style="flex:1"><b style="font-family:var(--serif);font-size:19px">${esc(d.imie)}</b> ${boksPill(d, 'in')}${d.status === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}${linie(d) ? `<span style="display:block">${linie(d)}</span>` : ''}</span>${icon('chev').s}</a>
+  if (!help.length) return '<p class="pusto">Teraz żaden pies nie czeka na pomoc.</p>';
+  return (state.admin ? '' : '<p class="pomhint">Dotknij potrzeby, żeby zgłosić, że się tym zajmiesz.</p>') + help.map(({ d, needs }) => `<div class="need"><a href="#/psy/${esc(d.id)}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit"><span class="avatar sm${wybCls(d)}">${dogImg(d.zdjecia?.[0], d.imie).s}</span><span style="flex:1"><b style="font-family:var(--serif);font-size:19px">${esc(d.imie)}</b> ${boksPill(d, 'in')}${d.status === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}${linie(d) ? `<span style="display:block">${linie(d)}</span>` : ''}</span>${icon('chev').s}</a>
     <div class="chips" style="margin-top:10px">${chipyPotrzeb(d, needs, z.dek)}</div>
-    ${needs.length && !state.admin ? `<p class="hint" style="margin:8px 0 0">Dotknij potrzeby, żeby zgłosić, że się tym zajmiesz. Inni zobaczą Twoje imię.</p>` : ''}
     ${state.admin ? zglAdminList(z.dek.filter((x) => x.pies_id === d.id), z.tel, 'deklaracje', (x) => `<span class="chip" style="min-height:26px;font-size:12px">${esc(NEED_LABELS[x.potrzeba] || x.potrzeba)}</span>`) : ''}</div>`).join('');
 }
-export async function pomocWol() {
-  return { tab: 'pomoc', title: 'Pomoc dla psów', live: true,
-    html: html`${pageBar('Pomoc dla psów', { back: false })}<div class="pad stack">${raw(await pomocPsyHtml())}</div>`, mount(r) { hydratePhotos(r); } };
-}
+export async function pomocWol() { return (await import('./screens-inne.js')).pomocEkran(); }
 
 // ===== potrzeby rzeczowe =====
 export async function potrzebyHtml() {
-  const [ndr, z] = await Promise.all([listRecs('potrzeby'), zglDane()]); const nd = ndr.map((r) => r.data), nrec = Object.fromEntries(ndr.map((r) => [r.id, r]));
+  const [ndr, z] = await Promise.all([listRecs('potrzeby'), zglDane()]); const nd = ndr.map((r) => r.data);
   const open = nd.filter((n) => n.status !== 'zrealizowana').sort((a, b) => (b.priorytet === 'pilne') - (a.priorytet === 'pilne'));
-  if (!open.length) return `<div class="empty" style="padding:24px 10px">${icon('box').s}<h3>Brak zgłoszonych potrzeb</h3><p>${state.admin ? 'Dodaj np. „Karma mokra: 60 puszek”. Wolontariusze zobaczą, ile brakuje.' : 'Gdy schronisko będzie czegoś potrzebować, pojawi się to tutaj.'}</p></div>`;
+  if (!open.length) return '<p class="pusto">Teraz niczego nie brakuje.</p>';
   return open.map((n) => {
-    const have = n.zapewniono || 0, pct = Math.min(100, Math.round((have / (n.potrzeba || 1)) * 100)), miss = Math.max(0, (n.potrzeba || 0) - have);
-    const of = z.of.filter((o) => o.typ === 'potrzeba' && o.ref === n.id && o.stan !== 'odrzucona'), nowe = of.filter((o) => o.stan !== 'przyjeta'), mine = nowe.find((o) => czyMoje(o.id));
-    return `<div class="need"><div style="display:flex;justify-content:space-between;gap:10px"><div><b style="font-size:17px">${esc(n.nazwa)}</b>${n.priorytet === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}<div class="sub">${esc(n.kategoria || '')}</div>${state.admin ? `<div class="sub kto">${esc(ktoText(nrec[n.id], n.autor))}</div>` : ''}</div>${state.admin ? `<button class="iconbtn" data-act="need-edit" data-id="${esc(n.id)}" aria-label="Edytuj potrzebę" style="color:var(--graphite)">${icon('pencil').s}</button>` : ''}</div>
-      <div class="bar ${pct < 35 ? 'low' : ''}"><i style="width:${pct}%"></i></div><div class="sub">Potrzeba ${esc(String(n.potrzeba))} ${esc(n.jednostka || '')}, zapewniono ${have}, <b>brakuje ${miss}</b></div>
-      ${nowe.length ? `<div class="sub" style="margin-top:6px"><b>Zgłosili się:</b> ${esc(nowe.map((o) => o.imie + (o.ilosc ? ' (' + o.ilosc + ')' : '')).join(', '))}</div>` : ''}
-      ${state.admin ? zglAdminList(of, z.tel, 'oferty', (o) => (o.stan === 'przyjeta' ? '' : `<button class="btn sm" data-act="of-przyjmij" data-id="${esc(o.id)}">Przyjmij</button>`)) : ''}
-      <div class="btnrow" style="margin-top:10px">${state.admin ? `<button class="btn sm ghost" data-act="need-give" data-id="${esc(n.id)}">${icon('plus').s} Dolicz dostawę</button>` : mine ? `<button class="btn sm ghost" data-act="of-cofnij" data-col="oferty" data-id="${esc(mine.id)}">Twoje zgłoszenie: ${esc(String(mine.ilosc || ''))} · Wycofaj</button>` : `<button class="btn sm gold" data-act="of-potrzeba" data-id="${esc(n.id)}">${icon('gift').s} Mogę przywieźć</button>`}</div></div>`;
+    const of = z.of.filter((o) => o.typ === 'potrzeba' && o.ref === n.id && o.stan !== 'odrzucona'), mine = of.find((o) => czyMoje(o.id));
+    const glowa = `<b style="font-size:17px">${esc(opisPotrzeby(n))}</b>${n.priorytet === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}`;
+    return `<div class="need">${state.admin ? `<button class="needh" data-act="need-edit" data-id="${esc(n.id)}">${glowa}${icon('pencil').s}</button>` : `<div>${glowa}</div>`}
+      ${of.length ? `<div class="sub" style="margin-top:6px"><b>Przywiozą:</b> ${esc(imiona(of))}</div>` : ''}
+      ${state.admin ? zglAdminList(of, z.tel, 'oferty') : `<div class="btnrow" style="margin-top:10px">${mine ? `<button class="btn sm ghost" data-act="of-cofnij" data-col="oferty" data-id="${esc(mine.id)}">${icon('check').s} Przywiozę · Wycofaj</button>` : `<button class="btn sm gold" data-act="of-potrzeba" data-id="${esc(n.id)}">${icon('gift').s} Mogę przywieźć</button>`}</div>`}</div>`;
   }).join('');
 }
 actions['of-potrzeba'] = async (el) => {
-  const n = await get('potrzeby', el.dataset.id); if (!n) return; const brak = Math.max(0, (n.potrzeba || 0) - (n.zapewniono || 0));
-  zglosSie({ tytul: n.nazwa, opis: `<p class="hint" style="margin:0 0 12px">Brakuje ${brak} ${esc(n.jednostka || '')}. Wpisz, ile możesz przywieźć. Administrator potwierdzi i doliczy po odbiorze.</p>`, ilosc: { jedn: n.jednostka || '', brak }, przycisk: 'Zgłaszam' },
-    ({ imie, tel, ilosc }) => nowe('oferty', { typ: 'potrzeba', ref: n.id, ilosc, stan: 'nowa' }, imie, tel));
+  const n = await get('potrzeby', el.dataset.id); if (!n) return;
+  zglosSie({ tytul: opisPotrzeby(n), opis: `<p class="hint" style="margin:0 0 12px">Zgłoś, że możesz to przywieźć. Administrator się z Tobą skontaktuje.</p>`, przycisk: 'Przywiozę' },
+    ({ imie, tel }) => nowe('oferty', { typ: 'potrzeba', ref: n.id, stan: 'nowa' }, imie, tel));
 };
-// administrator: przyjęcie oferty rzeczowej = doliczenie do „zapewniono”
-actions['of-przyjmij'] = async (el) => {
-  const o = await get('oferty', el.dataset.id); if (!o || o.stan === 'przyjeta') return; const n = await get('potrzeby', o.ref);
-  if (n) { n.zapewniono = (n.zapewniono || 0) + (o.ilosc || 0); if (n.zapewniono >= n.potrzeba) n.status = 'zrealizowana'; await save('potrzeby', n); }
-  await save('oferty', { ...o, stan: 'przyjeta', przyjeto: Date.now() }); toast(n ? `Doliczono ${o.ilosc || 0} do „${n.nazwa}”` : 'Przyjęte');
-};
-export async function potrzebyWol() {
-  return { tab: 'potrzeby', title: 'Potrzeby rzeczowe', live: true,
-    html: html`${pageBar('Potrzeby rzeczowe', { back: !!state.admin, right: state.admin ? html`<button class="plusbtn" data-act="a-need" aria-label="Dodaj potrzebę">${icon('plus')}</button>` : '' })}<div class="pad stack">${raw(await potrzebyHtml())}</div>` };
-}
 
 // ===== transport: zgłoszenie „mogę pojechać” =====
 export function transportZgl(x, of, tel) {
@@ -153,8 +137,8 @@ export async function sobotyWol() {
       ${off ? '' : `<div style="width:100%;margin-top:10px"><div class="sub" style="margin-bottom:8px">${ludzie.length ? `<b>Będą (${ludzie.length}):</b> ${esc(imiona(ludzie))}` : 'Nikt jeszcze nie potwierdził.'}</div>
         ${mine ? `<button class="btn sm ghost" data-act="of-cofnij" data-col="zgloszenia" data-id="${esc(mine.id)}">${icon('check').s} Będę · Wycofaj</button>` : `<button class="btn sm gold" data-act="sob-bede" data-key="${esc(x.key)}" data-t="${x.start}">Będę</button>`}</div>`}</div>`;
   }).join('');
-  return { tab: 'start', title: 'Sobotnie spacery', live: true,
-    html: html`${pageBar('Sobotnie spacery')}<p class="hint" style="padding:0 20px;margin:4px 0 10px;color:var(--sage)">Zwykle w sobotę pod bramą schroniska. Daj znać, że będziesz – administrator zobaczy Twoje imię i telefon, inni tylko imię.</p><div class="evlist">${raw(rows)}</div>` };
+  return { tab: 'spacery', title: 'Sobotnie spacery', live: true,
+    html: html`${pageBar('Sobotnie spacery', { back: false })}<p class="hint" style="padding:0 20px;margin:4px 0 10px;color:var(--sage)">Zwykle w sobotę pod bramą schroniska. Daj znać, że będziesz – administrator zobaczy Twoje imię i telefon, inni tylko imię.</p><div class="evlist">${raw(rows)}</div>` };
 }
 actions['sob-bede'] = (el) => {
   const key = el.dataset.key, t = +el.dataset.t;
@@ -177,7 +161,7 @@ export async function zgloszeniaAdmin() {
   const sekcja = (tytul, rows, pusto) => `<div class="sec"><h2>${tytul}</h2></div><div class="pad">${rows.length ? `<div class="card zgl" style="padding:6px 14px">${rows.join('')}</div>` : `<p class="hint" style="margin:0 4px">${pusto}</p>`}</div>`;
   const nowsze = (a) => a.sort((x, y) => (y.ts || 0) - (x.ts || 0));
   const dek = nowsze(z.dek.filter((r) => P[r.pies_id])).map((r) => wiersz(r, 'deklaracje', `<a href="#/psy/${esc(r.pies_id)}">${esc(P[r.pies_id].imie)}</a>: ${esc(NEED_LABELS[r.potrzeba] || r.potrzeba)}`));
-  const pot = nowsze(z.of.filter((o) => o.typ === 'potrzeba' && N[o.ref] && o.stan !== 'odrzucona')).map((o) => wiersz(o, 'oferty', `${esc(N[o.ref].nazwa)}: ${esc(String(o.ilosc || ''))} ${esc(N[o.ref].jednostka || '')}${o.stan === 'przyjeta' ? ' · przyjęte' : ''}`, o.stan === 'przyjeta' || N[o.ref].status === 'zrealizowana' ? '' : `<button class="btn sm" data-act="of-przyjmij" data-id="${esc(o.id)}">Przyjmij</button>`));
+  const pot = nowsze(z.of.filter((o) => o.typ === 'potrzeba' && N[o.ref] && o.stan !== 'odrzucona')).map((o) => wiersz(o, 'oferty', `${esc(opisPotrzeby(N[o.ref]))}${N[o.ref].status === 'zrealizowana' ? ' · już mamy' : ''}`));
   const tra = nowsze(z.of.filter((o) => o.typ === 'transport' && T[o.ref] && o.stan !== 'odrzucona')).map((o) => { const x = T[o.ref]; return wiersz(o, 'oferty', `<button class="zco zlink" data-act="tr-open" data-id="${esc(x.id)}">${esc(x.pies_imie || 'Transport')}: ${esc(x.skad)} → ${esc(x.dokad)}, ${esc(fmtShort(x.kiedy))}${o.stan === 'przyjeta' ? ' · jedzie' : ''}</button>`, x.status === 'szuka' && o.stan !== 'przyjeta' ? `<button class="btn sm" data-act="of-kierowca" data-id="${esc(o.id)}">Przypisz</button>` : ''); });
   const sb = sob.filter((x) => x.status !== 'odwolany').map((x) => { const L = nowsze(z.zg.filter((r) => r.key === x.key && r.status === 'tak')); return L.length ? `<h3 style="font-size:16px;margin:12px 4px 6px">${esc(fmtDayLong(x.start))}, ${esc(fmtTime(x.start))} · ${L.length} os.</h3><div class="card zgl" style="padding:6px 14px">${L.map((r) => wiersz(r, 'zgloszenia', 'Będzie na spacerach')).join('')}</div>` : ''; }).join('');
   return { tab: 'start', title: 'Zgłoszenia wolontariuszy', live: true,
@@ -186,26 +170,33 @@ export async function zgloszeniaAdmin() {
       <div class="sec"><h2>Sobotnie spacery</h2></div><div class="pad">${raw(sb || '<p class="hint" style="margin:0 4px">Nikt jeszcze nie potwierdził.</p>')}</div><div style="height:24px"></div>` };
 }
 
-// ===== Start wolontariusza: pies dnia + kafelki =====
+// ===== Start wolontariusza: komunikat, pies dnia, karta „Najbliżej” (bez kafelków – reszta jest na dolnym pasku) =====
 export async function startWol() {
-  const [dogs, walks, nd, tr, kom, zag, sob] = await Promise.all([list('psy'), list('spacery'), list('potrzeby'), list('transporty'), list('komunikaty'), list('zaginiecia'), soboty(1)]);
-  const act = dogs.filter((d) => d.status !== 'w_trakcie' && !d.zniknal_ze_strony && !d.archiwum && !['adoptowany'].includes(d.status) && d.miejsce !== 'adoptowany' && d.miejsce !== 'zmarl');
+  const [dogs, walks, nd, tr, kom, zag, sob, z] = await Promise.all([list('psy'), list('spacery'), list('potrzeby'), list('transporty'), list('komunikaty'), list('zaginiecia'), soboty(1), zglDane()]);
+  const act = dogs.filter((d) => !d.zniknal_ze_strony && !d.archiwum && d.status !== 'adoptowany' && !['adoptowany', 'zmarl'].includes(d.miejsce));
   const help = act.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).length;
   const potrz = nd.filter((n) => n.status !== 'zrealizowana').length, trans = tr.filter((x) => x.status === 'szuka').length;
-  const lost = zag.filter((z) => z.status !== 'znaleziony').length, next = sob[0], dog = dogOfDay(dogs);
+  const lost = zag.filter((x) => x.status !== 'znaleziony'), next = sob[0], dog = dogOfDay(dogs);
   kom.sort((a, b) => b.ts - a.ts); const kLast = kom[0];
-  const tile = (href, cls, ic, lbl, n, sub = '') => `<a class="tile ${cls}" href="${href}">${n ? `<span class="badge">${n}</span>` : ''}${icon(ic, 't-ico').s}<span class="t-lbl">${lbl}${sub ? `<small style="display:block;font-family:var(--sans);font-size:12.5px;font-weight:500;opacity:.85;margin-top:2px">${sub}</small>` : ''}</span>${icon('arrow', 't-arr').s}</a>`;
   const hero = dog
     ? html`<section class="hero" aria-label="Pies dnia">${dogImg(dog.zdjecia[0], dog.imie, 'ph')}<div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
         <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${raw(boksPill(dog, 'in'))} ${icon('chev')}</a></div></section>`
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span><div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div></div></section>`;
-  const sobTxt = next ? (next.status === 'odwolany' ? 'ODWOŁANE: ' : '') + fmtDayLong(next.start) + ', ' + fmtTime(next.start) : '';
-  return { tab: 'start', title: 'Start',
+  const mine = next && z.zg.find((r) => r.key === next.key && r.status === 'tak' && czyMoje(r.id));
+  const wiersz = (href, t, txt, cls = '') => `<a class="dzw${cls}" href="${esc(href)}"><span class="dzt">${esc(t)}</span><span class="dzx">${esc(txt)}</span>${icon('chev').s}</a>`;
+  const pomoc = [potrz && `${potrz} ${potrz === 1 ? 'potrzeba' : potrz < 5 ? 'potrzeby' : 'potrzeb'}`, trans && `${trans} ${trans === 1 ? 'transport' : trans < 5 ? 'transporty' : 'transportów'}`, help && `${help} ${help === 1 ? 'pies' : help < 5 ? 'psy' : 'psów'}`].filter(Boolean);
+  const rows = [
+    ...lost.map((x) => wiersz('#/zaginiecia/' + x.id, 'szukamy', 'Zaginął: ' + x.imie, ' pilne')),
+    ...(next ? [wiersz('#/spacery', next.status === 'odwolany' ? 'odwołane' : fmtDayLong(next.start) + ', ' + fmtTime(next.start), next.status === 'odwolany' ? 'Sobotnie spacery odwołane' : mine ? 'Sobotnie spacery · będziesz ✓' : 'Sobotnie spacery pod bramą', next.status === 'odwolany' ? ' pilne' : '')] : []),
+    ...(pomoc.length ? [wiersz('#/pomoc', 'możesz pomóc', pomoc.join(', '))] : [])
+  ];
+  return { tab: 'start', title: 'Start', live: true,
     html: html`${brandBar(kLast && kLast.ts > (+(localStorage.getItem('lapa.kseen') || 0)), false)}
     <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
-    ${kLast && Date.now() - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${fmtDate(kLast.ts)}</span></div><p style="margin:6px 0 0">${kLast.tekst}</p></div></div>` : ''}
+    ${kLast && Date.now() - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
-    <div class="tiles">${raw(tile('#/psy', 'green', 'paw', 'Psy', 0, act.length + ' w schronisku i DT') + tile('#/pomoc', 'terra', 'medic', 'Pomoc dla psów', help) + tile('#/potrzeby', 'sage', 'box', 'Potrzeby rzeczowe', potrz) + tile('#/transport', 'green', 'truck', 'Transport', trans, trans ? 'szuka kierowcy' : '') + tile('#/sobotnie', 'sage', 'calendar', 'Sobotnie spacery', 0, esc(sobTxt)) + tile('#/zaginiecia', lost ? 'terra' : 'green', 'alert', 'Zaginione psy', lost))}</div>`,
+    <div class="pad" style="margin-top:16px"><section class="card dzis" aria-label="Najbliżej"><h3>Najbliżej</h3>${rows.length ? raw(rows.join('')) : html`<p class="sub" style="margin:6px 0 2px">Na razie spokojnie. Zajrzyj na listę psów.</p>`}</section></div>
+    <div style="height:16px"></div>`,
     mount(r) { hydratePhotos(r); } };
 }
 void html;

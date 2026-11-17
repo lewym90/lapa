@@ -6,7 +6,7 @@ import { checkUpdate } from './update.js';
 import { status as syncStatus, kick } from './sync.js';
 import * as db from './db.js';
 import { hydratePhotos } from './photos.js';
-import { nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS } from './util.js';
+import { opisPotrzeby, nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS } from './util.js';
 import { pickDog, dogThumb } from './screens-psy.js';
 import { raw } from './ui-core.js';
 import { boksPill, wybCls, linie, imieZnaki } from './znak.js';
@@ -21,86 +21,16 @@ import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
 const names = (a) => (a.length <= 3 ? a.join(', ') : a.slice(0, 3).join(', ') + ' +' + (a.length - 3));
 
-// ================= wydarzenia =================
-let evFilter = 'wszystko';
-export async function events() {
-  const [ev, tr, zg] = await Promise.all([list('wydarzenia'), list('transporty'), zgloszenia()]);
-  const me = getName(), today = startOfDay(Date.now());
-  const sats = nextSaturdays(4).map((t) => ({ kind: 'walk', t, k: dayKey(t) }));
-  const items = [...sats, ...ev.filter((e) => e.start >= today).map((e) => ({ kind: 'ev', t: e.start, e })), ...tr.filter((x) => x.kiedy >= today && x.status !== 'anulowany' && x.status !== 'zrealizowany').map((x) => ({ kind: 'tr', t: x.kiedy, x }))]
-    .filter((i) => evFilter === 'wszystko' || (i.kind === 'ev' && (i.e.autor === me || forKey(zg, evKey('ev', i.e.id)).some((z) => z.imie === me && z.status === 'tak'))) || (i.kind === 'walk' && forKey(zg, evKey('walk', i.k)).some((z) => z.imie === me && z.status === 'tak')) || (i.kind === 'tr' && (i.x.kierowca === me || i.x.autor === me)))
-    .sort((a, b) => a.t - b.t);
-  let lastDay = '';
-  return {
-    tab: 'wydarzenia', title: 'Wydarzenia',
-    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Wydarzenia</h1>${plusBtn('a-event', 'Dodaj wydarzenie')}</header>
-    <div class="fchips">${[['wszystko', 'Wszystkie'], ['moje', 'Tylko moje']].map(([k, l]) => html`<button class="chip dark ${evFilter === k ? 'on' : ''}" data-act="ev-filter" data-k="${k}" aria-pressed="${evFilter === k}">${l}</button>`)}</div>
-    ${evFilter === 'moje' ? html`<p class="hint" style="padding:0 20px;margin:0 0 8px">Wydarzenia, które dodałeś(-aś) albo w których bierzesz udział, i transporty, które wieziesz.</p>` : ''}
-    ${items.length ? items.map((i) => { const dk = dayKey(i.t), head = dk !== lastDay ? (lastDay = dk, html`<div class="day">${fmtDayLong(i.t)}</div>`) : ''; const p = dayParts(i.t);
-      if (i.kind === 'walk') return html`${head}<div class="ev walk"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Sobotni spacer ze schroniska</b><span>Otwarty dla wszystkich · godz. ${fmtTime(i.t)} pod bramą</span></div>
-        <button class="btn sm ghost" data-act="walk-post" data-k="${i.k}" data-t="${i.t}">Post: przypomnienie lub odwołanie</button>${udzialBlock(zg, evKey('walk', i.k), 'walk', 'Sobotni spacer, ' + fmtDayLong(i.t))}</div>`;
-      if (i.kind === 'tr') return html`${head}<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>Transport: ${i.x.pies_imie || 'pies'}</b><span>${i.x.skad} → ${i.x.dokad}</span><span class="who">${i.x.kierowca ? 'Kierowca: ' + i.x.kierowca : 'Szukamy kierowcy'}</span></div>${icon('chev')}</a>`;
-      return html`${head}<button class="ev" style="width:100%;text-align:left" data-act="ev-open" data-id="${i.e.id}"><div class="when"><b>${p.n}</b><small>${p.m}</small></div><div class="what"><b>${i.e.tytul}</b><span>${[fmtTime(i.e.start) !== '00:00' ? 'godz. ' + fmtTime(i.e.start) : '', i.e.miejsce].filter(Boolean).join(' · ')}</span>${(() => { const t = forKey(zg, evKey('ev', i.e.id)).filter((z) => z.status === 'tak'); return t.length ? html`<span class="who">Zgłosili się (${t.length}): ${t.map((z) => z.imie).join(', ')}</span>` : html`<span class="who">Nikt się jeszcze nie zgłosił</span>`; })()}</div>${icon('chev')}</button>`; })
-      : html`<div class="empty">${icon('calendar')}<h3>Brak wydarzeń</h3><p>Dodaj wydarzenie przyciskiem +.</p></div>`}
-`
-  };
-}
-actions['ev-filter'] = (el) => { evFilter = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 function needName() { if (getName()) return true; toast('Najpierw wpisz imię w ustawieniach', true); return false; }
-actions['walk-post'] = (el) => {
-  const t = +el.dataset.t, dd = fmtDayLong(t);
-  const T = {
-    przyp: `PSYpominamy! W ${dd} o godz. ${fmtTime(t)} spacery w schronisku w Nowodworze. Przyjedź pod bramę, zabierz psa na spacer. Nie trzeba się zapisywać, smycze i obroże są na miejscu. Pieski czekają!`,
-    prze: `PSYpominamy! Spacery w schronisku w Nowodworze są PRZESUNIĘTE: ${dd} o godz. ${fmtTime(t)}. Przyjedź pod bramę, zabierz psa na spacer. Pieski czekają!`,
-    odw: `PSYpominamy, że jutrzejsze SPACERY w schronisku są ODWOŁANE. Pieski ZAPRASZAJĄ Was na kolejną sobotę!`,
-    pod: `Dziękujemy za dzisiejszy spacer! Przyszło ${'__'} osób, psy były szczęśliwe. Do zobaczenia za tydzień, PSYJACIELE!`
-  };
-  openSheet(`<h2>Post o spacerze</h2><form novalidate><div class="field"><label for="wk">Rodzaj</label><select class="select" id="wk"><option value="przyp">Przypomnienie</option><option value="prze">Spacery przesunięte</option><option value="odw">Odwołanie spaceru</option><option value="pod">Podsumowanie i podziękowanie</option></select></div>
-    <div class="field"><label for="wt">Tekst (możesz poprawić)</label><textarea class="textarea" data-nodraft id="wt" style="min-height:160px"></textarea></div>
-    <div class="btnrow"><button type="button" class="btn" id="wc">Kopiuj</button><button type="button" class="btn ghost" id="ws">Wyślij…</button></div></form>`, (s) => {
-    const w = s.querySelector('#wk'), x = s.querySelector('#wt'); if (el.dataset.mode) w.value = el.dataset.mode; const fill = () => { x.value = T[w.value]; }; w.onchange = fill; fill();
-    s.querySelector('#wc').onclick = async () => { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch { x.select(); } };
-    s.querySelector('#ws').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: x.value }); } catch {} } else { try { await navigator.clipboard.writeText(x.value); toast('Skopiowano'); } catch {} } };
-  });
-};
-actions['ev-open'] = async (el) => {
-  const e = await get('wydarzenia', el.dataset.id); if (!e) return;
-  openSheet(`<h2>${esc(e.tytul)}</h2><p class="sub" style="margin:0 0 8px">${esc(fmtDayLong(e.start))}${fmtTime(e.start) !== '00:00' ? ', godz. ' + esc(fmtTime(e.start)) : ''}${e.miejsce ? ' · ' + esc(e.miejsce) : ''}</p>
-    ${e.opis ? `<div class="notebox">${esc(e.opis)}</div>` : ''}<div id="zgbox"></div><p class="hint" style="margin-top:10px">Dodał(a): ${esc(e.autor || '')}</p>
-    ${e.autor === getName() || state.coordinator ? `<button class="btn ghost block" style="color:var(--terra-d);margin-top:10px" id="ed">${icon('trash').s} Usuń wydarzenie</button>` : ''}`, (s) => {
-    zgloszenia().then((all) => { s.querySelector('#zgbox').innerHTML = udzialBlock(all, evKey('ev', e.id), 'ev', e.tytul).s; });
-    s.querySelector('#ed')?.addEventListener('click', async () => { await remove('wydarzenia', e.id); closeSheet(); toast('Usunięto'); });
-  });
-};
-export function eventForm() {
-  openSheet(`<h2>Nowe wydarzenie</h2><p class="hint" style="margin:0 0 14px">Zobaczą je wszyscy wolontariusze.</p><form id="vf" novalidate>
-    <div class="field"><label for="vt">Nazwa</label><input class="input" id="vt" maxlength="100" placeholder="np. wizyta u weterynarza, sesja zdjęciowa"></div>
-    <div class="field"><label for="vd">Data i godzina</label><input class="input" id="vd" type="datetime-local"></div>
-    <div class="field"><label for="vm">Miejsce (opcjonalnie)</label><input class="input" id="vm" maxlength="80"></div>
-    <div class="field"><label for="vo">Opis (opcjonalnie)</label><textarea class="textarea" id="vo" maxlength="600"></textarea></div><div class="err" id="ve"></div>
-    <button class="btn block" type="submit">Dodaj wydarzenie</button></form>`, (s) => {
-    s.querySelector('#vf').addEventListener('submit', async (e) => {
-      e.preventDefault(); const t = s.querySelector('#vt').value.trim(), d = s.querySelector('#vd').value;
-      if (!t || !d) { s.querySelector('#ve').textContent = 'Wpisz nazwę i wybierz termin.'; return; }
-      await save('wydarzenia', { tytul: t, start: new Date(d).getTime(), miejsce: s.querySelector('#vm').value.trim(), opis: s.querySelector('#vo').value.trim(), autor: getName() });
-      closeSheet(); toast('Wydarzenie dodane');
-    });
-  });
-}
-actions['a-event'] = () => eventForm();
 
 // ================= transport =================
 const TS = { szuka: 'Poszukiwany kierowca', przypisany: 'Przypisany', zrealizowany: 'Zrealizowany', anulowany: 'Anulowany' };
-export async function transport() {
-  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy), psy = Object.fromEntries((await list('psy', { archiwum: true })).map((d) => [d.id, d])), of = await list('oferty');
-  const act = all.filter((x) => x.status === 'szuka' || x.status === 'przypisany'), old = all.filter((x) => x.status === 'zrealizowany' || x.status === 'anulowany').reverse().slice(0, 8);
-  const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${raw(imieZnaki(psy[x.pies_id], x.pies_imie || 'Pies'))}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : x.status === 'przypisany' ? '' : 'gold'}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}${(() => { const o = of.filter((y) => y.typ === 'transport' && y.ref === x.id && y.stan !== 'odrzucona'); return o.length && x.status === 'szuka' ? html`<div class="who">Mogą pojechać: ${o.map((y) => y.imie).join(', ')}</div>` : ''; })()}</button>`;
-  return {
-    tab: state.admin ? 'start' : 'transport', title: 'Transport',
-    html: html`${pageBar('Transport', { back: !!state.admin, right: state.admin ? html`${plusBtn('a-trans', 'Zgłoś transport')}` : '' })}
-    <div class="pad stack">${act.length ? act.map(row) : html`<div class="empty">${icon('truck')}<h3>Brak aktywnych transportów</h3><p>${state.admin ? 'Gdy pies potrzebuje przewozu (do lekarza, domu tymczasowego, adopcji), zgłoś to tutaj. Wolontariusze z samochodem zobaczą prośbę.' : 'Gdy pies będzie potrzebował przewozu, pojawi się tutaj. Możesz wtedy zgłosić, że pojedziesz.'}</p>${state.admin ? html`<button class="btn gold" data-act="a-trans">Zgłoś transport</button>` : ''}</div>`}
-    ${old.length ? html`<h2 style="font-size:20px;color:var(--gold-l);margin-top:8px">Zakończone</h2>${old.map(row)}` : ''}</div>`
-  };
+// Transport: lista na ekranie Pomoc (obie role). Osobnego ekranu nie ma.
+export async function transportHtml() {
+  const all = (await list('transporty')).sort((a, b) => a.kiedy - b.kiedy), psy = Object.fromEntries((await list('psy')).map((d) => [d.id, d])), of = await list('oferty');
+  const act = all.filter((x) => x.status === 'szuka' || x.status === 'przypisany');
+  const row = (x) => html`<button class="need" style="width:100%;text-align:left" data-act="tr-open" data-id="${x.id}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b style="font-size:17px">${raw(imieZnaki(psy[x.pies_id], x.pies_imie || 'Pies'))}</b>${x.pilny ? html` <span class="chip terra" style="min-height:26px;padding:2px 10px">Pilne</span>` : ''}<div class="sub">${x.skad} → ${x.dokad}</div><div class="sub">${fmtShort(x.kiedy)}</div></div><span class="chip ${x.status === 'szuka' ? 'terra' : ''}">${TS[x.status]}</span></div>${x.kierowca ? html`<div class="who">Kierowca: ${x.kierowca}</div>` : ''}${(() => { const o = of.filter((y) => y.typ === 'transport' && y.ref === x.id && y.stan !== 'odrzucona'); return o.length && x.status === 'szuka' ? html`<div class="who">Mogą pojechać: ${o.map((y) => y.imie).join(', ')}</div>` : ''; })()}</button>`;
+  return act.length ? act.map((x) => row(x).s).join('') : '<p class="pusto">Teraz nikt nie potrzebuje transportu.</p>';
 }
 export function transForm() {
   pickDog((d) => openSheet(`<h2>Transport: ${esc(d.imie)}</h2><form id="tf2" novalidate>
@@ -114,7 +44,7 @@ export function transForm() {
       e.preventDefault(); const skad = s.querySelector('#ts').value.trim(), dokad = s.querySelector('#tdk').value.trim(), k = s.querySelector('#tk').value;
       if (!skad || !dokad || !k) { s.querySelector('#te2').textContent = 'Uzupełnij: skąd, dokąd i kiedy.'; return; }
       await save('transporty', { pies_id: d.id, pies_imie: d.imie, skad, dokad, kiedy: new Date(k).getTime(), uwagi: s.querySelector('#tu').value.trim(), pilny: s.querySelector('#tp').checked, status: 'szuka', kierowca: '', autor: getName() });
-      closeSheet(); toast('Transport zgłoszony'); location.hash = '#/transport';
+      closeSheet(); toast('Transport zgłoszony');
     });
   }));
 }
@@ -135,50 +65,38 @@ actions['tr-open'] = async (el) => {
 };
 
 // ================= pomoc =================
-const CATS = ['Karma mokra', 'Karma sucha', 'Karma weterynaryjna', 'Leki i środki profilaktyczne', 'Podkłady i środki higieniczne', 'Smycze, obroże i szelki', 'Transport', 'Domy tymczasowe', 'Pomoc finansowa', 'Inne potrzeby'];
-export async function help() {
-  // Pomoc dla psów + potrzeby rzeczowe (administrator: z telefonami zgłoszonych i przyciskiem „Przyjmij”). Wolontariusz ma osobne zakładki.
-  const [psyHtml, potrzHtml] = await Promise.all([pomocPsyHtml(), potrzebyHtml()]);
+// Jeden ekran Pomoc (administrator i wolontariusz): psy, którym trzeba pomóc, potrzeby rzeczowe i transport.
+export async function pomocEkran() {
+  const [psyHtml, potrzHtml, trHtml] = await Promise.all([pomocPsyHtml(), potrzebyHtml(), transportHtml()]);
   return {
     tab: 'pomoc', title: 'Pomoc', live: true,
-    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Pomoc</h1><span style="width:44px"></span></header>
-    <div class="sec" style="margin-top:6px"><h2>Pies potrzebuje Ciebie</h2></div><div class="pad stack">${raw(psyHtml)}</div>
-    <div class="sec"><h2>Potrzeby rzeczowe</h2><button class="link" data-act="a-need">+ Dodaj</button></div><div class="pad stack">${raw(potrzHtml)}</div>`,
+    html: html`${pageBar('Pomoc', { back: false })}
+    <div class="sec" style="margin-top:6px"><h2>Potrzeby rzeczowe</h2>${state.admin ? html`<button class="link" data-act="a-need">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(potrzHtml)}</div>
+    <div class="sec"><h2>Transport</h2>${state.admin ? html`<button class="link" data-act="a-trans">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(trHtml)}</div>
+    <div class="sec"><h2>Psy</h2></div><div class="pad stack">${raw(psyHtml)}</div><div style="height:20px"></div>`,
     mount(r) { hydratePhotos(r); }
   };
 }
+export const help = pomocEkran;
+// Potrzeba rzeczowa: jedno pole (np. „Karma mokra 20 kg”) i „Pilne”. Bez kategorii, jednostek i liczenia.
 export function needForm(n = {}) {
-  openSheet(`<h2>${n.id ? 'Edytuj potrzebę' : 'Nowa potrzeba'}</h2><div id="n_kto"></div><form id="nf3" novalidate>
-    <div class="field"><label for="nn">Co jest potrzebne?</label><input class="input" id="nn" maxlength="80" placeholder="np. karma mokra" value="${esc(n.nazwa || '')}"></div>
-    <div class="field"><label for="nk">Kategoria</label><select class="select" id="nk">${CATS.map((c) => `<option ${c === n.kategoria ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
-    <div class="field"><label for="np">Ile potrzeba</label><input class="input" id="np" inputmode="numeric" value="${n.potrzeba ?? ''}"></div>
-    <div class="field"><label for="nj">Jednostka</label><input class="input" id="nj" maxlength="20" placeholder="puszek, kg, szt." value="${esc(n.jednostka || '')}"></div>
-    <div class="field"><label for="nz">Ile już zapewniono</label><input class="input" id="nz" inputmode="numeric" value="${n.zapewniono ?? 0}"></div>
-    <label class="chip outline" style="margin-bottom:14px;cursor:pointer"><input type="checkbox" id="npi" style="accent-color:var(--terra)" ${n.priorytet === 'pilne' ? 'checked' : ''}> Pilne</label><div class="err" id="ne3"></div>
-    <button class="btn block" type="submit">Zapisz</button>${n.id ? `<button type="button" class="btn ghost block" style="margin-top:10px" id="nd">Oznacz jako zrealizowaną</button>` : ''}</form>`, (s) => {
+  openSheet(`<h2>${n.id ? 'Potrzeba' : 'Nowa potrzeba'}</h2><div id="n_kto"></div><form id="nf3" novalidate>
+    <div class="field"><label for="nn">Co jest potrzebne?</label><input class="input" id="nn" maxlength="120" placeholder="np. karma mokra 20 kg" value="${esc(opisPotrzeby(n))}" autocomplete="off"></div>
+    <label class="check" style="margin:0 0 14px"><input type="checkbox" id="npi" ${n.priorytet === 'pilne' ? 'checked' : ''}> Pilne</label><div class="err" id="ne3"></div>
+    <button class="btn block" type="submit">Zapisz</button>${n.id ? `<button type="button" class="btn gold block" style="margin-top:10px" id="nd">${icon('check').s} Już mamy</button>` : ''}</form>`, (s) => {
     if (n.id) ktoInto(s, '#n_kto', 'potrzeby', n.id, n.autor);
     s.querySelector('#nf3').addEventListener('submit', async (e) => {
-      e.preventDefault(); const nazwa = s.querySelector('#nn').value.trim(), p = parseInt(s.querySelector('#np').value, 10), z = parseInt(s.querySelector('#nz').value || '0', 10);
-      if (!nazwa || !(p > 0) || !(z >= 0)) { s.querySelector('#ne3').textContent = 'Wpisz nazwę i liczbę (ile potrzeba).'; return; }
-      await save('potrzeby', { ...n, nazwa, kategoria: s.querySelector('#nk').value, potrzeba: p, jednostka: s.querySelector('#nj').value.trim(), zapewniono: z, priorytet: s.querySelector('#npi').checked ? 'pilne' : 'zwykle', status: z >= p ? 'zrealizowana' : 'otwarta', autor: n.autor || getName() });
-      closeSheet(); toast('Zapisane');
+      e.preventDefault(); const nazwa = s.querySelector('#nn').value.trim();
+      if (!nazwa) { s.querySelector('#ne3').textContent = 'Wpisz, co jest potrzebne.'; return; }
+      const o = { ...n, nazwa, priorytet: s.querySelector('#npi').checked ? 'pilne' : 'zwykle', status: 'otwarta', autor: n.autor || getName() };
+      for (const k of ['kategoria', 'potrzeba', 'jednostka', 'zapewniono']) delete o[k];
+      await save('potrzeby', o); closeSheet(); toast('Zapisane');
     });
-    s.querySelector('#nd')?.addEventListener('click', async () => { await save('potrzeby', { ...n, status: 'zrealizowana' }); closeSheet(); toast('Potrzeba zrealizowana. Dziękujemy!'); });
+    s.querySelector('#nd')?.addEventListener('click', async () => { await save('potrzeby', { ...n, status: 'zrealizowana' }); closeSheet(); toast('Super, zamknięte. Dziękujemy!'); });
   });
 }
 actions['a-need'] = () => needForm();
 actions['need-edit'] = async (el) => needForm(await get('potrzeby', el.dataset.id));
-actions['need-give'] = async (el) => {
-  const n = await get('potrzeby', el.dataset.id);
-  openSheet(`<h2>Ile dotarło?</h2><p class="hint" style="margin:0 0 12px">${esc(n.nazwa)}. Brakuje ${Math.max(0, n.potrzeba - (n.zapewniono || 0))} ${esc(n.jednostka || '')}.</p><form id="gf"><div class="field"><input class="input" id="gn" inputmode="numeric" placeholder="np. 12"></div><div class="err" id="ge"></div><button class="btn block" type="submit">Dodaj do zapewnionych</button></form>`, (s) => {
-    s.querySelector('#gf').addEventListener('submit', async (e) => {
-      e.preventDefault(); const q = parseInt(s.querySelector('#gn').value, 10); if (!(q > 0)) { s.querySelector('#ge').textContent = 'Wpisz liczbę większą od zera.'; return; }
-      n.zapewniono = (n.zapewniono || 0) + q; if (n.zapewniono >= n.potrzeba) n.status = 'zrealizowana'; await save('potrzeby', n); closeSheet(); toast(`Doliczono ${q}`);
-    });
-    s.querySelector('#gn').focus();
-  });
-};
-
 // ================= ustawienia =================
 export async function settings() {
   if (!state.admin) return settingsWol();

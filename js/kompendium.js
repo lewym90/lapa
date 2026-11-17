@@ -7,6 +7,7 @@ import { dogNeeds, NEED_LABELS, ago, parseData, dataTs, odKiedy } from './util.j
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { boksPill, wybCls, wybrani, powody, kto, opis as opisAdm, opisLine, czyscBoks } from './znak.js';
 import { ZDROWIE_TYPY, TYP, zdrowieDla, byl, miejsce } from './teczka.js';
+import { uKogo, RODZAJ } from './adopcje.js';
 
 const pen = () => icon('pencil').s.replace('class="ico', 'class="ico kpen');
 const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
@@ -29,7 +30,7 @@ const pole = (label, val, f) => (f
   : val ? `<div class="kd"><span>${label}</span><b>${val}</b></div>` : '');
 
 export async function cardAdm(id, { pics, picImg, isFav }) {
-  const [d, walks, obsAll, zdr] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje'), zdrowieDla(id)]);
+  const [d, walks, obsAll, zdr, osoby] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje'), zdrowieDla(id), list('p_dt')]);
   if (!d) return null;
   const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start), km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
   const obs = obsAll.filter((o) => o.pies_id === id).sort((a, b) => b.ts - a.ts), needs = dogNeeds(d, walks), od = odKiedy(d);
@@ -45,7 +46,7 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
   const dane = [
     pole('Płeć', d.plec === 'suka' ? 'Suka' : d.plec === 'samiec' ? 'Samiec' : ''), pole('Wiek', esc(d.wiek || '')), pole('Waga', esc(d.waga || '')), pole('Wielkość', esc(d.wielkosc || '')),
     pole('W schronisku od', od ? esc(od.txt) + (byl(d) ? '' : ` <em>· ${esc(od.ile)}</em>`) : '', 'od'), pole('Boks', esc(d.boks || ''), 'boks'), pole('Czip', esc(d.chip || ''), 'chip')
-  ].join('').replaceAll('{ID}', esc(id));
+  ].join('').replaceAll('{ID}', esc(id)) + (() => { const u = uKogo(osoby, id); return u ? `<a class="kd ed" href="#/dt/${esc(u.id)}"><span>${esc(RODZAJ[u.rodzaj || 'dt'])}</span><b>${esc(u.imie || '')}</b>${icon('chev').s}</a>` : ''; })();
   const oz = [wybrani(d) ? 'Tylko dla wybranych' + (powody(d).length ? ': ' + powody(d).join(', ') : '') + (kto(d) ? ` · mogą wychodzić: ${kto(d)}` : '') : '', opisAdm(d) ? '„' + opisAdm(d) + '”' : ''].filter(Boolean).join(' · ');
   return {
     tab: 'psy', title: d.imie, live: true,
@@ -89,7 +90,6 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
         <button type="button" class="kdodaj in" data-act="dog-obs-add" data-id="${id}">${icon('plus')} Dodaj notatkę</button></div>
 
       ${d.zrodlo_url && !byl(d) ? html`<a class="kd klink" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener"><span>Ogłoszenie na stronie schroniska</span>${icon('link')}</a>` : ''}
-      ${byl(d) ? '' : html`<a class="btn ghost block" href="#/spacer/${id}" style="margin-top:18px">${icon('walk')} Rozpocznij spacer</a>`}
     </section>`,
     mount(root) {
       const gal = root.querySelector('#gal'), dots = root.querySelectorAll('#dots i');

@@ -42,14 +42,11 @@ with sync_playwright() as p:
     go(pa, '#/start', 700); pa.click('[data-act=menu]'); pa.wait_for_timeout(300); m = pa.inner_text('.drawer')
     check('Menu: bez Adopcji, Social media, Przyjmij, Do uzupełnienia', not any(x in m for x in ['Adopcje', 'Social media', 'Przyjmij', 'Do uzupełnienia']), m)
     pa.evaluate("document.querySelector('.drawer').remove()")
-    pa.click('.nav [data-act=add]'); pa.wait_for_timeout(300); a = pa.inner_text('.sheet')
-    check('„+”: bez psa ze strony, przyjęcia i zdjęć', not any(x in a for x in ['Przyjmij', 'Pies ze strony', 'Dodaj zdjęcie']) and 'Notatka o psie' in a, a)
-    close_sheet(pa)
-    for h in ['#/karta/nowy', '#/nowe', '#/adopcje', '#/social']:
+    for h in ['#/karta/nowy', '#/nowe', '#/adopcje', '#/social', '#/zrobic', '#/spacer']:
         go(pa, h, 600); check(f'{h} nie istnieje (Start)', pa.locator('.hello').count() == 1)
     go(pa, '#/ustawienia', 700); check('Ustawienia: bez Archiwum psów, sprawdzanie co godzinę', 'Archiwum psów' not in text(pa))
-    go(pa, '#/zrobic', 800); t = text(pa)
-    check('Dziś i do zrobienia: bez dawnych przypomnień (zdjęcia, ogłoszenia, karta)', not any(x in t for x in ['Brak zdjęć', 'Na Facebooku', 'zróbmy hałas', 'Karta psa']), t[:300])
+    go(pa, '#/start', 800); t = text(pa)
+    check('Start: bez dawnych przypomnień (zdjęcia, ogłoszenia, karta)', not any(x in t for x in ['Brak zdjęć', 'Na Facebooku', 'zróbmy hałas', 'Karta psa']), t[:300])
     # karta admina psa z byli u nas: znaczek, bez spaceru
     go(pa, '#/psy/d2', 900); t = text(pa)
     check('Admin: karta psa z Byli u nas ma znaczek i pełne dane', 'Byli u nas' in t and 'TAJNE-WAZNE' in t and 'Rozpocznij spacer' not in t)

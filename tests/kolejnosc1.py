@@ -36,14 +36,6 @@ with sync_playwright() as p:
     # najpierw psy, które dziś jeszcze nie wyszły, potem te, które już były; w obu grupach według boksów
     check('Brama „Wydaj” po spacerach: grupy jak dotąd, w każdej boksy', imiona('#bl .row b') == ['Kora', 'Bari', 'Dina', 'Zuza', 'Fado', 'Rex', 'Ala'], imiona('#bl .row b'))
 
-    # wybór psa do spaceru (osobny wybór; Luna w DT jest na liście, bez boksu → alfabetycznie)
-    go(pg, '#/spacer', 800)
-    check('Spacer: domyślnie alfabetycznie', imiona('#wl .row b') == ['Ala', 'Bari', 'Dina', 'Fado', 'Kora', 'Luna', 'Rex', 'Zuza'], imiona('#wl .row b'))
-    pg.click('.kolej [data-t=boks]'); pg.wait_for_timeout(500)
-    check('Spacer: według boksów', imiona('#wl .row b') == ['Fado', 'Kora', 'Bari', 'Rex', 'Dina', 'Ala', 'Luna', 'Zuza'], imiona('#wl .row b'))
-    pg.fill('#wq', 'a'); pg.wait_for_timeout(200)
-    check('Spacer: szukanie zachowuje kolejność', imiona('#wl .row b') == ['Fado', 'Kora', 'Bari', 'Dina', 'Ala', 'Luna', 'Zuza'], imiona('#wl .row b'))
-
     # lista Psy (osobny wybór)
     go(pg, '#/psy', 800); pg.click('[data-act=dog-filter][data-k=aktywne]'); pg.wait_for_timeout(400)
     h3 = lambda: [x.split(' ')[0].strip() for x in pg.locator('#grid .dcard h3').all_inner_texts()]

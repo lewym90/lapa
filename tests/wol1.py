@@ -32,9 +32,13 @@ with sync_playwright() as p:
     check('wolontariusz: rola', pv.evaluate("async()=>{const a=await import('/js/auth.js');return !a.state.admin && !a.state.coordinator}"))
     t = text(pv)
     check('Start: pies dnia', pv.locator('.hero .dogtag').count() == 1 and 'Saba' in pv.inner_text('.hero'))
-    check('Start: 6 kafelków', pv.locator('.tiles a.tile').count() == 6, pv.locator('.tiles a.tile').count())
+    check('Start: bez kafelków, karta „Najbliżej”', pv.locator('.tiles a.tile').count() == 0 and pv.locator('.card.dzis', has_text='Najbliżej').count() == 1)
+    check('Start: „możesz pomóc” prowadzi do Pomocy', pv.locator('.dzw[href="#/pomoc"]').count() == 1)
     check('Start: bez czatu', pv.locator('#app a[href="#/czat"]').count() == 0)
-    check('pasek: Start, Psy, Pomoc, Potrzeby, Transport', [x.get_attribute('href') for x in pv.locator('nav.nav a.tab').all()] == ['#/start', '#/psy', '#/pomoc', '#/potrzeby', '#/transport'])
+    check('pasek: Start, Psy, Pomoc, Spacery', [x.get_attribute('href') for x in pv.locator('nav.nav a.tab').all()] == ['#/start', '#/psy', '#/pomoc', '#/spacery'])
+    pv.click('[data-act=menu]'); pv.wait_for_timeout(300)
+    check('menu: tylko Zaginione psy, Ustawienia, Dziękujemy', [x.get_attribute('href') for x in pv.locator('.drawer nav a').all()] == ['#/zaginiecia', '#/ustawienia', '#/dziekujemy'])
+    pv.evaluate("document.querySelector('.drawer').remove()")
     check('pasek: bez „+”', pv.locator('nav.nav .plus').count() == 0)
     loc = pv.evaluate("async()=>{const s=await import('/js/store.js');return {z:(await s.list('zdrowie')).length,o:(await s.list('obserwacje')).length,t:(await s.list('zadania')).length,c:(await s.get('psy','d1')).czip||''}}")
     check('telefon wolontariusza nie ma danych tylko dla administratora', loc == {'z': 0, 'o': 0, 't': 0, 'c': ''}, loc)
@@ -61,23 +65,22 @@ with sync_playwright() as p:
     pv.wait_for_selector('#zw'); check('okno: imię i telefon podpowiedziane', pv.input_value('#zw_i') == 'Wola' and pv.input_value('#zw_t') == TEL)
     zglos(pv)
     check('pomoc: chip z imieniem, zaznaczony', 'Wola' in pv.locator('#app [data-act=decl]').first.inner_text() and 'on' in pv.locator('#app [data-act=decl]').first.get_attribute('class'))
-    go(pv, '#/potrzeby', 700); pv.click('[data-act=of-potrzeba]')
-    zglos(pv, ilosc='')
-    check('potrzeby: bez ilości nie wyśle', 'ile możesz' in pv.inner_text('#zw_e'))
-    pv.fill('#zw_q', '3'); pv.fill('#zw_t', '12'); pv.click('#zw button[type=submit]'); pv.wait_for_timeout(300)
+    go(pv, '#/pomoc', 700); check('Pomoc: potrzeba jednym tekstem (starszy wpis)', 'Karma mokra 10 puszek' in text(pv)); pv.click('[data-act=of-potrzeba]')
+    pv.wait_for_selector('#zw'); check('potrzeby: bez pytania o ilość', pv.locator('#zw_q').count() == 0)
+    pv.fill('#zw_t', '12'); pv.click('#zw button[type=submit]'); pv.wait_for_timeout(300)
     check('potrzeby: bez pełnego telefonu nie wyśle', 'numer telefonu' in pv.inner_text('#zw_e'))
     pv.fill('#zw_t', TEL); pv.click('#zw button[type=submit]'); pv.wait_for_timeout(600)
-    t = text(pv); check('potrzeby: „Zgłosili się: Wola (3)”', 'Zgłosili się: Wola (3)' in t and pv.locator('[data-act=of-cofnij]').count() == 1, t[:300])
-    go(pv, '#/transport', 700); pv.click('[data-act=tr-open]'); pv.wait_for_selector('[data-act=of-transport]'); pv.click('[data-act=of-transport]'); zglos(pv)
-    go(pv, '#/transport', 700); check('transport: „Mogą pojechać: Wola”', 'Mogą pojechać: Wola' in text(pv))
-    go(pv, '#/sobotnie', 700); pv.locator('[data-act=sob-bede]').first.click(); zglos(pv)
+    t = text(pv); check('potrzeby: „Przywiozą: Wola”', 'Przywiozą: Wola' in t and pv.locator('[data-act=of-cofnij]').count() == 1, t[:300])
+    go(pv, '#/pomoc', 700); pv.click('[data-act=tr-open]'); pv.wait_for_selector('[data-act=of-transport]'); pv.click('[data-act=of-transport]'); zglos(pv)
+    go(pv, '#/start', 300); go(pv, '#/pomoc', 700); check('transport: „Mogą pojechać: Wola”', 'Mogą pojechać: Wola' in text(pv))
+    go(pv, '#/spacery', 700); pv.locator('[data-act=sob-bede]').first.click(); zglos(pv)
     check('sobotnie: „Będą (1): Wola”', 'Będą (1): Wola' in text(pv))
     sync(pv, 1500)
     check('wszystko wysłane', pv.evaluate("async()=>(await import('/js/db.js')).outboxCount()") == 0)
 
     # --- drugi wolontariusz: tylko imiona, bez telefonów, nie wycofa cudzego ---
     cw, pw = newpage(b); login(pw, 'Zosia', WOL); sync(pw, 1500)
-    for h in ['#/pomoc', '#/potrzeby', '#/transport', '#/sobotnie', '#/psy/d1']:
+    for h in ['#/pomoc', '#/spacery', '#/psy/d1']:
         go(pw, h, 700)
         check(f'Zosia {h}: widzi imię, bez telefonu', 'Wola' in text(pw) and pw.locator('a[href^="tel:"]').count() == 0 and '600' not in text(pw))
     check('Zosia: nie ma przycisku wycofania cudzego', pw.locator('[data-act=of-cofnij]').count() == 0)
@@ -89,27 +92,23 @@ with sync_playwright() as p:
 
     # --- administrator: zgłoszenia z telefonami ---
     sync(pa, 1500); go(pa, '#/start', 900)
-    check('Start administratora: nowe zgłoszenia (4)', 'Nowe zgłoszenia wolontariuszy: 4' in text(pa), text(pa)[:400])
+    check('Start administratora: nowe zgłoszenia (4)', 'Zgłoszenia wolontariuszy: 4' in text(pa), text(pa)[:400])
     go(pa, '#/zgloszenia', 900); t = text(pa)
     check('lista: 4 telefony', pa.locator('a.kontakt[href="tel:600111222"]').count() == 4, pa.locator('a.kontakt').count())
-    check('lista: wszystkie sekcje', all(x in t for x in ['Pomoc dla psów', 'Potrzeby rzeczowe', 'Transport', 'Sobotnie spacery', 'Karma mokra: 3 puszek']), t[:600])
-    pa.click('[data-act=of-przyjmij]'); pa.wait_for_timeout(700)
-    n1 = pa.evaluate("async()=>(await (await import('/js/store.js')).get('potrzeby','n1')).zapewniono")
-    check('Przyjmij: doliczono 3 (1+3=4)', n1 == 4, n1)
+    check('lista: wszystkie sekcje', all(x in t for x in ['Pomoc dla psów', 'Potrzeby rzeczowe', 'Transport', 'Sobotnie spacery', 'Karma mokra 10 puszek']), t[:600])
     pa.click('[data-act=of-kierowca]'); pa.wait_for_timeout(700)
     t1 = pa.evaluate("async()=>(await (await import('/js/store.js')).get('transporty','t1'))")
     check('Przypisz: kierowca Wola', t1['kierowca'] == 'Wola' and t1['status'] == 'przypisany', t1)
-    go(pa, '#/start', 700); check('po obejrzeniu: karta nowych zgłoszeń znika', 'Nowe zgłoszenia wolontariuszy' not in text(pa))
+    go(pa, '#/start', 700); check('po obejrzeniu: wiersz nowych zgłoszeń znika', 'Zgłoszenia wolontariuszy:' not in text(pa))
     go(pa, '#/pomoc', 700); check('Pomoc administratora: telefon przy zgłoszeniu', pa.locator('a.kontakt[href="tel:600111222"]').count() >= 2)
-    go(pa, '#/transport', 700); pa.click('[data-act=tr-open]'); pa.wait_for_selector('#sheet-root .sheet')
+    go(pa, '#/start', 300); go(pa, '#/pomoc', 700); pa.click('[data-act=tr-open]'); pa.wait_for_selector('#sheet-root .sheet')
     check('transport (administrator): telefon kierowcy', pa.locator('#sheet-root a.kontakt[href="tel:600111222"]').count() == 1); close_sheet(pa)
 
     # --- wolontariusz wycofuje się z soboty ---
-    sync(pv, 1500); go(pv, '#/sobotnie', 700); pv.locator('[data-act=of-cofnij]').first.click(); pv.wait_for_selector('[data-yes]'); pv.click('[data-yes]'); pv.wait_for_timeout(500)
+    sync(pv, 1500); go(pv, '#/spacery', 700); pv.locator('[data-act=of-cofnij]').first.click(); pv.wait_for_selector('[data-yes]'); pv.click('[data-yes]'); pv.wait_for_timeout(500)
     check('sobotnie: wycofane', 'Nikt jeszcze nie potwierdził' in text(pv)); sync(pv, 1500)
     sync(pa, 1500); go(pa, '#/zgloszenia', 900)
     check('administrator: sobota bez zgłoszeń', pa.locator('a.kontakt[href="tel:600111222"]').count() == 3)
-    go(pv, '#/potrzeby', 700); check('przyjęte zgłoszenie: znów „Mogę przywieźć”, brakuje 6', 'brakuje 6' in text(pv) and pv.locator('[data-act=of-potrzeba]').count() == 1)
 
     # --- usuwanie przez administratora ---
     go(pa, '#/zgloszenia', 900); pa.locator('[data-act=zg-usun]').first.click(); pa.wait_for_selector('[data-yes]'); pa.click('[data-yes]'); pa.wait_for_timeout(600)
@@ -120,8 +119,10 @@ with sync_playwright() as p:
     save(pa, 'zaginiecia', {'id': 'z1', 'imie': 'Burek', 'status': 'aktywne', 'opis': 'Czarny', 'ts': now, 'gdzie': 'Nowodwór', 'kiedy': now})
     save(pa, 'komunikaty', {'id': 'k1', 'tekst': 'Komunikat testowy', 'ts': now, 'autor': 'Ania'})
     sync(pa); sync(pv, 1500)
-    okna = [('#/psy/d1', '[data-act=dog-walks]'), ('#/pomoc', '#app [data-act=decl]'), ('#/potrzeby', '[data-act=of-potrzeba]'), ('#/transport', '[data-act=tr-open]'),
-            ('#/sobotnie', '[data-act=sob-bede]'), ('#/zaginiecia', '[data-act=zag-open]'), ('#/ustawienia', '[data-act=unlock-sheet]'), ('#/start', '[data-act=bell]')]
+    okna = [('#/psy/d1', '[data-act=dog-walks]'), ('#/pomoc', '#app [data-act=decl]'), ('#/pomoc', '[data-act=tr-open]'),
+            ('#/spacery', '[data-act=sob-bede]'), ('#/zaginiecia/z1', '[data-act=zag-tekst]'), ('#/ustawienia', '[data-act=unlock-sheet]'), ('#/start', '[data-act=bell]')]
+    go(pv, '#/zaginiecia', 700); check('zaginięcia (wolontariusz): lista, bez przycisków administratora', 'Burek' in text(pv) and pv.locator('[data-act=zag-new]').count() == 0)
+    go(pv, '#/zaginiecia/z1', 700); check('karta zaginięcia (wolontariusz): bez ołówków', pv.locator('[data-act=zag-edit], [data-act=zag-znal], [data-act=zag-usun]').count() == 0 and 'Czarny' in text(pv))
     for h, sel in okna:
         go(pv, h, 700)
         if pv.locator(sel).count() == 0: check(f'okno {h}: przycisk {sel} jest', False); continue
@@ -136,5 +137,5 @@ with sync_playwright() as p:
     save(pa, 'psy', {'id': 'd1', 'imie': 'Saba', 'plec': 'suka', 'status': 'do_adopcji', 'miejsce': 'zmarl', 'potrzeby': ['transport'], 'zdjecia': ['https://example.com/a.jpg']})
     sync(pa); sync(pv, 1500); go(pv, '#/start', 800)
     check('pies, który odszedł: nie jest psem dnia', pv.locator('.hero .dogtag').count() == 0)
-    go(pv, '#/pomoc', 800); check('pies, który odszedł: nie ma go w Pomocy', 'Saba' not in text(pv))
+    go(pv, '#/pomoc', 800); check('pies, który odszedł: nie ma go wśród psów w Pomocy', pv.locator('.need a[href="#/psy/d1"]').count() == 0)
     koniec('wol1')

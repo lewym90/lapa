@@ -44,8 +44,6 @@ with sync_playwright() as p:
     # Dziś komunikat
     pg.evaluate("async()=>{const s=await import('/js/store.js');await s.save('terminarz',{id:'dz1',tytul:'Adopcja o 17:00',start:new Date(new Date().toDateString()+' 17:00').getTime(),widocznosc:'wszyscy',owner:'Ania',autor:'Ania'});}")
     r=pg.evaluate("async()=>{const m=await import('/js/terminarz.js');const d=await m.dzisItems();return [d.items.length,m.dzisCount(d)]}"); check('dzisItems widzi dzisiejszy wpis', r[0]>=1)
-    go(pg,'#/zadania'); pg.wait_for_timeout(700); check('Tylko ja filtr', 'Wpisy, które widzisz tylko Ty' in pg.inner_text('#app'))
-    go(pg,'#/start'); pg.wait_for_timeout(900); check('Start: Dziś w terminarzu', 'Dziś w terminarzu' in pg.inner_text('#app'))
-    go(pg,'#/zrobic'); pg.wait_for_timeout(700); check('Dziś i do zrobienia', 'Dziś w terminarzu' in pg.inner_text('#app'))
+    go(pg,'#/start'); pg.wait_for_timeout(900); check('Start „Dziś”: wpis z terminarza', pg.locator('.dzw[href="#/terminarz"]', has_text='Adopcja o 17:00').count()==1)
     pg.screenshot(path='t_zrobic.png')
     print('WYNIK:',ok,'OK',bad,'FAIL'); print(errs[:5])

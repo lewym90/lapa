@@ -121,3 +121,6 @@ export function odKiedy(d) {
   const ts = d.data_przyjecia || d.od_www;
   return ts ? { txt: dataTs(ts), ile: ileCzasu(ts) } : null;
 }
+
+// Potrzeba rzeczowa jako jeden tekst. Starsze wpisy (z liczbą i jednostką) sklejamy, np. „Karma mokra 60 puszek”.
+export const opisPotrzeby = (n) => (n.nazwa || '') + (n.potrzeba && !/\d/.test(n.nazwa || '') ? ` ${n.potrzeba}${n.jednostka ? ' ' + n.jednostka : ''}` : '');

@@ -70,7 +70,7 @@ with sync_playwright() as p:
     go(pg, '#/psy/d1', 900); t = text(pg)
     check('administrator karta: opis i oznaczenie', 'dla aktywnych' in t and 'Tylko dla wybranych' in t)
     check('karta psa: „Ostatnia zmiana” nie zdradza, kto oznaczył', 'Admin' not in t)
-    for h, nazwa in [('#/spacer', 'wybór psa do spaceru'), ('#/pomoc', 'Pomoc'), ('#/start', 'Start: Potrzebują Cię dziś')]:
+    for h, nazwa in [('#/pomoc', 'Pomoc')]:
         go(pg, h, 900); row = pg.locator('.row, .card, .need', has_text='Saba').last
         tt = row.inner_text()
         check('administrator ' + nazwa + ': boks, opis, powód', 'Boks 7a' in tt and 'dla aktywnych' in tt and 'Tylko wybrani: wycofany, silny' in tt, tt)
@@ -142,7 +142,7 @@ with sync_playwright() as p:
     check('po odblokowaniu: kontakty z Bramy pobrane', sorted(kw) == ['600 100 200', 'm.me/kasia.nowak'], kw)
     go(pv, '#/ustawienia'); pv.click('[data-act=set-lock]'); pv.wait_for_timeout(1500)
     check('wyłączenie trybu administratora', not pv.evaluate("async()=>{const a=await import('/js/auth.js');return a.state.admin || a.state.coordinator}"))
-    check('po wyłączeniu: Start wolontariusza', pv.evaluate('location.hash') == '#/start' and pv.locator('a.tile[href="#/potrzeby"]').count() == 1)
+    check('po wyłączeniu: Start wolontariusza', pv.evaluate('location.hash') == '#/start' and pv.locator('.card.dzis', has_text='Najbliżej').count() == 1)
     sync(pv, 1500)
     kw = pv.evaluate("async()=>(await (await import('/js/store.js')).list('spacery')).map(w=>w.kontakt||'')")
     check('po wyłączeniu: kontakty usunięte z telefonu', kw == ['', ''], kw)

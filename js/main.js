@@ -27,52 +27,45 @@ const app = document.getElementById('app');
 const routes = [
   [/^\/?$/, () => S.start()], [/^\/start$/, () => S.start()],
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
-  [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
-  [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
-  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/(?:byli|adoptowane|archiwum)$/, () => P.byli()]
+  [/^\/brama$/, () => B.brama()], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/(?:pomoc|potrzeby|transport)$/, () => X.help()],
+  [/^\/(?:terminarz|zadania)$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/(?:sobotnie|spacery)$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/dt$/, () => A.dt()], [/^\/dt\/([\w-]+)$/, (m) => A.dtKarta(m[1])], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/zaginiecia\/([\w-]+)$/, (m) => Z.karta(m[1])], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
+  [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/(?:byli|adoptowane|archiwum)$/, () => P.byli()]
 ];
 // Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
 const ROUTES_WOL = [
   [/^\/?$/, () => WO.startWol()], [/^\/start$/, () => WO.startWol()],
   [/^\/psy$/, () => P.list()], [/^\/(?:byli|adoptowane)$/, () => P.byli()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
-  [/^\/pomoc$/, () => WO.pomocWol()], [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/transport$/, () => X.transport()],
-  [/^\/sobotnie$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/(?:pomoc|potrzeby|transport)$/, () => WO.pomocWol()],
+  [/^\/(?:sobotnie|spacery)$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/zaginiecia\/([\w-]+)$/, (m) => Z.karta(m[1])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
+// Dolny pasek administratora: Start, Psy, Brama (duży przycisk na środku), Terminarz, Pomoc. Reszta jest w menu (trzy kreski). Nic się nie powtarza.
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
-// Wolontariusz: cztery zakładki obok siebie + Start, bez „+”.
-const TABS_WOL = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['pomoc', 'Pomoc', 'heart'], ['potrzeby', 'Potrzeby', 'box'], ['transport', 'Transport', 'truck']];
+// Wolontariusz: Start, Psy, Pomoc (psy, potrzeby, transport), Spacery (sobotnie).
+const TABS_WOL = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['pomoc', 'Pomoc', 'heart'], ['spacery', 'Spacery', 'calendar']];
 // Trasy dostępne dla wolontariusza (reszta: tylko administrator).
 const wolnoWol = (path) => ROUTES_WOL.some(([re]) => re.test(path));
 
 
 // Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
 // Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
-const MENU_WOL = [
-  ['Dla wolontariusza', [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['pomoc', 'Pomoc dla psów', 'heart'], ['potrzeby', 'Potrzeby rzeczowe', 'box'], ['transport', 'Transport', 'truck'], ['sobotnie', 'Sobotnie spacery', 'calendar'], ['zaginiecia', 'Zaginione psy', 'alert']]],
-  ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
-];
-const MENU = [
-  ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
-  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['dt', 'Domy tymczasowe', 'pin']]],
-  ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
-  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box']]],
-  ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
-];
-const menuHtml = (cls, on) => (state.admin ? MENU : MENU_WOL).map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
+// Menu (trzy kreski) na telefonie: tylko to, czego nie ma na dolnym pasku. Na komputerze panel boczny = pasek + menu, każda rzecz raz.
+const MENU_WOL = [['Więcej', [['zaginiecia', 'Zaginione psy', 'alert'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]];
+const MENU = [['Więcej', [['czat', 'Czat wolontariuszy', 'chat'], ['zaginiecia', 'Zaginięcia', 'alert'], ['dt', 'Domy tymczasowe i hoteliki', 'pin'], ['finanse', 'Finanse', 'box'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]];
+const PASEK = () => (state.admin ? [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['brama', 'Brama', 'walk'], ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']] : TABS_WOL);
+const menuHtml = (cls, on, zPaskiem = false) => [...(zPaskiem ? [['', PASEK()]] : []), ...(state.admin ? MENU : MENU_WOL)].map(([g, items]) => (g ? `<div class="slab">${g}</div>` : '') + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
-const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
+const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'wydarzenia' && ['terminarz', 'sobotnie'].includes(seg)) || (k === 'spacery' && seg === 'sobotnie') || (k === 'pomoc' && ['potrzeby', 'transport'].includes(seg)); };
 function side() {
   return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
     <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator' : 'Wolontariusz'}</span></div>
-    ${state.admin ? `<button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>` : ''}
-    ${menuHtml('sl', isOn)}
+    ${menuHtml('sl', isOn, true)}
     <div style="flex:1"></div><span class="syncpill" id="sp2" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span><div class="sver">ŁAPA ${VERSION}</div></aside>`;
 }
 
 function nav(tab) {
   const t = (x) => x ? `<a class="tab ${tab === x[0] ? 'on' : ''}" href="#/${x[0]}" ${tab === x[0] ? 'aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`
-    : `<button class="plus" data-act="add" aria-label="Dodaj">${icon('plus').s}</button>`;
+    : `<a class="plus${tab === 'brama' ? ' on' : ''}" href="#/brama" aria-label="Brama: wydaj i zwróć psa">${icon('walk').s}<span class="plbl">Brama</span></a>`;
   return `<nav class="nav${state.admin ? '' : ' wol'}" aria-label="Główna nawigacja">${(state.admin ? TABS : TABS_WOL).map(t).join('')}</nav>`;
 }
 
@@ -180,21 +173,7 @@ actions.menu = () => {
   paintSync(el.querySelector('#sp'));
 };
 actions.bell = () => S.komunikatySheet();
-actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
-  <button class="act primary" data-act="a-brama">${icon('walk').s}Brama: wydaj / zwróć psa<small>Sobotnie spacery, godziny same</small></button>
-  <button class="act" data-act="a-walk">${icon('walk').s}Spacer z wolontariuszem<small>Notatki, zdjęcia, dystans (opcjonalnie)</small></button>
-  <button class="act" data-act="a-obs">${icon('pencil').s}Notatka o psie<small>Trafia do karty psa</small></button>
-  <button class="act" data-act="a-task">${icon('check').s}Przypomnienie dla siebie<small>Widzisz tylko Ty, np. lek, zadanie</small></button>
-  <button class="act" data-act="a-event">${icon('calendar').s}Wpis w terminarzu dla wszystkich<small>Można się zgłaszać</small></button>
-  <button class="act" data-act="a-trans">${icon('truck').s}Zgłoś transport<small>Szukam kierowcy</small></button>
-  <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button></div>`);
-actions['a-brama'] = () => { closeSheet(); location.hash = '#/brama'; };
-actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
-actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };
-actions['a-task'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'ja' }); };
-actions['a-event'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'wszyscy' }); };
-actions['a-trans'] = () => { closeSheet(); X.transForm(); };
-actions['a-need'] = () => { closeSheet(); X.needForm(); };
+actions['a-obs'] = () => { P.pickDog((d) => P.obsForm(d.id)); };
 
 function paintSync(el) {
   if (!el) return;
@@ -208,7 +187,7 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   if (TEST) { document.documentElement.classList.add('wersja-testowa'); const b = document.createElement('div'); b.className = 'testbar'; b.textContent = 'WERSJA TESTOWA · zmiany widać tylko tutaj'; document.body.appendChild(b); document.title = 'TEST · ' + document.title; }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   await init();
-  if (new URLSearchParams(location.search).get('action') === 'walk' && state.loggedIn) location.hash = '#/spacer';
+  if (new URLSearchParams(location.search).get('action') === 'walk' && state.loggedIn) location.hash = '#/brama';
   await render();
   kick(100);
   initUpdates();

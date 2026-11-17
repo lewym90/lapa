@@ -31,7 +31,7 @@ export async function checkUpdate({ manual = false } = {}) {
     const [tv, ts] = (ls.get(KEY_TRY) || '').split('|');
     if (tv === v && Date.now() - Number(ts) < 120000) return 'wait';
   }
-  const busy = document.querySelector('#sheet-root .sheet') || location.hash.startsWith('#/spacer');
+  const busy = document.querySelector('#sheet-root .sheet');
   if (!manual && busy && document.visibilityState === 'visible' && window.__lapaStarted) { showBanner(v); return 'later'; }
   toast('Aktualizuję do wersji ' + v + '…');
   setTimeout(() => applyUpdate(v), manual ? 400 : 150);

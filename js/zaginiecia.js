@@ -1,85 +1,119 @@
-// Zaginione psy: karta alarmowa, tekst posta z aktualizacjami, plakat do wydruku.
-import { raw } from './ui-core.js';
-import { boksPill, wybCls, linie } from './znak.js';
-import { rysujPlakat, pokazObraz, zdjecieDoPlakatu } from './plakat.js';
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
-import { list, listRecs, save, remove, get } from './store.js';
-import { ktoText, ktoInto } from './kto.js';
+// Zaginione psy (od 1.19): baza jak karta psa. Lista → karta zaginięcia z polami (ołówek dla administratora),
+// aktualizacjami z datą, gotowym tekstem do skopiowania i „Znaleziony”. Bez plakatu. Zaginięcie nie zmienia miejsca psa (to jest ze strony).
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
+import { list, save, remove, get } from './store.js';
 import { getName, state } from './auth.js';
-import { fmtDate } from './util.js';
+import { parseData, dataTs } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 
 const KONTAKT_DOM = '601 990 017, 667 119 073';
-const d10 = (t) => { const d = new Date(t || Date.now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-const dm = (t) => { const d = new Date(t); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); };
 export const aktywne = (z) => z.status !== 'znaleziony';
+const kiedyTxt = (z) => z.kiedy_txt || (z.kiedy ? dataTs(z.kiedy) : '');
+const pen = () => icon('pencil').s.replace('class="ico', 'class="ico kpen');
 
 export function postZ(z) {
-  const upd = (z.akt || []).map((a) => `EDIT: ${dm(a.ts)} ${a.text}`).reverse().join('\n');
-  return `${upd ? upd + '\n\n' : ''}🆘 SZUKAMY ${String(z.imie || '').toUpperCase()} 🆘\n🔴 Zaginął(a) ${z.gdzie ? 'w miejscowości ' + z.gdzie : ''}${z.kiedy ? ', ' + dm(z.kiedy) : ''}.${z.ostatnio ? ' Ostatnio widziany(a): ' + z.ostatnio + '.' : ''}\n💚 ${z.opis || 'Szczegóły wyglądu w komentarzu.'}\n🐶 ${z.rada || 'Nie goń. Spróbuj zwabić jedzeniem na ogrodzony teren, zrób zdjęcie i zadzwoń.'}\n☎️ ${z.kontakt || KONTAKT_DOM}`;
+  const upd = (z.akt || []).map((a) => `EDIT: ${dataTs(a.ts)} ${a.text}`).reverse().join('\n');
+  return `${upd ? upd + '\n\n' : ''}🆘 SZUKAMY ${String(z.imie || '').toUpperCase()} 🆘\n🔴 Zaginął(a)${z.gdzie ? ' w miejscowości ' + z.gdzie : ''}${kiedyTxt(z) ? ', ' + kiedyTxt(z) : ''}.${z.ostatnio ? ' Ostatnio widziany(a): ' + z.ostatnio + '.' : ''}\n💚 ${z.opis || 'Szczegóły wyglądu w komentarzu.'}\n🐶 ${z.rada || 'Nie goń. Spróbuj zwabić jedzeniem na ogrodzony teren, zrób zdjęcie i zadzwoń.'}\n☎️ ${z.kontakt || KONTAKT_DOM}`;
 }
 
 export async function zaginiecia() {
-  const [zrecs, dogs] = await Promise.all([listRecs('zaginiecia'), list('psy', { archiwum: true })]); const zs = zrecs.map((r) => r.data), zby = Object.fromEntries(zrecs.map((r) => [r.id, r])); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
-  const a = zs.filter(aktywne).sort((x, y) => y.kiedy - x.kiedy), f = zs.filter((z) => !aktywne(z)).sort((x, y) => y.znaleziony_ts - x.znaleziony_ts);
-  const card = (z) => html`<div class="card gap"><button class="gi" data-act="zag-open" data-id="${z.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp${byId[z.pies_id] ? wybCls(byId[z.pies_id]) : ''}">${byId[z.pies_id] ? dogThumb(byId[z.pies_id]) : icon('paw')}</span><span class="rt"><b>${z.imie} ${byId[z.pies_id] ? raw(boksPill(byId[z.pies_id], 'in')) : ''}</b>${byId[z.pies_id] ? raw(linie(byId[z.pies_id])) : ''}<small>${aktywne(z) ? 'Zaginął(a) ' + fmtDate(z.kiedy) + (z.ostatnio ? ' · ' + z.ostatnio : '') : 'Znaleziony(a) ' + fmtDate(z.znaleziony_ts)}</small><small class="kto">${ktoText(zby[z.id], z.autor)}</small></span></button></div>`;
-  return { tab: 'start', title: 'Zaginięcia', live: true,
-    html: html`${pageBar('Zaginięcia', { right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}
-    <div class="pad stack">${a.length ? a.map(card) : html`<div class="empty">${icon('check')}<h3>Nikt nie jest teraz poszukiwany</h3><p>${state.admin ? 'Zgłoś zaginięcie przyciskiem +. Aplikacja przygotuje post i plakat.' : 'Gdy pies zaginie, pojawi się tutaj. Możesz wtedy udostępnić post i plakat.'}</p></div>`}
-    ${f.length ? html`<h3 style="color:var(--sage);margin:16px 0 0">Odnalezione</h3>${f.slice(0, 10).map(card)}` : ''}</div>`,
-    mount(r) { hydratePhotos(r); } };
+  const [zs, dogs] = await Promise.all([list('zaginiecia'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
+  const a = zs.filter(aktywne).sort((x, y) => (y.kiedy || 0) - (x.kiedy || 0)), f = zs.filter((z) => !aktywne(z)).sort((x, y) => (y.znaleziony_ts || 0) - (x.znaleziony_ts || 0));
+  const card = (z) => { const d = byId[z.pies_id]; return `<a class="card gap gi" href="#/zaginiecia/${esc(z.id)}" style="text-decoration:none;color:inherit"><span class="gp">${d ? dogThumb(d).s : `<div class="nophoto">${icon('paw').s}</div>`}</span><span class="rt"><b>${esc(z.imie || '')}</b><small>${esc([kiedyTxt(z), z.gdzie].filter(Boolean).join(' · '))}</small></span><span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></a>`; };
+  return {
+    tab: 'start', title: 'Zaginięcia', live: true,
+    html: html`${pageBar(state.admin ? 'Zaginięcia' : 'Zaginione psy', { right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}
+    <div class="pad stack">${a.length ? raw(a.map(card).join('')) : html`<p class="pusto">Nikt nie jest teraz poszukiwany.</p>`}
+    ${f.length ? html`<h3 style="color:var(--sage);margin:16px 0 0;font-size:17px">Odnalezione</h3>${raw(f.slice(0, 15).map(card).join(''))}` : ''}</div>`,
+    mount(r) { hydratePhotos(r); }
+  };
 }
+
+const POLA = [['kiedy', 'Kiedy zaginął'], ['gdzie', 'Gdzie (miejscowość)'], ['ostatnio', 'Ostatnio widziany'], ['opis', 'Wygląd i znaki'], ['kontakt', 'Kontakt w tej sprawie']];
+export async function karta(id) {
+  const z = await get('zaginiecia', id);
+  if (!z) return { tab: 'start', html: html`${pageBar('Zaginięcie')}<div class="empty"><h3>Nie ma takiego zgłoszenia</h3><a class="btn gold" href="#/zaginiecia">Wróć do listy</a></div>` };
+  const d = z.pies_id ? await get('psy', z.pies_id) : null, adm = state.admin;
+  const wart = (k) => (k === 'kiedy' ? kiedyTxt(z) : k === 'kontakt' ? z.kontakt || KONTAKT_DOM : z[k] || '');
+  const pola = POLA.map(([k, l]) => (adm ? `<button type="button" class="kd ed" data-act="zag-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`
+    : wart(k) ? `<div class="kd"><span>${l}</span><b>${esc(wart(k))}</b></div>` : '')).join('');
+  const akt = [...(z.akt || [])].sort((a, b) => b.ts - a.ts);
+  return {
+    tab: 'start', title: z.imie, live: true,
+    html: html`${pageBar(z.imie || 'Zaginięcie')}<div class="pad komp">
+      <div class="khead">${d ? html`<a class="avatar sm" href="#/psy/${d.id}">${dogThumb(d)}</a>` : ''}<span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></div>
+      <div class="kbox">${raw(pola)}</div>
+      <h2 class="kh">Aktualizacje</h2>
+      <div class="kbox knotki">${akt.length ? raw(akt.map((a) => `<div class="obs"><div class="oh"><span>${esc(a.autor || '')}</span><span>${esc(dataTs(a.ts))}</span></div><div style="white-space:pre-line">${esc(a.text)}</div></div>`).join('')) : html`<p class="kpusto">Brak aktualizacji.</p>`}
+        ${adm && aktywne(z) ? html`<button type="button" class="kdodaj in" data-act="zag-akt" data-id="${id}">${icon('plus')} Dodaj aktualizację</button>` : ''}</div>
+      <button type="button" class="btn block" style="margin-top:18px" data-act="zag-tekst" data-id="${id}">${icon('share')} Gotowy tekst do skopiowania</button>
+      ${adm ? html`${aktywne(z) ? html`<button type="button" class="btn gold block" style="margin-top:10px" data-act="zag-znal" data-id="${id}">Znaleziony! 🎉</button>` : html`<button type="button" class="btn ghost block" style="margin-top:10px" data-act="zag-znal" data-id="${id}">Jednak szukamy dalej</button>`}
+        <button type="button" class="btn ghost block" style="margin-top:10px;color:var(--terra-d)" data-act="zag-usun" data-id="${id}">Usuń zgłoszenie</button>` : ''}
+    </div>`,
+    mount(r) { hydratePhotos(r); }
+  };
+}
+
+// nowe zgłoszenie: tylko imię (albo pies z listy), resztę uzupełnia się w karcie
 actions['zag-new'] = async () => {
-  const dogs = (await list('psy')).filter((d) => d.miejsce !== 'adoptowany' || true).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'));
-  form({ kiedy: Date.now(), kontakt: KONTAKT_DOM }, dogs);
-};
-async function form(z, dogs) {
+  const dogs = (await list('psy')).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'));
   openSheet(`<h2>Zaginął pies</h2><form id="zf" novalidate>
-    <div class="field"><label for="z_p">Pies z aplikacji (lub „inny”)</label><select class="select" id="z_p"><option value="">Inny pies (wpiszę imię)</option>${dogs.map((d) => `<option value="${esc(d.id)}" ${d.id === z.pies_id ? 'selected' : ''}>${esc(d.imie)}</option>`).join('')}</select></div>
-    <div class="field"><label for="z_i">Imię</label><input class="input" id="z_i" maxlength="40" value="${esc(z.imie || '')}"></div>
-    <div class="field"><label for="z_k">Kiedy zaginął</label><input class="input" id="z_k" type="date" value="${d10(z.kiedy)}"></div>
-    <div class="field"><label for="z_g">Gdzie zaginął (miejscowość)</label><input class="input" id="z_g" maxlength="80" value="${esc(z.gdzie || '')}"></div>
-    <div class="field"><label for="z_o">Ostatnio widziany</label><input class="input" id="z_o" maxlength="120" value="${esc(z.ostatnio || '')}"></div>
-    <div class="field"><label for="z_d">Jak wygląda, jaki jest (obroża, znaki, płochliwy…)</label><textarea class="textarea" id="z_d" maxlength="400">${esc(z.opis || '')}</textarea></div>
-    <div class="field"><label for="z_t">Telefony kontaktowe w tej sprawie</label><input class="input" id="z_t" maxlength="80" value="${esc(z.kontakt || KONTAKT_DOM)}"></div>
-    <div class="err" id="z_x"></div><p class="hint" style="margin:0 0 10px">Aplikacja niczego nie publikuje. Zapisze zgłoszenie u wolontariuszy i pokaże gotowy tekst, który sam skopiujesz i wstawisz, gdzie zechcesz.</p><button class="btn block" type="submit">Zapisz i pokaż gotowy tekst</button></form>`, (s) => {
-    const sel = s.querySelector('#z_p'); sel.onchange = () => { const d = dogs.find((x) => x.id === sel.value); if (d) s.querySelector('#z_i').value = d.imie; };
+    <div class="field"><label for="z_i">Imię psa</label><input class="input" id="z_i" maxlength="40" autocomplete="off"></div>
+    <div class="field"><label for="z_p">Pies z aplikacji (opcjonalnie)</label><select class="select" id="z_p"><option value="">—</option>${dogs.map((d) => `<option value="${esc(d.id)}">${esc(d.imie)}</option>`).join('')}</select></div>
+    <div class="err" id="z_x"></div><button class="btn block" type="submit">Dalej</button></form>`, (s) => {
+    const sel = s.querySelector('#z_p'), im = s.querySelector('#z_i'); im.focus();
+    sel.onchange = () => { const d = dogs.find((x) => x.id === sel.value); if (d) im.value = d.imie; };
     s.querySelector('#zf').addEventListener('submit', async (e) => {
-      e.preventDefault(); const imie = s.querySelector('#z_i').value.trim(); if (!imie) { s.querySelector('#z_x').textContent = 'Wpisz imię.'; return; }
-      const pid = sel.value, o = { ...z, pies_id: pid || null, imie, kiedy: new Date(s.querySelector('#z_k').value + 'T12:00').getTime(), gdzie: s.querySelector('#z_g').value.trim(), ostatnio: s.querySelector('#z_o').value.trim(), opis: s.querySelector('#z_d').value.trim(), kontakt: s.querySelector('#z_t').value.trim(), status: 'poszukiwany', akt: z.akt || [], autor: z.autor || getName() };
-      const saved = await save('zaginiecia', o);
-      if (pid) { const d = await get('psy', pid); if (d && d.miejsce !== 'zaginiony') await save('psy', { ...d, poprz_miejsce: d.miejsce || 'schronisko', miejsce: 'zaginiony' }); }
-      closeSheet(); toast('Zapisane'); actions['zag-open']({ dataset: { id: saved.id } });
+      e.preventDefault(); const imie = im.value.trim(); if (!imie) { s.querySelector('#z_x').textContent = 'Wpisz imię.'; return; }
+      const z = await save('zaginiecia', { imie, pies_id: sel.value || null, kiedy: Date.now(), kiedy_txt: dataTs(Date.now()), status: 'poszukiwany', akt: [], kontakt: KONTAKT_DOM, autor: getName() });
+      closeSheet(); location.hash = '#/zaginiecia/' + z.id;
     });
-  });
-}
-actions['zag-open'] = async (el) => {
-  const z = await get('zaginiecia', el.dataset.id); if (!z) return;
-  openSheet(`<h2>${esc(z.imie)}${aktywne(z) ? '' : ' (znaleziony)'}</h2><p class="sub" style="margin:0 0 8px">Zaginął(a) ${esc(fmtDate(z.kiedy))}${z.gdzie ? ' · ' + esc(z.gdzie) : ''}</p><div id="z_kto"></div>
-    <div class="field"><label for="z_pt">Gotowy post (możesz poprawić)</label><textarea class="textarea" data-nodraft id="z_pt" style="min-height:200px"></textarea></div>
-    <div class="btnrow"><button class="btn" id="z_c">Kopiuj</button><button class="btn ghost" id="z_s">Wyślij…</button></div>
-    <div class="btnrow" style="margin-top:8px"><button class="btn ghost" id="z_pl">Plakat do wydruku</button><a class="btn ghost" id="z_wa" target="_blank" rel="noopener">WhatsApp</a></div>
-    ${aktywne(z) && state.admin ? `<div class="field" style="margin-top:14px"><label for="z_u">Aktualizacja (np. widziany w Wólce)</label><input class="input" id="z_u" maxlength="200"><button class="btn ghost block sm" style="margin-top:6px" id="z_ua">Dodaj aktualizację do posta</button></div>
-    <button class="btn gold block" style="margin-top:12px" id="z_f">Znaleziony! 🎉</button>` : ''}
-    ${state.admin ? `<div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="z_e">Edytuj</button><button class="btn ghost" style="color:var(--terra-d)" id="z_x">Usuń</button></div>` : ''}`, async (s) => {
-    ktoInto(s, '#z_kto', 'zaginiecia', z.id, z.autor); const t = s.querySelector('#z_pt'); t.value = postZ(z); const wa = () => { s.querySelector('#z_wa').href = 'https://wa.me/?text=' + encodeURIComponent(t.value); }; wa(); t.oninput = wa;
-    s.querySelector('#z_c').onclick = async () => { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { t.select(); } };
-    s.querySelector('#z_s').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: t.value }); } catch {} } else { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch {} } };
-    s.querySelector('#z_pl').onclick = () => { closeSheet(); plakat(z); };
-    s.querySelector('#z_ua')?.addEventListener('click', async () => { const v = s.querySelector('#z_u').value.trim(); if (!v) return; await save('zaginiecia', { ...z, akt: [...(z.akt || []), { ts: Date.now(), text: v, autor: getName() }] }); closeSheet(); actions['zag-open'](el); });
-    s.querySelector('#z_f')?.addEventListener('click', async () => {
-      await save('zaginiecia', { ...z, status: 'znaleziony', znaleziony_ts: Date.now() });
-      if (z.pies_id) { const d = await get('psy', z.pies_id); if (d && d.miejsce === 'zaginiony') await save('psy', { ...d, miejsce: d.poprz_miejsce || 'schronisko' }); }
-      closeSheet(); toast('Super wiadomość! Zapisane');
-    });
-    if (s.querySelector('#z_e')) s.querySelector('#z_e').onclick = async () => { closeSheet(); form(z, (await list('psy')).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'))); };
-    if (s.querySelector('#z_x')) s.querySelector('#z_x').onclick = async () => { if (await confirmSheet('Usunąć zgłoszenie?', 'Zniknie u wszystkich.', 'Usuń', true)) { await remove('zaginiecia', z.id); closeSheet(); toast('Usunięto'); } };
   });
 };
-async function plakat(z) {
-  const d = z.pies_id ? await get('psy', z.pies_id) : null; let im = await zdjecieDoPlakatu(d);
-  const plik = `plakat-${String(z.imie || 'pies').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
-  await pokazObraz({ title: 'Plakat', plik, rysuj: () => rysujPlakat({ ...z, kontakt: z.kontakt || KONTAKT_DOM }, im, dm), zmienZdjecie: (n) => { im = n; } });
-}
+actions['zag-edit'] = async (el) => {
+  const z = await get('zaginiecia', el.dataset.id), f = el.dataset.f; if (!z) return;
+  const [, l] = POLA.find((x) => x[0] === f) || []; const ta = f === 'opis' || f === 'ostatnio';
+  const cur = f === 'kiedy' ? kiedyTxt(z) : f === 'kontakt' ? z.kontakt || KONTAKT_DOM : z[f] || '';
+  openSheet(`<h2>${esc(l)}</h2><form id="zef" novalidate><div class="field">${ta ? `<textarea class="textarea" id="zev" maxlength="500">${esc(cur)}</textarea>` : `<input class="input" id="zev" maxlength="120" autocomplete="off" value="${esc(cur)}"${f === 'kiedy' ? ' placeholder="np. 12.11.2026"' : ''}>`}</div>
+    <div class="err" id="zee"></div><button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
+    const v = s.querySelector('#zev'); v.focus();
+    s.querySelector('#zef').addEventListener('submit', async (e) => {
+      e.preventDefault(); const val = v.value.trim(), n = { ...((await get('zaginiecia', z.id)) || z) };
+      if (f === 'kiedy') { if (val) { const r = parseData(val); if (!r) { s.querySelector('#zee').textContent = 'Nie rozumiem tej daty. Wpisz np. 12.11.2026.'; return; } n.kiedy = r.ts; n.kiedy_txt = r.txt; } }
+      else n[f] = val;
+      await save('zaginiecia', n); closeSheet(); toast('Zapisane');
+    });
+  });
+};
+actions['zag-akt'] = async (el) => {
+  const z = await get('zaginiecia', el.dataset.id); if (!z) return;
+  openSheet(`<h2>Aktualizacja</h2><form id="zaf" novalidate><div class="field"><textarea class="textarea" id="zav" maxlength="300" placeholder="np. widziany w Wólce przy sklepie"></textarea></div><button class="btn block" type="submit">Dodaj</button></form>`, (s) => {
+    const v = s.querySelector('#zav'); v.focus();
+    s.querySelector('#zaf').addEventListener('submit', async (e) => {
+      e.preventDefault(); const t = v.value.trim(); if (!t) return;
+      const n = (await get('zaginiecia', z.id)) || z; await save('zaginiecia', { ...n, akt: [...(n.akt || []), { ts: Date.now(), text: t, autor: getName() }] }); closeSheet(); toast('Dodano');
+    });
+  });
+};
+actions['zag-tekst'] = async (el) => {
+  const z = await get('zaginiecia', el.dataset.id); if (!z) return;
+  openSheet(`<h2>Gotowy tekst</h2><p class="hint" style="margin:0 0 10px">Aplikacja niczego nie publikuje. Skopiuj i wklej tam, gdzie chcesz.</p><div class="field"><textarea class="textarea" data-nodraft id="z_pt" style="min-height:220px"></textarea></div>
+    <div class="btnrow"><button class="btn" id="z_c">Kopiuj</button><button class="btn ghost" id="z_s">Wyślij…</button></div>`, (s) => {
+    const t = s.querySelector('#z_pt'); t.value = postZ(z);
+    s.querySelector('#z_c').onclick = async () => { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { t.select(); toast('Zaznaczone, skopiuj ręcznie', true); } };
+    s.querySelector('#z_s').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: t.value }); } catch { /* */ } } else { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { /* */ } } };
+  });
+};
+actions['zag-znal'] = async (el) => {
+  const z = await get('zaginiecia', el.dataset.id); if (!z) return;
+  if (aktywne(z)) { await save('zaginiecia', { ...z, status: 'znaleziony', znaleziony_ts: Date.now() }); toast('Super wiadomość! Zapisane'); }
+  else { await save('zaginiecia', { ...z, status: 'poszukiwany' }); toast('Szukamy dalej'); }
+};
+actions['zag-usun'] = async (el) => {
+  if (!(await confirmSheet('Usunąć zgłoszenie?', 'Zniknie u wszystkich.', 'Usuń', true))) return;
+  await remove('zaginiecia', el.dataset.id); toast('Usunięto'); location.hash = '#/zaginiecia';
+};
+// dawny adres okna (lista → karta)
+actions['zag-open'] = (el) => { location.hash = '#/zaginiecia/' + el.dataset.id; };
 export async function aktywneLiczba() { return (await list('zaginiecia')).filter(aktywne).length; }

@@ -63,13 +63,13 @@ export async function brama() {
   }
   const tb = (k, t, n) => `<button class="chip" data-act="br-tab" data-t="${k}" style="flex:1;justify-content:center;white-space:nowrap;padding:10px 4px;${tab === k ? 'background:var(--gold);color:#1b1b17;font-weight:600' : ''}">${t} ${n}</button>`;
   return {
-    tab: 'start', title: 'Brama', live: false,
-    html: html`${pageBar('Brama – spacery')}<div class="pad">
+    tab: 'brama', title: 'Brama', live: false,
+    html: html`${pageBar('Brama – spacery', { back: false })}<div class="pad">
       <p class="sub" style="margin:4px 0 12px">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}, <b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z ${s.lista.length} psów. Bez spaceru: <b>${nieWyd.length}</b>.</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size) + tb('out', 'Poza', s.out.size) + tb('wrocily', 'Wróciły', s.wrocily.length))}</div>
       <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div>${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}<p class="hint" style="margin:6px 2px 0;color:var(--sage);font-size:13px">Dotknij imienia psa, żeby go oznaczyć (tylko dla wybranych, krótki opis). Widzą to tylko administratorzy.</p></div>
       <div class="pad stack" id="bl" style="margin-top:8px">${raw(body)}</div>
-      <div class="pad" style="margin-top:12px"><button class="btn ghost block" data-act="br-sum">Podsumowanie dnia (post)</button><p class="hint" style="margin-top:8px">Dla psa, który wyszedł z wolontariuszem na dłuższy spacer z notatkami i zdjęciami, użyj <a href="#/spacer">spaceru z wolontariuszem</a>.</p></div>`,
+      <div style="height:16px"></div>`,
     mount(root) {
       const inp = root.querySelector('#bq');
       inp.addEventListener('input', () => { q = inp.value; rerender(false); });
@@ -125,14 +125,5 @@ actions['br-info'] = async (el) => {
       cur.osoba = s.querySelector('#bo').value.trim(); cur.kontakt = s.querySelector('#bk').value.trim(); cur.tagi = [...sel]; cur.notatka = s.querySelector('#bn').value.trim();
       await save('spacery', cur); closeSheet(); toast('Zapisane'); rerender();
     });
-  });
-};
-actions['br-sum'] = async () => {
-  const s = await stan(); const n = s.dzis.length; const psy = new Set(s.dzis.map((w) => w.pies_id)).size;
-  const ludzie = new Set(s.dzis.map((w) => (w.osoba || '').toLowerCase()).filter(Boolean)).size;
-  const text = `DZIĘKUJEMY! Dziś w schronisku w Nowodworze odbyło się ${n} ${plural(n, 'spacer', 'spacery', 'spacerów')}. Na spacerze było ${psy} z ${s.lista.length} psiaków. Każdy wyszedł za bramę, powęszył i choć chwilę poczuł się jak w domu. Jesteście wspaniali! Zapraszamy za tydzień.${s.lista.length - psy ? ` A ${s.lista.length - psy} ${plural(s.lista.length - psy, 'pies czeka', 'psy czekają', 'psów czeka')} na kolejną okazję.` : ''}`;
-  void ludzie;
-  openSheet(`<h2>Podsumowanie dnia</h2><div class="field"><textarea class="textarea" id="bt" style="min-height:200px">${esc(text)}</textarea></div><button class="btn block" id="bc">Kopiuj</button>`, (sh) => {
-    sh.querySelector('#bc').onclick = async () => { const t = sh.querySelector('#bt'); try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { t.select(); toast('Zaznaczone, skopiuj ręcznie', true); } };
   });
 };

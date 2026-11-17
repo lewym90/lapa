@@ -198,6 +198,19 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.19.0 (wersja testowa): nic się nie powtarza; Pomoc w jednym miejscu; bazy danych
+
+Zasada właściciela: każda rzecz jest w aplikacji w jednym miejscu (kafelki, „+”, dolny pasek i menu się nie dublują). Prosto, bez komplikacji.
+- **Administrator.** Dolny pasek: Start, Psy, **Brama** (duży przycisk na środku zamiast „+”), Terminarz, Pomoc. Menu (trzy kreski) tylko to, czego nie ma na pasku: Czat, Zaginięcia, Domy tymczasowe i hoteliki, Finanse, Zgłoszenia wolontariuszy, Ustawienia, Dziękujemy. Komputer: panel boczny = pasek + menu, każda rzecz raz. Ikona profilu w nagłówku usunięta (Ustawienia są w menu); ikona czatu w nagłówku tylko na telefonie.
+- **Wolontariusz.** Pasek: Start, Psy, Pomoc, Spacery (sobotnie). Menu: Zaginione psy, Ustawienia, Dziękujemy.
+- **Start bez kafelków.** Administrator: komunikat, pies dnia, karta „Dziś” (zaginione psy, błąd strony, wpisy z terminarza i transporty na dziś, zaległe zabiegi, nowe zgłoszenia wolontariuszy). Wolontariusz: karta „Najbliżej” (zaginione, najbliższy sobotni spacer, „możesz pomóc”). Ekran „Dziś i do zrobienia” usunięty.
+- **Usunięte:** przycisk „+” i jego okno, spacer z wolontariuszem (ekran spaceru z GPS; raporty dawnych spacerów zostają), „Podsumowanie dnia (post)” w Bramie, „Post” przy sobotnich spacerach, plakat zaginięcia (`plakat.js`), dawny ekran wydarzeń w `screens-inne.js`, osobne ekrany Transport i Potrzeby.
+- **Pomoc** (obie role, `screens-inne.js` `pomocEkran`): Potrzeby rzeczowe, Transport, Psy. Potrzeba = jedno pole („Karma mokra 20 kg”) + Pilne; „Już mamy” zamyka. Bez kategorii, jednostek, liczenia i „Dolicz dostawę”; wolontariusz zgłasza „Przywiozę” bez ilości. Starsze potrzeby pokazywane jako jeden tekst (`util.js` `opisPotrzeby`).
+- **Zaginięcia** (`zaginiecia.js`): lista → karta `#/zaginiecia/:id` z polami (kiedy – data „tyle, ile pamiętasz”, gdzie, ostatnio widziany, wygląd, kontakt), aktualizacjami, „Gotowy tekst do skopiowania”, „Znaleziony”. Zaginięcie nie zmienia miejsca psa.
+- **Domy tymczasowe i hoteliki** (`adopcje.js`, kolekcja `p_dt`): lista → karta `#/dt/:id`: rodzaj (dom tymczasowy / hotelik), imię i nazwisko, telefon, adres, notatka (każde pole dowolne), psy, które są tam teraz (pies tylko w jednym miejscu). Na karcie psa wiersz „Dom tymczasowy / Hotelik: osoba”.
+- **Finanse** (`finanse.js`): wpis = wydatek/wpłata, kwota, opis, kiedy, opcjonalnie pies. Na górze wpłaty, wydatki (z kosztami leczenia z kart psów), saldo roku. Zestawienie roku (CSV). Bez kategorii i źródeł.
+- Testy: nowy `bazy1.py` (zamiast `e5.py`), poprawione pozostałe.
+
 ## 1.18.0 (wersja testowa): strona schroniska jedynym źródłem psów, karta psa jako kompendium
 
 Decyzje właściciela (17.11.2026): aplikacja nie dubluje strony i social mediów. Wolontariusze bez zmian.

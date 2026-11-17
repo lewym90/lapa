@@ -6,12 +6,12 @@ from wspolne import *
 
 ADM = 'administrator-haslo-3'
 D = 864e5
-TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/spacer', '#/raport/w3', '#/czat', '#/wydarzenia', '#/pomoc', '#/transport',
-         '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/dt', '#/zaginiecia', '#/finanse',
+TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/raport/w3', '#/czat', '#/wydarzenia', '#/pomoc',
+         '#/terminarz', '#/spacery', '#/dt', '#/dt/p1', '#/zaginiecia', '#/zaginiecia/z1', '#/finanse',
          '#/byli', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego',
-         '#/potrzeby', '#/zgloszenia']
+         '#/zgloszenia']
 # 1.16: wolontariusz ma tylko podgląd tych ekranów; inne przekierowują na Start
-WOL_TRASY = {'#/start', '#/psy', '#/byli', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/raport/w3', '#/pomoc', '#/potrzeby', '#/transport', '#/sobotnie', '#/zaginiecia', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego'}
+WOL_TRASY = {'#/start', '#/psy', '#/byli', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/raport/w3', '#/pomoc', '#/spacery', '#/zaginiecia', '#/zaginiecia/z1', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego'}
 
 
 def seed(pg):
@@ -31,7 +31,9 @@ def seed(pg):
     save(pg, 'transporty', {'id': 't1', 'pies_id': 'd1', 'pies_imie': 'Saba', 'skad': 'Schronisko', 'dokad': 'Weterynarz', 'kiedy': now + 3600e3, 'status': 'szuka', 'autor': 'A'})
     save(pg, 'terminarz', {'id': 'e1', 'tytul': 'Wizyta', 'start': now + 7200e3, 'widocznosc': 'wszyscy', 'owner': 'A', 'autor': 'A', 'pies_id': 'd1', 'pies_imie': 'Saba'})
     save(pg, 'czat', {'id': 'c1', 'ts': now, 'autor': 'Basia', 'text': 'Kto weźmie Sabę?', 'kind': 'msg', 'ref': {'typ': 'pies', 'id': 'd1', 'nazwa': 'Saba'}})
-    save(pg, 'potrzeby', {'id': 'n1', 'nazwa': 'Karma', 'kategoria': 'Karma mokra', 'potrzeba': 10, 'zapewniono': 1, 'autor': 'A'})
+    save(pg, 'potrzeby', {'id': 'n1', 'nazwa': 'Karma mokra 10 kg', 'autor': 'A'})
+    save(pg, 'p_dt', {'id': 'p1', 'imie': 'Bardzo Długie Imię i Nazwisko Opiekunki', 'telefon': '600 100 200', 'adres': 'ul. Długa 123, 21-100 Lubartów', 'psy': ['d3']})
+    save(pg, 'p_finanse', {'id': 'f1', 'typ': 'wydatek', 'kwota': 120, 'data': now, 'opis': 'Karma'})
 
 
 def sprawdz_ekran(pg, h, kto, szer):
@@ -95,13 +97,16 @@ with sync_playwright() as p:
                     okno(pg, f'{kto} karta psa {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
                 pg.locator('#app [data-act=k-zdr]').first.click(); pg.wait_for_selector('#kz_d'); pg.fill('#kz_d', '2024'); pg.click('#kzf button[type=submit]'); pg.wait_for_timeout(600)
                 okno(pg, f'{kto} karta psa: wpis zdrowia (edycja)', lambda: pg.locator('#app .kwpis').first.click())
-                # „+” i okna z niego
-                go(pg, '#/start', 700)
-                okno(pg, f'{kto} menu +', lambda: pg.click('nav.nav [data-act=add]'))
-                for act in ['a-obs', 'a-task', 'a-event', 'a-trans', 'a-need']:
-                    def otworz(a=act):
-                        pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click(f'#sheet-root [data-act={a}]'); pg.wait_for_timeout(400)
-                    okno(pg, f'{kto} + {act}', otworz)
+                check(f'{kto}: bez przycisku „+” (Brama na środku paska)', pg.locator('nav.nav [data-act=add]').count() == 0 and pg.locator('nav.nav a.plus[href="#/brama"]').count() == 1)
+                go(pg, '#/pomoc', 700)
+                for act in ['a-need', 'a-trans', 'need-edit']:
+                    okno(pg, f'{kto} pomoc {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
+                go(pg, '#/terminarz', 700); okno(pg, f'{kto} terminarz: dodaj wpis', lambda: pg.locator('#app [data-act=tm-new]').first.click())
+                go(pg, '#/zaginiecia/z1', 700)
+                for act in ['zag-edit', 'zag-akt', 'zag-tekst']:
+                    okno(pg, f'{kto} zaginięcie {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
+                go(pg, '#/dt/p1', 700); okno(pg, f'{kto} DT: pole', lambda: pg.locator('#app [data-act=dt-edit]').first.click())
+                go(pg, '#/finanse', 700); okno(pg, f'{kto} finanse: wpis', lambda: pg.locator('#app [data-act=fin-open]').first.click())
                 # Brama: okno wydania, edycji i oznaczenia (dotknięcie imienia)
                 go(pg, '#/brama', 700); pg.click('[data-act=br-tab][data-t=wydaj]'); pg.wait_for_timeout(300)
                 okno(pg, f'{kto} Brama: wydaj', lambda: pg.locator('[data-act=br-out]').first.click())
@@ -109,26 +114,25 @@ with sync_playwright() as p:
                 pg.click('[data-act=br-tab][data-t=out]'); pg.wait_for_timeout(300)
                 okno(pg, f'{kto} Brama: dane osoby', lambda: pg.locator('[data-act=br-info]').first.click())
                 pg.click('[data-act=br-tab][data-t=wydaj]'); pg.wait_for_timeout(200)
-                go(pg, '#/transport', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
+                go(pg, '#/pomoc', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
                 tabs = ['start', 'psy', 'wydarzenia', 'pomoc']
             elif vp['width'] == 390:
                 go(pg, '#/psy/d1', 800)
                 okno(pg, f'{kto} karta psa: historia spacerów', lambda: pg.locator('#app [data-act=dog-walks]').first.click())
                 okno(pg, f'{kto} karta psa: zgłoszenie potrzeby', lambda: pg.locator('#app [data-act=decl]').first.click())
                 go(pg, '#/pomoc', 700); okno(pg, f'{kto} pomoc: zgłoszenie', lambda: pg.locator('#app [data-act=decl]').first.click())
-                go(pg, '#/potrzeby', 700); okno(pg, f'{kto} potrzeby: mogę przywieźć', lambda: pg.locator('#app [data-act=of-potrzeba]').first.click())
-                go(pg, '#/transport', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
+                go(pg, '#/pomoc', 700); okno(pg, f'{kto} potrzeby: mogę przywieźć', lambda: pg.locator('#app [data-act=of-potrzeba]').first.click())
+                go(pg, '#/pomoc', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
                 pg.locator('[data-act=tr-open]').first.click(); pg.wait_for_selector('#sheet-root .sheet')
                 check(f'{kto} transport: bez przycisków administratora', pg.locator('#sheet-root #tb').count() == 0 and pg.locator('#sheet-root [data-act=of-transport]').count() == 1)
                 pg.click('#sheet-root [data-act=of-transport]'); pg.wait_for_timeout(400)
                 check(f'{kto} transport: okno zgłoszenia', pg.locator('#zw').count() == 1); close_sheet(pg)
-                go(pg, '#/sobotnie', 700); okno(pg, f'{kto} sobotnie: będę', lambda: pg.locator('#app [data-act=sob-bede]').first.click())
-                go(pg, '#/zaginiecia', 700); okno(pg, f'{kto} zaginięcia', lambda: pg.locator('#app [data-act=zag-open]').first.click())
-                pg.locator('#app [data-act=zag-open]').first.click(); pg.wait_for_selector('#z_pt')
-                check(f'{kto} zaginięcia: tylko podgląd', pg.locator('#z_e, #z_x, #z_f, #z_ua').count() == 0); close_sheet(pg)
+                go(pg, '#/spacery', 700); okno(pg, f'{kto} sobotnie: będę', lambda: pg.locator('#app [data-act=sob-bede]').first.click())
+                go(pg, '#/zaginiecia/z1', 700); okno(pg, f'{kto} zaginięcia: gotowy tekst', lambda: pg.locator('#app [data-act=zag-tekst]').first.click())
+                check(f'{kto} zaginięcia: tylko podgląd', pg.locator('#app [data-act=zag-edit], #app [data-act=zag-znal], #app [data-act=zag-usun]').count() == 0)
                 go(pg, '#/ustawienia', 700); okno(pg, f'{kto} hasło administratora', lambda: pg.click('#app [data-act=unlock-sheet]'))
                 go(pg, '#/start', 700); okno(pg, f'{kto} komunikaty', lambda: pg.click('#app [data-act=bell]'))
-                tabs = ['start', 'psy', 'pomoc', 'potrzeby', 'transport']
+                tabs = ['start', 'psy', 'pomoc', 'spacery']
             if vp['width'] == 390:
                 # menu (trzy kreski) zamyka się i prowadzi do każdego punktu
                 go(pg, '#/start', 700); pg.click('[data-act=menu]'); pg.wait_for_selector('.drawer')
@@ -141,7 +145,11 @@ with sync_playwright() as p:
                 # dolny pasek
                 go(pg, '#/start', 500)
                 for tab in tabs:
-                    pg.click(f'nav.nav a[href="#/{tab}"]'); pg.wait_for_timeout(400)
+                    pg.click(f'nav.nav a.tab[href="#/{tab}"]'); pg.wait_for_timeout(400)
                     check(f'{kto}: dolny pasek → {tab}', pg.evaluate('location.hash') == '#/' + tab)
+                # menu nie powtarza dolnego paska
+                go(pg, '#/start', 400); pg.click('[data-act=menu]'); pg.wait_for_selector('.drawer')
+                menu = set(pg.locator('.drawer nav a').evaluate_all('(e)=>e.map(x=>x.getAttribute("href"))')); pasek = set(pg.locator('nav.nav a').evaluate_all('(e)=>e.map(x=>x.getAttribute("href"))'))
+                check(f'{kto}: menu bez pozycji z dolnego paska', not (menu & pasek), menu & pasek); pg.click('.drawer .scrim'); pg.wait_for_timeout(200)
             ctx.close()
     koniec('audyt')
