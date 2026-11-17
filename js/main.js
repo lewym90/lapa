@@ -20,6 +20,7 @@ import * as TM from './terminarz.js';
 import * as C from './czat.js';
 import * as SO from './social.js';
 import * as NW from './nowe.js';
+import * as K from './karta.js';
 import * as WO from './wolontariusz.js';
 import { firstPrompt, syncPush } from './push.js';
 
@@ -31,7 +32,7 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => (m[1] ? NW.przyjecie(m[1]) : NW.nowe())], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => NW.nowe(m[1])], [/^\/karta\/(nowy|[\w-]+)(?:\/(\d))?$/, (m) => K.karta(m[1], m[2])], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
   [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()]
 ];
 // Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
@@ -56,7 +57,7 @@ const MENU_WOL = [
 ];
 const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
-  ['Psy', [['nowe', 'Nowe psy', 'plus'], ['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
+  ['Psy', [['karta/nowy', 'Przyjmij nowego psa', 'plus'], ['nowe', 'Do uzupełnienia', 'pencil'], ['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
   ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
@@ -97,7 +98,7 @@ async function render(keepScroll = false) {
   C.refreshBadge(); NW.refreshNowe();
   view.mount?.(app);
   scrollTo(0, y);
-  document.title = (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
+  document.title = (TEST ? 'TEST · ' : '') + (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
 }
 addEventListener('hashchange', () => { closeSheet(); document.querySelectorAll('.ppv').forEach((e) => e.remove()); render(); }); // przejście dalej zamyka też podgląd do druku / plakat
 
@@ -183,7 +184,7 @@ actions.menu = () => {
 };
 actions.bell = () => S.komunikatySheet();
 actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
-  <button class="act primary" data-act="a-newdog">${icon('paw').s}Nowy pies w schronisku<small>Przyjęcie, ocena, sesja, publikacja</small></button>
+  <button class="act primary" data-act="a-newdog">${icon('paw').s}Przyjmij nowego psa<small>Karta psa w 5 prostych krokach</small></button>
   <button class="act primary" data-act="a-brama">${icon('walk').s}Brama: wydaj / zwróć psa<small>Sobotnie spacery, godziny same</small></button>
   <button class="act" data-act="a-walk">${icon('walk').s}Spacer z wolontariuszem<small>Notatki, zdjęcia, dystans (opcjonalnie)</small></button>
   <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
@@ -192,8 +193,8 @@ actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
   <button class="act" data-act="a-event">${icon('calendar').s}Wpis w terminarzu dla wszystkich<small>Można się zgłaszać</small></button>
   <button class="act" data-act="a-trans">${icon('truck').s}Zgłoś transport<small>Szukam kierowcy</small></button>
   <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button>
-  <button class="act" data-act="a-dog">${icon('paw').s}Dodaj psa<small>Import ze strony schroniska lub ręcznie</small></button></div>`);
-actions['a-newdog'] = () => { closeSheet(); T.nowyPies(); };
+  <button class="act" data-act="a-dog">${icon('download').s}Pies ze strony schroniska<small>Import z linku (zwykle dzieje się samo 3 razy dziennie)</small></button></div>`);
+actions['a-newdog'] = () => { closeSheet(); location.hash = '#/karta/nowy'; };
 actions['a-brama'] = () => { closeSheet(); location.hash = '#/brama'; };
 actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
 actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };

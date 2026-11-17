@@ -31,7 +31,7 @@ const VOL_WRITE = new Set(['deklaracje', 'zgloszenia', 'oferty', 'p_tel']);
 // Odczyt: tylko to, co widzi wolontariusz (Psy, Pomoc, Potrzeby, Transport, Sobotnie spacery, Zaginięcia, komunikaty).
 const VOL_READ = new Set(['psy', 'spacery', 'potrzeby', 'transporty', 'deklaracje', 'zgloszenia', 'oferty', 'spacery_sob', 'zaginiecia', 'komunikaty']);
 // Z danych psa wolontariusz dostaje tylko te pola (bez czipa, opiekuna DT, kanałów, karty przyjęcia, notatek).
-const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id'];
+const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id', 'wiek_kat', 'zdr'];
 function dlaWolontariusza(col, data) {
   if (!data || typeof data !== 'object') return data;
   if (col === 'psy') { const o = {}; for (const k of PSY_POLA) if (k in data) o[k] = data[k]; return o; }

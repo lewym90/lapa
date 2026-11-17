@@ -7,7 +7,7 @@ from wspolne import *
 ADM = 'administrator-haslo-3'
 D = 864e5
 TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/spacer', '#/raport/w3', '#/czat', '#/wydarzenia', '#/pomoc', '#/transport',
-         '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/nowe', '#/nowe/m1', '#/adopcje', '#/dt', '#/zaginiecia', '#/finanse', '#/social',
+         '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/nowe', '#/karta/nowy', '#/karta/m1/1', '#/karta/m1/2', '#/karta/m1/3', '#/karta/m1/4', '#/karta/m1/5', '#/karta/nie-ma-takiego', '#/adopcje', '#/dt', '#/zaginiecia', '#/finanse', '#/social',
          '#/social/adopcja', '#/social/adopcja/d1', '#/social/halas', '#/social/dt', '#/social/pomoc', '#/social/adoptowany', '#/social/spacery',
          '#/social/odwolanie', '#/social/relacja', '#/social/maxizoo', '#/social/podziekowanie', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego',
          '#/potrzeby', '#/zgloszenia']
@@ -50,7 +50,7 @@ def sprawdz_ekran(pg, h, kto, szer):
     check(tag + ': nic nie wychodzi poza ekran', ov <= 1, ov)
     nav = pg.locator('nav.nav').count() and pg.locator('nav.nav').is_visible()
     side = pg.locator('aside.side').count() and pg.locator('aside.side').is_visible()
-    back = pg.locator('#app [data-act=back]:visible, #app .topbar a.iconbtn[href]:visible, #app a.btn[href="#/start"]:visible, #app a.btn[href="#/psy"]:visible, #app a.btn[href="#/nowe"]:visible, #app a.btn[href="#/social"]:visible')
+    back = pg.locator('#app [data-act=back]:visible, #app [data-k=wyjdz]:visible, #app .topbar a.iconbtn[href]:visible, #app a.btn[href="#/start"]:visible, #app a.btn[href="#/psy"]:visible, #app a.btn[href="#/nowe"]:visible, #app a.btn[href="#/social"]:visible')
     check(tag + ': da się wyjść', bool(nav or side or back.count()))
     if not nav and not side and back.count():
         pg.evaluate("location.hash='#/start'"); pg.wait_for_timeout(300); go(pg, h, 700)
@@ -92,12 +92,18 @@ with sync_playwright() as p:
             if vp['width'] == 390 and kto == 'administrator':
                 # okna na karcie psa
                 go(pg, '#/psy/d1', 800)
-                for act in ['dog-miejsce', 'dog-ocena', 'dog-zdrowie', 'dog-kanaly', 'dog-teksty', 'dog-walks', 'dog-obs', 'dog-needs', 'dog-photo', 'dog-obs-add', 'dog-edit', 'dog-oznacz']:
+                for act in ['dog-miejsce', 'dog-ocena', 'dog-zdrowie', 'dog-kanaly', 'dog-teksty', 'dog-walks', 'dog-obs', 'dog-needs', 'dog-photo', 'dog-obs-add', 'dog-oznacz']:
                     okno(pg, f'{kto} karta psa {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
+                pg.locator('#app [data-act=dog-edit]').first.click(); pg.wait_for_timeout(700)
+                check(f'{kto} karta psa „Edytuj” → karta w 5 krokach', pg.evaluate('location.hash') == '#/karta/d1/1')
+                pg.click('[data-k=wyjdz]'); pg.wait_for_timeout(700); check(f'{kto} karta w 5 krokach: wyjście', pg.evaluate('location.hash') == '#/psy/d1')
                 # „+” i okna z niego
                 go(pg, '#/start', 700)
                 okno(pg, f'{kto} menu +', lambda: pg.click('nav.nav [data-act=add]'))
-                for act in ['a-newdog', 'a-obs', 'a-photo', 'a-task', 'a-event', 'a-trans', 'a-need', 'a-dog']:
+                pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click('#sheet-root [data-act=a-newdog]'); pg.wait_for_timeout(700)
+                check(f'{kto} + Przyjmij nowego psa → karta', pg.evaluate('location.hash') == '#/karta/nowy' and pg.locator('#sheet-root .sheet').count() == 0)
+                go(pg, '#/start', 500)
+                for act in ['a-obs', 'a-photo', 'a-task', 'a-event', 'a-trans', 'a-need', 'a-dog']:
                     def otworz(a=act):
                         pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click(f'#sheet-root [data-act={a}]'); pg.wait_for_timeout(400)
                     okno(pg, f'{kto} + {act}', otworz)

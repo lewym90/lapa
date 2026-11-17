@@ -24,10 +24,10 @@ with sync_playwright() as p:
     b=p.chromium.launch()
     ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'administrator-haslo-3','Ania')
     # nowy pies przez menu +
-    pg.click('.nav .plus'); pg.wait_for_selector('text=Nowy pies w schronisku'); pg.click('text=Nowy pies w schronisku')
-    pg.fill('#n_i','Burek'); pg.select_option('#n_p','samiec'); pg.fill('#n_w','ok. 2 lata, średni'); pg.click('#nf button[type=submit]')
-    pg.wait_for_function("location.hash.startsWith('#/nowe/')"); pg.wait_for_timeout(500)  # od 1.12.0 „Nowy pies” otwiera kroki karty przyjęcia
-    pg.evaluate("location.hash='#/psy/'+location.hash.split('/').pop()"); pg.wait_for_selector('h1:has-text("Burek")'); pg.wait_for_timeout(500)
+    pg.click('.nav .plus'); pg.wait_for_selector('#sheet-root [data-act=a-newdog]'); pg.click('#sheet-root [data-act=a-newdog]')
+    pg.wait_for_selector('#k_imie'); pg.fill('#k_imie','Burek'); pg.click('[data-seg=plec][data-v=samiec]'); pg.fill('#k_wiek','ok. 2 lata'); pg.click('[data-seg=wielkosc][data-v="średni"]')
+    pg.wait_for_function("/^#\\/karta\\/m/.test(location.hash)"); pg.wait_for_timeout(900)  # od 1.17 „Przyjmij nowego psa” otwiera kartę psa w 5 krokach
+    pg.evaluate("location.hash='#/psy/'+location.hash.split('/')[2]"); pg.wait_for_selector('h1:has-text("Burek")'); pg.wait_for_timeout(500)
     check('nowy pies: karta', pg.locator('.steps').count()==1)
     check('nowy pies: etapy', 'Ocena' in pg.inner_text('.steps'))
     pg.screenshot(path='n_karta.png',full_page=True)
@@ -45,13 +45,13 @@ with sync_playwright() as p:
     t=pg.inner_text('#app')
     check('zaległość: zdrowie', 'termin minął' in t)
     check('zaległość: FB bez strony', 'nie ma na stronie' in t)
-    check('zaległość: karta przyjęcia (brak zdjęć)', 'Karta przyjęcia: ' in t and 'zdjęcia' in t)  # od 1.12.0 jedno przypomnienie zamiast osobnych
+    check('zaległość: karta przyjęcia (brak zdjęć)', 'Karta psa: ' in t and 'zdjęcia' in t)  # od 1.12.0 jedno przypomnienie zamiast osobnych
     pg.screenshot(path='n_zrobic.png',full_page=True)
     pg.evaluate("location.hash='#/start'"); pg.wait_for_selector('.tile'); pg.wait_for_timeout(500)
     check('start: kafel Do zrobienia z licznikiem', 'do zrobienia' in pg.inner_text('.tiles') and pg.locator('.tile .badge').count()>=1)
     pg.screenshot(path='n_start.png')
     # teksty
-    pg.evaluate("location.hash='#/psy'"); pg.wait_for_selector('.dcard'); pg.click('.dcard'); pg.wait_for_selector('[data-act=dog-teksty]'); pg.click('[data-act=dog-teksty]'); pg.wait_for_selector('#t_t')
+    pg.evaluate("location.hash='#/psy'"); pg.wait_for_selector('.dcard'); pg.evaluate("location.hash='#/psy/'+document.querySelector('.dcard').getAttribute('href').split('/')[2]"); pg.wait_for_selector('[data-act=dog-teksty]'); pg.click('[data-act=dog-teksty]'); pg.wait_for_selector('#t_t')
     pg.fill('#t_h','szuka swojego człowieka'); pg.wait_for_timeout(200)
     check('tekst: post zawiera imię i hasło', 'BUREK - szuka swojego człowieka' in pg.input_value('#t_t'))
     pg.select_option('#t_w','halas'); pg.wait_for_timeout(200)

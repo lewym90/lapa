@@ -25,24 +25,24 @@ with sync_playwright() as p:
     check('Instagram = Ogłoszony', st(droga(ig), 'Ogłoszony') == 'ok')
     check('Instagram: bez kroku „ogłoszenie”', droga(ig)['next'] is None)
     nic = {**site, 'id': 'd3', 'kanaly': {}}
-    r = droga(nic); check('bez kanałów: krok ogłoszenie (to samo okno co karta przyjęcia)', r['next'] and r['next']['act'] == 'nw-step' and r['next']['k'] == 'ogloszenie', r['next'])
+    r = droga(nic); check('bez kanałów: krok ogłoszenie (gotowe teksty postów)', r['next'] and r['next']['href'] == '#/social/adopcja/d3', r['next'])
 
     # Nowy pies bez płci: przyjęcie niekompletne (tak samo jak w karcie przyjęcia)
     nowy = {'id': 'm1', 'imie': 'Fafik', 'nowy': True, 'plec': '', 'wiek': '2 lata', 'data_przyjecia': now, 'status': 'schronisko', 'miejsce': 'schronisko'}
     r = droga(nowy)
     check('nowy bez płci: Przyjęty niezaliczony', st(r, 'Przyjęty') == '')
-    check('nowy bez płci: następny krok przyjęcie', r['next']['k'] == 'przyjecie', r['next'])
+    check('nowy bez płci: następny krok przyjęcie', r['next']['href'] == '#/karta/m1/1', r['next'])
     k = pg.evaluate("async(d)=>{const t=await import('/js/teczka.js');return t.kroki(d)[0].done}", nowy)
     check('karta przyjęcia zgodna (krok 1 niezaliczony)', k is False)
     nowy2 = {**nowy, 'plec': 'samiec'}
     r = droga(nowy2); check('nowy z płcią: następny krok pierwszy spacer', 'pierwszy spacer' in r['next']['txt'], r['next'])
     w = [{'pies_id': 'm1', 'start': now, 'end': now + 1}]
-    r = droga(nowy2, w); check('po spacerze: ocena', r['next']['act'] == 'dog-ocena', r['next'])
+    r = droga(nowy2, w); check('po spacerze: ocena', r['next']['href'] == '#/karta/m1/3', r['next'])
     r = droga({**nowy2, 'pominiete': {'ocena': now}}, w)
     check('ocena pominięta: etykieta', any(l == 'Ocena: na razie pominięta' for l, s in r['steps']))
-    check('ocena pominięta: następny krok to zdjęcia', r['next']['act'] == 'dog-photo', r['next'])
+    check('ocena pominięta: następny krok to zdjęcia', r['next']['href'] == '#/karta/m1/4', r['next'])
     r = droga({**nowy2, 'ocena': {'ludzie': 'ok'}, 'zdjecia': ['x']}, w)
-    check('brak opisu: okno opisu z karty przyjęcia', r['next']['k'] == 'opis', r['next'])
+    check('brak opisu: okno opisu z karty przyjęcia', r['next']['href'] == '#/karta/m1/5', r['next'])
     r = droga({**nowy2, 'zaufanie': now}); check('zaufanie: bez kroku i z etapem „teraz”', r['next'] is None and st(r, 'Zaufanie i spacery') == 'now')
     r = droga({**site, 'status': 'w_trakcie'}); check('w procesie adopcji', st(r, 'Adopcja') == 'now')
     r = droga({**site, 'status': 'adoptowany', 'miejsce': 'adoptowany'}); check('adoptowany', st(r, 'Adopcja') == 'ok' and r['next'] is None)
@@ -58,12 +58,12 @@ with sync_playwright() as p:
     g = gaps([zamk]); check('zamknięta karta: nic', g == [], g)
     g = gaps([{**nowy2, 'id': 'g5'}]); check('karta w toku: jedno przypomnienie', g == ['g5:karta'], g)
 
-    # Karta psa: przycisk „Otwórz” przy następnym kroku otwiera okno z karty przyjęcia
+    # Karta psa: przycisk „Zacznij” przy następnym kroku otwiera kartę psa na właściwym kroku
     save(pg, 'psy', {**nowy2, 'id': 'm9', 'imie': 'Kropka', 'ocena': {'ludzie': 'ok'}, 'zdjecia': ['https://example.invalid/k_l.jpg']})
     save(pg, 'spacery', {'id': 'w9', 'pies_id': 'm9', 'start': now, 'end': now + 60000, 'tryb': 'brama'})
     go(pg, '#/psy/m9'); t = text(pg)
     check('karta: następny krok opis', 'Następny krok: opis i hasło do ogłoszenia' in t, t[:800])
-    pg.click('.teraz [data-act=nw-step]'); pg.wait_for_selector('#o_o', timeout=4000)
-    check('otwiera okno „Opis i hasło”', 'Opis i hasło: Kropka' in text(pg, '.sheet'))
+    pg.click('.teraz a.btn'); pg.wait_for_selector('#k_opis', timeout=4000)
+    check('otwiera kartę psa na kroku „Opis i ogłoszenie”', pg.evaluate('location.hash') == '#/karta/m9/5')
 
     koniec('droga1')

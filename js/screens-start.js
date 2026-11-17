@@ -28,7 +28,7 @@ export async function start() {
         <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${raw(boksPill(dog, 'in'))} ${icon('chev')}</a>${raw(opisLine(dog, 'na-ciemnym'))}${raw(wybPill(dog, 'pill'))}</div></section>`
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span>
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
-        <a class="dogtag" href="#/psy" data-act="a-dog">${icon('plus')}<span>Dodaj pierwszego psa</span></a></div></section>`;
+        <a class="dogtag" href="#/karta/nowy">${icon('plus')}<span>Przyjmij nowego psa</span></a></div></section>`;
 
   return {
     tab: 'start', title: 'Start',
@@ -44,7 +44,8 @@ export async function start() {
     </div>
     ${nZgl ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zgloszenia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--gold)">${icon('user')}<span><b>Nowe zgłoszenia wolontariuszy: ${nZgl}</b><br><span class="hint">Kto chce pomóc: potrzeby, transport, spacery. Z telefonami.</span></span>${icon('chev')}</a></div>` : ''}
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
-    ${nowePsy.length ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/nowe" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('paw')}<span><b>Nowe psy do uzupełnienia: ${nowePsy.length}</b><br><span class="hint">${nowePsy.slice(0, 3).map((d) => d.imie).join(', ')}${nowePsy.length > 3 ? '…' : ''}</span></span></a></div>` : ''}
+    <div class="pad" style="margin-top:16px"><a class="przyjmij" href="#/karta/nowy">${icon('plus')}<span><b>Przyjmij nowego psa</b><small>Karta psa w 5 prostych krokach</small></span>${icon('chev')}</a></div>
+    ${nowePsy.length ? html`<div class="pad" style="margin-top:12px"><a class="card" href="#/nowe" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('pencil')}<span><b>Do uzupełnienia: ${nowePsy.length}</b><br><span class="hint">${nowePsy.slice(0, 3).map((d) => d.imie).join(', ')}${nowePsy.length > 3 ? '…' : ''}</span></span>${icon('chev')}</a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px">${dzisCard(dzis)}</div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>

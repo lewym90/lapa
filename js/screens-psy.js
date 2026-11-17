@@ -26,7 +26,7 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Nowe psy (karta w toku)'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
+const FILTERS = [['aktywne', 'Aktywne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['w_trakcie', 'W procesie adopcji'], ['nowe', 'Do uzupełnienia'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane'], ['wszystkie', 'Wszystkie']];
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
@@ -44,7 +44,7 @@ function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); 
 function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard${wybCls(d)}" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : wToku(d) ? html`<span class="chip">Nowy</span>` : ''}</span></div>
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); const tok = state.admin && wToku(d), sk = tok ? stanKarty(d) : null; return html`<a class="dcard${wybCls(d)}" href="${tok ? `#/karta/${d.id}/${sk.pierwszy}` : '#/psy/' + d.id}"><div class="pic">${tok ? html`<span class="kuzup">Uzupełnij ${sk.done}/5</span>` : ''}${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : ''}</span></div>
     <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
@@ -57,7 +57,7 @@ export async function list_() {
     <div class="fchips" role="group" aria-label="Filtr">${FILTERS.filter(([k]) => state.admin || !['nowe', 'zaufanie'].includes(k)).map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
     <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>
     <div id="grid">${grid(dogs, walks, zdr)}</div>
-    ${state.admin ? html`<button class="btn gold fab" data-act="a-dog">${icon('plus')} Dodaj psa</button>` : ''}`,
+    ${state.admin ? html`<button class="btn gold fab" data-act="a-newdog">${icon('plus')} Przyjmij nowego psa</button>` : ''}`,
     mount(root) {
       const inp = root.querySelector('#fq'), g = root.querySelector('#grid');
       inp.addEventListener('input', () => { fq = inp.value; g.innerHTML = grid(dogs, walks, zdr).s; hydratePhotos(g); });
@@ -66,6 +66,7 @@ export async function list_() {
   };
 }
 export { list_ as list };
+export const ustawFiltr = (k) => { ff = k; };
 actions['dog-filter'] = (el) => { ff = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 
 // ========== wybór psa (do spaceru, obserwacji, zdjęcia) ==========
@@ -224,32 +225,7 @@ actions['dog-needs'] = async (el) => {
 
 // ========== edycja / ręczne dodawanie ==========
 const SEL = (id, label, opts, val) => `<div class="field"><label for="${id}">${label}</label><select class="select" id="${id}">${opts.map(([k, l]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
-export function dogForm(d = {}) {
-  openSheet(`<h2>${d.id ? 'Edytuj psa' : 'Nowy pies'}</h2><form id="df" novalidate>
-    <div class="field"><label for="di">Imię</label><input class="input" id="di" maxlength="40" value="${esc(d.imie || '')}"></div>
-    ${SEL('dp', 'Płeć', [['', 'Nie wiadomo'], ['samiec', 'Samiec'], ['suka', 'Suka']], d.plec || '')}
-    <div class="field"><label for="dw">Wiek</label><input class="input" id="dw" maxlength="40" placeholder="np. ok. 3 lata" value="${esc(d.wiek || '')}"></div>
-    <div class="field"><label for="dr">Wielkość</label><input class="input" id="dr" maxlength="30" placeholder="np. średni" value="${esc(d.wielkosc || '')}"></div>
-    <div class="field"><label for="dk">Waga</label><input class="input" id="dk" maxlength="30" placeholder="np. 21 kg" value="${esc(d.waga || '')}"></div>
-    ${SEL('ds', 'Status', Object.entries(STATUS), d.status || 'do_adopcji')}
-    <div class="field"><label for="dt">Cechy (po przecinku)</label><input class="input" id="dt" maxlength="120" placeholder="przyjazny, aktywny, lubi spacery" value="${esc((d.tagi || []).join(', '))}"></div>
-    <div class="field"><label for="do">Opis</label><textarea class="textarea" id="do" maxlength="4000">${esc(d.opis || '')}</textarea></div>
-    ${d.zrodlo_url ? '' : `<div class="field"><label for="du">Adres zdjęcia (opcjonalnie)</label><input class="input" id="du" type="url" placeholder="https://…" value="${esc((d.zdjecia || [])[0] || '')}"></div>`}
-    <div class="err" id="de"></div><button class="btn block" type="submit">Zapisz</button>
-    ${d.id ? `<button type="button" class="btn ghost block" style="margin-top:10px;color:var(--terra-d)" id="dd">${icon('trash').s} Usuń psa z aplikacji</button>` : ''}</form>`, (s) => {
-    s.querySelector('#df').addEventListener('submit', async (e) => {
-      e.preventDefault(); const imie = s.querySelector('#di').value.trim();
-      if (!imie) { s.querySelector('#de').textContent = 'Wpisz imię psa.'; return; }
-      const o = { ...d, imie, plec: s.querySelector('#dp').value, wiek: s.querySelector('#dw').value.trim(), wielkosc: s.querySelector('#dr').value.trim(), waga: s.querySelector('#dk').value.trim(), status: s.querySelector('#ds').value,
-        tagi: s.querySelector('#dt').value.split(',').map((x) => x.trim()).filter(Boolean).slice(0, 8), opis: s.querySelector('#do').value.trim() };
-      const u = s.querySelector('#du')?.value.trim(); if (u !== undefined) o.zdjecia = safeUrl(u) ? [safeUrl(u)] : [];
-      if (!o.id) { o.id = 'm' + uid(); o.dodany = Date.now(); }
-      await save('psy', o); closeSheet(); toast('Zapisane'); if (!d.id) location.hash = '#/psy/' + o.id;
-    });
-    s.querySelector('#dd')?.addEventListener('click', () => usunPsa(d.id));
-  });
-}
-actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
+actions['dog-edit'] = (el) => { location.hash = `#/karta/${el.dataset.id}/1`; };
 // Usunięcie psa (pomyłka, zmiana koncepcji): razem z jego spacerami, notatkami, zdrowiem, zgłoszeniami, transportami i oznaczeniem.
 // Tylko administrator. Na serwerze zostaje historia wersji (można odtworzyć), a pies ze strony nie zostanie dodany ponownie.
 export async function usunPsa(id) {
@@ -332,7 +308,7 @@ export function addDogSheet() {
       try { const { dog, updated } = await importOne(/^https?:/i.test(url) ? url : 'https://' + url); closeSheet(); toast(updated ? `Zaktualizowano: ${dog.imie}` : `Dodano: ${dog.imie}`); location.hash = '#/psy/' + dog.id; }
       catch (x) { b.disabled = false; prog.textContent = ''; err.textContent = importErr(x); }
     });
-    s.querySelector('#iman').onclick = () => { closeSheet(); dogForm(); };
+    s.querySelector('#iman').onclick = () => { closeSheet(); location.hash = '#/karta/nowy'; };
     s.querySelector('#iall').onclick = async () => {
       err.textContent = ''; const btn = s.querySelector('#iall'); btn.disabled = true; prog.textContent = 'Szukam psów na stronie…';
       try {

@@ -187,3 +187,13 @@ Prośba właściciela: pracownicy schroniska = administratorzy (wszystko), wolon
 - Serwer: `STATIC_DIR` – podaje pliki aplikacji spod `/app/` (tylko wersja testowa); `SITE_SYNC=0` wyłącza czytanie strony.
 - Klient: `TEST` w config.js (adres zawiera `/app/`) → API = ten sam serwer; czerwony pasek „WERSJA TESTOWA”. Inny adres = osobne dane w przeglądarce (nie miesza się z prawdziwą aplikacją).
 - Gałąź `test` w repozytorium = to, co jest na wersji testowej. GitHub Pages publikuje tylko `main`.
+
+## 1.17.0 (wersja testowa, gałąź `test`): karta psa w 5 krokach
+Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany „+”, osobna sekcja „Nowe psy”, 8 kroków w osobnych oknach, „WYMAGANE”, „Zakończ uzupełnianie”).
+- Nowy ekran `#/karta/:id/:krok` (js/karta.js), `#/karta/nowy` dla nowego psa. Kroki: 1 Podstawy (zdjęcie, imię, płeć, wiek kat. + dokładnie, wielkość, waga, boks, data przyjęcia, skąd trafił + gdzie), 2 Zdrowie (czip/szczepienie/odrobaczenie/kastracja: Tak/Nie/Nie wiem, nr czipa, uwagi; link do szczegółowych wpisów), 3 Charakter (ocena 5 pól przyciskami, cechy w formie wg płci + własne), 4 Zdjęcia (wiele, główne, usuwanie, przeciąganie z komputera), 5 Opis i ogłoszenie („Napisz szkic za mnie” – js/szkic.js, hasło, opis, status, kanały, podgląd).
+- Wymagane tylko imię; pies powstaje po wpisaniu imienia (wcześniejsze kliknięcia czekają). Każde pole zapisuje się samo (600 ms po wpisaniu, od razu po dotknięciu), zawsze na świeżej wersji psa. Wyjście w każdej chwili.
+- Telefon: kropki kroków u góry, „Wstecz/Dalej” przyklejone na dole, bez dolnego paska. Komputer (≥860 px): kroki w kolumnie, pola w dwóch kolumnach, przyciski w formularzu; ≥1200 px: podgląd ogłoszenia z prawej. Enter = następne pole, Ctrl+Enter = Dalej.
+- Nowe pola psa: `wiek_kat`, `pochodzenie {typ, gdzie}`, `zdr {czip, szczep, odrob, kastr}` (tak/nie/?), `zdr_uwagi`, `chip`. Wolontariusz dostaje `wiek_kat` i `zdr` (bez numeru czipa i pochodzenia).
+- `kroki(d)` w teczka.js = 5 kroków; `wToku` = nowy && !karta_gotowa && aktywny && !kompletna; po skompletowaniu `karta_gotowa` ustawia się samo (nowe.js). Lista Psy: znaczek „Uzupełnij n/5”, kafelek prowadzi do pierwszego brakującego kroku. Karta psa: wiersz „Karta psa” (postęp lub „Popraw w 5 krokach”); „Edytuj” otwiera kartę na kroku 1 (stary formularz `dogForm` usunięty). „Droga psa” prowadzi do właściwego kroku.
+- Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
+- Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
