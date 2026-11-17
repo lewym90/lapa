@@ -14,8 +14,8 @@ with sync_playwright() as p:
 
     # --- administrator: boks ---
     go(pg, '#/psy/d1', 900)
-    check('przycisk + Boks (administrator)', pg.locator('button.boks.add').count() == 1)
-    pg.click('button.boks.add'); pg.wait_for_selector('#mb'); pg.fill('#mb', ' 7a! '); pg.click('#mf button[type=submit]'); pg.wait_for_timeout(600)
+    check('pole Boks z ołówkiem (administrator)', pg.locator('[data-act=k-edit][data-f=boks]').count() == 1)
+    pg.click('[data-act=k-edit][data-f=boks]'); pg.wait_for_selector('#kev'); pg.fill('#kev', ' 7a! '); pg.click('#kef button[type=submit]'); pg.wait_for_timeout(600)
     d = pg.evaluate("async()=>{const s=await import('/js/store.js');return s.get('psy','d1')}")
     check('boks z literą zapisany (bez spacji i znaków spoza liter i cyfr)', d.get('boks') == '7a', d.get('boks'))
     check('boks z literą na karcie', 'Boks 7a' in text(pg))
@@ -52,7 +52,7 @@ with sync_playwright() as p:
     pa.click('[data-pw=wycofany]'); pa.click('[data-pw=silny]'); pa.fill('#oz_k', 'Justyna, Marek'); pa.click('#of2 button[type=submit]'); pa.wait_for_timeout(700)
     t = text(pa)
     check('karta (administrator): opis pod imieniem', 'dla aktywnych' in pa.inner_text('.dogsheet .opisl'))
-    check('karta (administrator): ramka tylko dla wybranych', 'Tylko dla wybranych wolontariuszy' in t and 'Powód: wycofany, silny' in t and 'Mogą wychodzić: Justyna, Marek' in t)
+    check('karta (administrator): oznaczenie tylko dla wybranych', 'Tylko dla wybranych: wycofany, silny' in t and 'mogą wychodzić: Justyna, Marek' in t)
     check('karta (administrator): czerwona ramka na zdjęciach', pa.locator('.dogtop.wyb').count() == 1)
     check('karta: bez podpisu kto oznaczył', 'Admin' not in pa.inner_text('.dogsheet'))
     sync(pa)
@@ -68,7 +68,7 @@ with sync_playwright() as p:
     l = pg.locator('.dcard', has_text='Luna')
     check('DT: bez boksu, hasło ze strony zostaje', l.locator('.boks').count() == 0 and 'w domu tymczasowym' in l.inner_text())
     go(pg, '#/psy/d1', 900); t = text(pg)
-    check('administrator karta: opis i ramka', 'dla aktywnych' in t and 'Tylko dla wybranych wolontariuszy' in t)
+    check('administrator karta: opis i oznaczenie', 'dla aktywnych' in t and 'Tylko dla wybranych' in t)
     check('karta psa: „Ostatnia zmiana” nie zdradza, kto oznaczył', 'Admin' not in t)
     for h, nazwa in [('#/spacer', 'wybór psa do spaceru'), ('#/pomoc', 'Pomoc'), ('#/start', 'Start: Potrzebują Cię dziś')]:
         go(pg, h, 900); row = pg.locator('.row, .card, .need', has_text='Saba').last
@@ -119,12 +119,6 @@ with sync_playwright() as p:
     kw = pv.evaluate("async()=>(await (await import('/js/store.js')).list('spacery')).map(w=>[w.osoba||'',w.kontakt||''])")
     check('wolontariusz: spacery z Bramy bez kontaktu', len(kw) == 2 and all(k == '' for _, k in kw), kw)
 
-    # --- teksty na zewnątrz bez boksu i oznaczeń ---
-    go(pg, '#/psy/d1', 700); pg.click('[data-act=dog-teksty]'); pg.wait_for_selector('#t_t')
-    tx = pg.input_value('#t_t'); check('teksty postów bez boksu i opisu', 'Boks' not in tx and 'dla aktywnych' not in tx and 'wybrani' not in tx)
-    go(pg, '#/social/adopcja/d1', 900)
-    alltx = ' '.join(pg.locator('textarea[data-o]').evaluate_all('(e)=>e.map(x=>x.value)'))
-    check('Social media bez boksu i opisu', 'Boks' not in alltx and 'dla aktywnych' not in alltx and 'wybrani' not in alltx)
     dsave = pg.evaluate("async()=>{const d=await import('/js/db.js');return (await d.getRec('psy','d1')).data}")
     check('oznaczenie nie trafia do danych psa', 'ozn' not in dsave, list(dsave.keys()))
 
@@ -133,8 +127,8 @@ with sync_playwright() as p:
     check('administrator po „godzinie” dalej administratorem', pa.evaluate("async()=>{const a=await import('/js/auth.js');return a.state.admin && a.state.coordinator}"))
     # zdjęcie oznaczenia
     go(pa, '#/psy/d1', 900); pa.click('[data-act=dog-oznacz]'); pa.wait_for_selector('#of2'); pa.click('[data-op=""]'); pa.uncheck('#oz_on'); pa.click('#of2 button[type=submit]'); pa.wait_for_timeout(500); sync(pa)
-    sync(pg, 1200); go(pg, '#/brama', 900); row = pg.locator('.row', has_text='Saba').first
-    check('po zdjęciu: Brama bez ramki i opisu', 'wybr' not in (row.get_attribute('class') or '') and 'dla aktywnych' not in row.inner_text(), row.inner_text())
+    sync(pg, 1200); go(pg, '#/start', 500); go(pg, '#/brama', 900); row = pg.locator('.row', has_text='Saba').first
+    check('po zdjęciu: Brama bez ramki i opisu', 'wybr' not in (row.get_attribute('class') or '') and 'dla aktywnych' not in row.inner_text(), [row.get_attribute('class'), row.inner_text(), pa.evaluate("async()=>(await (await import('/js/db.js')).getRec('oznaczenia','d1'))"), pa.evaluate("async()=>{const a=await import('/js/api.js');return (await a.api('/sync?since=0')).changes.filter(c=>c.col==='oznaczenia')}"), pg.evaluate("async()=>(await (await import('/js/db.js')).getRec('oznaczenia','d1'))")])
     go(pg, '#/psy', 900); k = pg.locator('.dcard', has_text='Saba')
     check('po zdjęciu: lista bez obwódki i z hasłem ze strony', 'wyb' not in k.get_attribute('class') and 'w cieniu strachu' in k.inner_text(), k.inner_text())
 
@@ -152,10 +146,5 @@ with sync_playwright() as p:
     sync(pv, 1500)
     kw = pv.evaluate("async()=>(await (await import('/js/store.js')).list('spacery')).map(w=>w.kontakt||'')")
     check('po wyłączeniu: kontakty usunięte z telefonu', kw == ['', ''], kw)
-
-    # --- nowa obserwacja: widać wybrany rodzaj ---
-    go(pg, '#/psy/d1', 700); pg.click('[data-act=dog-obs-add]'); pg.wait_for_selector('#ot')
-    bg = pg.locator('#ot .chip.on').evaluate('(e)=>getComputedStyle(e).backgroundColor')
-    check('obserwacja: zaznaczony rodzaj jest widoczny', bg not in ('rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)'), bg)
 
     koniec('znaki1')

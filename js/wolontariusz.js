@@ -189,7 +189,7 @@ export async function zgloszeniaAdmin() {
 // ===== Start wolontariusza: pies dnia + kafelki =====
 export async function startWol() {
   const [dogs, walks, nd, tr, kom, zag, sob] = await Promise.all([list('psy'), list('spacery'), list('potrzeby'), list('transporty'), list('komunikaty'), list('zaginiecia'), soboty(1)]);
-  const act = dogs.filter((d) => !['adoptowany', 'w_trakcie'].includes(d.status) && d.miejsce !== 'adoptowany' && d.miejsce !== 'zmarl');
+  const act = dogs.filter((d) => d.status !== 'w_trakcie' && !d.zniknal_ze_strony && !d.archiwum && !['adoptowany'].includes(d.status) && d.miejsce !== 'adoptowany' && d.miejsce !== 'zmarl');
   const help = act.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).length;
   const potrz = nd.filter((n) => n.status !== 'zrealizowana').length, trans = tr.filter((x) => x.status === 'szuka').length;
   const lost = zag.filter((z) => z.status !== 'znaleziony').length, next = sob[0], dog = dogOfDay(dogs);

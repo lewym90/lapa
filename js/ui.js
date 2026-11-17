@@ -103,7 +103,7 @@ document.addEventListener('error', (e) => {
 export const sexSymbol = (s) => (s === 'suka' ? '♀' : s === 'samiec' ? '♂' : '');
 export const STATUS = {
   do_adopcji: 'Do adopcji', pilne: 'Pilny przypadek', dt: 'W domu tymczasowym', hotelik: 'W hoteliku',
-  w_trakcie: 'W trakcie adopcji', adoptowany: 'Adoptowany', schronisko: 'W schronisku'
+  w_trakcie: 'W procesie adopcji', adoptowany: 'Adoptowany', schronisko: 'W schronisku'
 };
 export const statusChip = (s) => {
   const cls = s === 'pilne' ? 'terra' : s === 'adoptowany' ? 'gold' : '';

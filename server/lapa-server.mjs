@@ -31,7 +31,7 @@ const VOL_WRITE = new Set(['deklaracje', 'zgloszenia', 'oferty', 'p_tel']);
 // Odczyt: tylko to, co widzi wolontariusz (Psy, Pomoc, Potrzeby, Transport, Sobotnie spacery, Zaginięcia, komunikaty).
 const VOL_READ = new Set(['psy', 'spacery', 'potrzeby', 'transporty', 'deklaracje', 'zgloszenia', 'oferty', 'spacery_sob', 'zaginiecia', 'komunikaty']);
 // Z danych psa wolontariusz dostaje tylko te pola (bez czipa, opiekuna DT, kanałów, karty przyjęcia, notatek).
-const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id', 'wiek_kat', 'zdr', 'archiwum'];
+const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id', 'status_www', 'od_www', 'zniknal_ze_strony', 'archiwum'];
 function dlaWolontariusza(col, data) {
   if (!data || typeof data !== 'object') return data;
   if (col === 'psy') { const o = {}; for (const k of PSY_POLA) if (k in data) o[k] = data[k]; return o; }
@@ -367,14 +367,14 @@ const warsaw = () => {
   const g = (t) => p.find((x) => x.type === t).value; return { day: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour') % 24 };
 };
 const SITE_SYNC = process.env.SITE_SYNC !== '0'; // SITE_SYNC=0 wyłącza czytanie strony schroniska
-const SYNC_HOURS = (process.env.SITE_SYNC_HOURS || '3,11,17').split(',').map(Number);
+const SYNC_HOURS = (process.env.SITE_SYNC_HOURS || '2,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22').split(',').map(Number);
 const cmpDog = (o) => JSON.stringify(o, (k, v) => (k === 'zaimportowano' || k === 'ts' ? undefined : v));
 async function syncSite(reason = 'auto') {
   if (!merge) { siteSt = { ...siteSt, t: Date.now(), ok: false, blad: 'Serwer nie ma pliku dogmerge.mjs. Uruchom aktualizację serwera.' }; saveSiteSt(); return siteSt; }
   if (!SITE_SYNC) return siteSt;
   if (siteSt.running) return siteSt;
   siteSt.running = true;
-  const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', nazwy: [], pominietych: 0, nieudanych: 0 };
+  const res = { t: Date.now(), ok: true, running: false, nowych: 0, zmienionych: 0, razem: 0, blad: '', nazwy: [], pominietych: 0, nieudanych: 0, zniknelo: 0, wrocilo: 0, zniknelo_nazwy: [] };
   try {
     runBackup(); // kopia bazy tuż przed zmianami
     const info = {}, links = await dogLinks(true, info);
@@ -403,32 +403,25 @@ async function syncSite(reason = 'auto') {
         if (row) hist.run(row.col, row.id, row.data, row.updated_at, row.deleted, row.by, now);
         put.run('psy', dog.id, JSON.stringify(dog), now, 0, 'strona');
         if (old.id) res.zmienionych++; else { res.nowych++; res.nazwy.push(dog.imie); }
+        if (old.zniknal_ze_strony || old.archiwum) res.wrocilo++;
       } catch (e) { res.nieudanych++; console.error('Sprawdzanie strony, pies', link, e.message); }
       await sleep(400);
     }
     if (!info.partial && res.nieudanych <= Math.max(3, links.length * 0.25)) {
-      // Pies, którego nie ma już na liście strony: od razu trafia do „Adoptowanych” (status adoptowany, znacznik zniknal_ze_strony).
-      // Co się naprawdę stało, zaznacza potem administrator (adoptowany zostaje, inne → archiwum). Gdy pies wróci na stronę, wraca do aplikacji
-      // ze statusem ze strony – chyba że administrator przeniósł go do archiwum (wtedy decyzja administratora jest ważniejsza).
+      // Pies, którego nie ma już na liście strony, trafia do „Byli u nas” (znacznik zniknal_ze_strony). Nikt nic nie klika.
+      // Gdy pies wróci na stronę, sam wraca do aplikacji ze wszystkimi notatkami (status i miejsce ze strony).
       const ids = new Set(links.map((l) => /\/(\d+)\/?$/.exec(l)?.[1]).filter(Boolean)), now = Date.now();
-      res.zniknelo = 0; res.wrocilo = 0; res.zniknelo_nazwy = [];
       for (const x of db.prepare("SELECT * FROM records WHERE col='psy' AND deleted=0").all()) {
         const d = JSON.parse(x.data); if (!d.zrodlo_id) continue;
         let ch = false;
         if (d.poza_strona || d.poza_n) { delete d.poza_strona; delete d.poza_n; ch = true; } // znaczniki z wcześniejszych wersji
         if (!ids.has(String(d.zrodlo_id))) {
-          if (!d.archiwum && !d.zniknal_ze_strony) {
-            d.zniknal_ze_strony = now;
-            if (d.status !== 'adoptowany') { d.status = 'adoptowany'; d.miejsce = 'adoptowany'; d.data_adopcji = d.data_adopcji || now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie); }
-            ch = true;
-          }
-        } else if (d.zniknal_ze_strony) {
-          delete d.zniknal_ze_strony; delete d.adopcja_potw; ch = true;
-          if (!d.archiwum && d.status === 'adoptowany') {
-            d.status = d.status_www && d.status_www !== 'adoptowany' ? d.status_www : 'do_adopcji';
-            d.miejsce = 'schronisko'; delete d.miejsce_auto; Object.assign(d, merge.miejsceZHasla ? merge.miejsceZHasla(d.haslo || '', {}) : {});
-            res.wrocilo++;
-          }
+          if (!d.zniknal_ze_strony) { d.zniknal_ze_strony = now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie); ch = true; }
+        } else if (d.zniknal_ze_strony || d.archiwum || d.status === 'adoptowany') {
+          for (const k of ['zniknal_ze_strony', 'archiwum', 'archiwum_los', 'archiwum_zrodlo', 'adopcja_potw', 'miejsce_auto']) delete d[k];
+          if (d.status === 'adoptowany') d.status = d.status_www && d.status_www !== 'adoptowany' ? d.status_www : 'do_adopcji';
+          if (['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce)) Object.assign(d, merge.miejsceZHasla(d.haslo || ''));
+          res.wrocilo++; ch = true;
         }
         if (!ch) continue;
         hist.run(x.col, x.id, x.data, x.updated_at, x.deleted, x.by, now); put.run('psy', x.id, JSON.stringify(d), now, 0, 'strona');

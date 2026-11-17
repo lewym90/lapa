@@ -29,8 +29,8 @@ with sync_playwright() as p:
       const man=m.dogFromImport({id:'1',name:'X',url:'u',status:'do_adopcji',haslo:'X - w domu tymczasowym',fields:{}},{miejsce:'schronisko'});
       return [a.miejsce,a.haslo,h.miejsce,p.status,p.miejsce||'-',n.miejsce||'-',back.miejsce,man.miejsce,a.ocena&&a.ocena.psy]}""")
     print(r)
-    check('dt z hasła + czyszczenie', r[0]=='dt' and '&nbsp;' not in r[1]); check('hotelik', r[2]=='hotelik'); check('proces adopcji', r[3]=='w_trakcie' and r[4]=='-'); check('zwykłe hasło bez miejsca', r[5]=='-')
-    check('powrót do schroniska', r[6]=='schronisko'); check('ręczne miejsce zostaje', r[7]=='schronisko'); check('ocena psy = nie', r[8]=='nie')
+    check('dt z hasła + czyszczenie', r[0]=='dt' and '&nbsp;' not in r[1]); check('hotelik', r[2]=='hotelik'); check('proces adopcji', r[3]=='w_trakcie' and r[4]=='schronisko'); check('zwykłe hasło: w schronisku', r[5]=='schronisko')
+    check('powrót do schroniska', r[6]=='schronisko'); check('strona wygrywa z ręcznym miejscem', r[7]=='dt'); check('ocena psy = nie', r[8]=='nie')
     pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'q1',imie:'Adina',status:'do_adopcji',miejsce:'dt',haslo:'ADINA - w domu tymczasowym',zdjecia:[]});await s.save('psy',{id:'q2',imie:'Burek',status:'do_adopcji',zdjecia:[]});}""")
     go(pg,'#/psy'); pg.wait_for_selector('.dcard'); pg.wait_for_timeout(400)
     check('bez filtra DT (od 1.17: Wszystkie, W schronisku, Ulubione, Adoptowane)', pg.locator('[data-k=dt]').count()==0 and pg.locator('.dcard').count()==2)

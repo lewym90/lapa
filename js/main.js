@@ -18,9 +18,6 @@ import * as B from './brama.js';
 import * as X from './screens-inne.js';
 import * as TM from './terminarz.js';
 import * as C from './czat.js';
-import * as SO from './social.js';
-import * as NW from './nowe.js';
-import * as K from './karta.js';
 import * as WO from './wolontariusz.js';
 import { firstPrompt, syncPush } from './push.js';
 
@@ -32,13 +29,13 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => NW.nowe(m[1])], [/^\/karta\/(nowy|[\w-]+)(?:\/(\d))?$/, (m) => K.karta(m[1], m[2])], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
-  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/adoptowane$/, () => P.adoptowane()], [/^\/archiwum$/, () => P.archiwum()]
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
+  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()], [/^\/(?:byli|adoptowane|archiwum)$/, () => P.byli()]
 ];
 // Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
 const ROUTES_WOL = [
   [/^\/?$/, () => WO.startWol()], [/^\/start$/, () => WO.startWol()],
-  [/^\/psy$/, () => P.list()], [/^\/adoptowane$/, () => P.adoptowane()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/psy$/, () => P.list()], [/^\/(?:byli|adoptowane)$/, () => P.byli()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/pomoc$/, () => WO.pomocWol()], [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/transport$/, () => X.transport()],
   [/^\/sobotnie$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
@@ -57,12 +54,12 @@ const MENU_WOL = [
 ];
 const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
-  ['Psy', [['karta/nowy', 'Przyjmij nowego psa', 'plus'], ['nowe', 'Do uzupełnienia', 'pencil'], ['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
+  ['Psy', [['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
-  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
+  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['zaginiecia', 'Zaginięcia', 'alert'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
 ];
-const menuHtml = (cls, on) => (state.admin ? MENU : MENU_WOL).map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : x[0] === 'nowe' ? '<span class="nbadge" hidden></span>' : ''}</a>`).join('')).join('');
+const menuHtml = (cls, on) => (state.admin ? MENU : MENU_WOL).map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : ''}</a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
 const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
@@ -95,7 +92,7 @@ async function render(keepScroll = false) {
   current = view;
   app.innerHTML = `<div class="shell">${side()}${view.nav === false ? '' : nav(view.tab)}<main class="main" ${view.nav === false ? 'style="padding-bottom:40px"' : ''}>${view.html.s}</main></div>`;
   paintSync(document.getElementById('sp2'));
-  C.refreshBadge(); NW.refreshNowe();
+  C.refreshBadge();
   view.mount?.(app);
   scrollTo(0, y);
   document.title = (TEST ? 'TEST · ' : '') + (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
@@ -177,33 +174,27 @@ actions.menu = () => {
     ${menuHtml('', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
     <div style="font-size:12px;color:var(--sage);padding:0 12px">ŁAPA ${VERSION}</div></nav>`;
-  document.body.appendChild(el); NW.refreshNowe();
+  document.body.appendChild(el);
   const close = () => el.remove();
   el.querySelector('.scrim').onclick = close; el.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
   paintSync(el.querySelector('#sp'));
 };
 actions.bell = () => S.komunikatySheet();
 actions.add = () => openSheet(`<h2>Co chcesz dodać?</h2><div class="actions">
-  <button class="act primary" data-act="a-newdog">${icon('paw').s}Przyjmij nowego psa<small>Karta psa w 5 prostych krokach</small></button>
   <button class="act primary" data-act="a-brama">${icon('walk').s}Brama: wydaj / zwróć psa<small>Sobotnie spacery, godziny same</small></button>
   <button class="act" data-act="a-walk">${icon('walk').s}Spacer z wolontariuszem<small>Notatki, zdjęcia, dystans (opcjonalnie)</small></button>
-  <button class="act" data-act="a-obs">${icon('pencil').s}Dodaj obserwację<small>Zachowanie, zdrowie, uwagi</small></button>
-  <button class="act" data-act="a-photo">${icon('camera').s}Dodaj zdjęcie<small>Do karty wybranego psa</small></button>
+  <button class="act" data-act="a-obs">${icon('pencil').s}Notatka o psie<small>Trafia do karty psa</small></button>
   <button class="act" data-act="a-task">${icon('check').s}Przypomnienie dla siebie<small>Widzisz tylko Ty, np. lek, zadanie</small></button>
   <button class="act" data-act="a-event">${icon('calendar').s}Wpis w terminarzu dla wszystkich<small>Można się zgłaszać</small></button>
   <button class="act" data-act="a-trans">${icon('truck').s}Zgłoś transport<small>Szukam kierowcy</small></button>
-  <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button>
-  <button class="act" data-act="a-dog">${icon('download').s}Pies ze strony schroniska<small>Import z linku (zwykle dzieje się samo 3 razy dziennie)</small></button></div>`);
-actions['a-newdog'] = () => { closeSheet(); location.hash = '#/karta/nowy'; };
+  <button class="act" data-act="a-need">${icon('box').s}Zgłoś potrzebę<small>Karma, leki, wyposażenie</small></button></div>`);
 actions['a-brama'] = () => { closeSheet(); location.hash = '#/brama'; };
 actions['a-walk'] = () => { closeSheet(); location.hash = '#/spacer'; };
 actions['a-obs'] = () => { closeSheet(); P.pickDog((d) => P.obsForm(d.id)); };
-actions['a-photo'] = () => { closeSheet(); P.pickDog((d) => P.addPhoto(d.id)); };
 actions['a-task'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'ja' }); };
 actions['a-event'] = () => { closeSheet(); TM.terForm(null, { widocznosc: 'wszyscy' }); };
 actions['a-trans'] = () => { closeSheet(); X.transForm(); };
 actions['a-need'] = () => { closeSheet(); X.needForm(); };
-actions['a-dog'] = () => { closeSheet(); P.addDogSheet(); };
 
 function paintSync(el) {
   if (!el) return;

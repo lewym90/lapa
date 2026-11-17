@@ -33,28 +33,28 @@ export function ocenaZOpisu(opis) {
 }
 export const normPlec = (t = '') => (/suk|samic|dziewcz/i.test(t) ? 'suka' : /pies|samiec|piesek|chłop/i.test(t) ? 'samiec' : '');
 export const czysc = (x = '') => String(x).replace(/&nbsp;|\u00a0/gi, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
-// Strona nie ma pola „miejsce”: jedynym sygnałem jest hasło (np. „ADINA - w domu tymczasowym 🏠”). Ręcznie ustawione miejsce nie jest nadpisywane.
-export function miejsceZHasla(haslo, old) {
-  const z = /domu tymczasow|dom tymczasow/i.test(haslo) ? 'dt' : /hotelik/i.test(haslo) ? 'hotelik' : null;
-  if (old.miejsce && !old.miejsce_auto) return {};
-  if (z) return { miejsce: z, miejsce_auto: true };
-  return old.miejsce_auto ? { miejsce: 'schronisko', miejsce_auto: true } : {};
+// Strona nie ma pola „miejsce”: jedynym sygnałem jest hasło (np. „ADINA - w domu tymczasowym 🏠”).
+// Od 1.18 strona jest jedynym źródłem: miejsce, status, opis i dane zawsze są takie jak na stronie (ręcznie w aplikacji się ich nie zmienia).
+export function miejsceZHasla(haslo) {
+  return { miejsce: /domu tymczasow|dom tymczasow/i.test(haslo) ? 'dt' : /hotelik/i.test(haslo) ? 'hotelik' : 'schronisko' };
 }
 export function dogFromImport(imp, old = {}) {
   const f = imp.fields || {}; const haslo = czysc(imp.haslo || old.haslo || '');
-  // Status ze strony nadpisuje nasz status tylko wtedy, gdy na stronie się ZMIENIŁ (ręczna zmiana w aplikacji nie jest cofana przy każdym odświeżeniu).
   const statusWww = /procesie adopcji/i.test(haslo) ? 'w_trakcie' : (imp.status === 'w_trakcie' ? 'do_adopcji' : imp.status) || 'do_adopcji';
-  // Opis ze strony nie nadpisuje opisu poprawionego ręcznie w aplikacji.
-  const opisSite = imp.opis || '', opisRecznie = old.opis_www !== undefined && old.opis && old.opis !== old.opis_www;
-  return {
+  const n = {
     ...old,
     id: old.id || (imp.id ? 'd' + imp.id : 'm' + Math.random().toString(36).slice(2, 10)),
     imie: imp.name || old.imie, plec: normPlec(f.plec) || old.plec || '', wiek: f.wiek || old.wiek || '', wielkosc: f.wielkosc || old.wielkosc || '',
     waga: f.waga || old.waga || '', wzrost: f.wzrost || old.wzrost || '', siersc: f.siersc || old.siersc || '',
-    opis: opisRecznie ? old.opis : opisSite || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), opis_www: opisSite || old.opis_www || '', parser: 3, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
+    opis: imp.opis || (/Kilka słów o nas/.test(old.opis || '') ? '' : old.opis || ''), opis_www: imp.opis || old.opis_www || '', parser: 3, zdjecia: imp.zdjecia?.length ? imp.zdjecia : old.zdjecia || [],
     zrodlo_url: imp.url, zrodlo_id: imp.id, zaimportowano: Date.now(), dodany: old.dodany || Date.now(),
-    haslo, status_www: statusWww, status: (old.status && old.status_www === undefined) || (old.status && old.status_www === statusWww) ? old.status : statusWww,
-    ...miejsceZHasla(haslo, old),
-    ocena: old.ocena && !old.ocena.auto ? old.ocena : ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji', kanaly: { ...(old.kanaly || {}), www: (old.kanaly || {}).www || imp.opublikowano || Date.now() }
+    haslo, status_www: statusWww, status: statusWww, ...miejsceZHasla(haslo),
+    // „W schronisku od”: data publikacji ogłoszenia na stronie (administrator może ją zmienić w karcie psa – pole „od”).
+    od_www: imp.opublikowano || old.od_www || (old.kanaly || {}).www || null,
+    ocena: ocenaZOpisu(imp.opis || old.opis || ''), film: imp.film || old.film || '', www_status: imp.status || old.www_status || 'do_adopcji'
   };
+  // Pies jest na stronie: na pewno nie jest w „Byli u nas”.
+  for (const k of ['zniknal_ze_strony', 'archiwum', 'archiwum_los', 'archiwum_zrodlo', 'adopcja_potw', 'miejsce_auto']) delete n[k];
+  if (!n.ocena) delete n.ocena;
+  return n;
 }

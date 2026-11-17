@@ -7,12 +7,11 @@ from wspolne import *
 ADM = 'administrator-haslo-3'
 D = 864e5
 TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/spacer', '#/raport/w3', '#/czat', '#/wydarzenia', '#/pomoc', '#/transport',
-         '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/nowe', '#/karta/nowy', '#/karta/m1/1', '#/karta/m1/2', '#/karta/m1/3', '#/karta/m1/4', '#/karta/m1/5', '#/karta/nie-ma-takiego', '#/adopcje', '#/dt', '#/zaginiecia', '#/finanse', '#/social',
-         '#/social/adopcja', '#/social/adopcja/d1', '#/social/halas', '#/social/dt', '#/social/pomoc', '#/social/adoptowany', '#/social/spacery',
-         '#/social/odwolanie', '#/social/relacja', '#/social/maxizoo', '#/social/podziekowanie', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego',
+         '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/dt', '#/zaginiecia', '#/finanse',
+         '#/byli', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego',
          '#/potrzeby', '#/zgloszenia']
 # 1.16: wolontariusz ma tylko podgląd tych ekranów; inne przekierowują na Start
-WOL_TRASY = {'#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/raport/w3', '#/pomoc', '#/potrzeby', '#/transport', '#/sobotnie', '#/zaginiecia', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego'}
+WOL_TRASY = {'#/start', '#/psy', '#/byli', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/raport/w3', '#/pomoc', '#/potrzeby', '#/transport', '#/sobotnie', '#/zaginiecia', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego'}
 
 
 def seed(pg):
@@ -92,18 +91,14 @@ with sync_playwright() as p:
             if vp['width'] == 390 and kto == 'administrator':
                 # okna na karcie psa
                 go(pg, '#/psy/d1', 800)
-                for act in ['dog-miejsce', 'dog-ocena', 'dog-zdrowie', 'dog-kanaly', 'dog-teksty', 'dog-walks', 'dog-obs', 'dog-needs', 'dog-photo', 'dog-obs-add', 'dog-oznacz']:
+                for act in ['k-edit', 'dog-oznacz', 'k-zdr', 'dog-needs', 'dog-walks', 'dog-obs-add']:
                     okno(pg, f'{kto} karta psa {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
-                pg.locator('#app [data-act=dog-edit]').first.click(); pg.wait_for_timeout(700)
-                check(f'{kto} karta psa „Edytuj” → karta w 5 krokach', pg.evaluate('location.hash') == '#/karta/d1/1')
-                pg.click('[data-k=wyjdz]'); pg.wait_for_timeout(700); check(f'{kto} karta w 5 krokach: wyjście', pg.evaluate('location.hash') == '#/psy/d1')
+                pg.locator('#app [data-act=k-zdr]').first.click(); pg.wait_for_selector('#kz_d'); pg.fill('#kz_d', '2024'); pg.click('#kzf button[type=submit]'); pg.wait_for_timeout(600)
+                okno(pg, f'{kto} karta psa: wpis zdrowia (edycja)', lambda: pg.locator('#app .kwpis').first.click())
                 # „+” i okna z niego
                 go(pg, '#/start', 700)
                 okno(pg, f'{kto} menu +', lambda: pg.click('nav.nav [data-act=add]'))
-                pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click('#sheet-root [data-act=a-newdog]'); pg.wait_for_timeout(700)
-                check(f'{kto} + Przyjmij nowego psa → karta', pg.evaluate('location.hash') == '#/karta/nowy' and pg.locator('#sheet-root .sheet').count() == 0)
-                go(pg, '#/start', 500)
-                for act in ['a-obs', 'a-photo', 'a-task', 'a-event', 'a-trans', 'a-need', 'a-dog']:
+                for act in ['a-obs', 'a-task', 'a-event', 'a-trans', 'a-need']:
                     def otworz(a=act):
                         pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click(f'#sheet-root [data-act={a}]'); pg.wait_for_timeout(400)
                     okno(pg, f'{kto} + {act}', otworz)

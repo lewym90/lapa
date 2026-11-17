@@ -38,7 +38,7 @@ export function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++)
 // Pies dnia: wszyscy widzą tego samego psa tego samego dnia; każdy pies po kolei, zanim któryś się powtórzy.
 export function dogOfDay(dogs, now = Date.now()) {
   // tylko psy, które są z nami (bez adoptowanych, zaginionych i tych, które odeszły)
-  const pool = dogs.filter((d) => (d.zdjecia || []).length && !['adoptowany', 'w_trakcie'].includes(d.status) && !d.archiwum && !['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce));
+  const pool = dogs.filter((d) => (d.zdjecia || []).length && !['adoptowany', 'w_trakcie'].includes(d.status) && !d.archiwum && !d.zniknal_ze_strony && !['adoptowany', 'zmarl', 'zaginiony'].includes(d.miejsce));
   if (!pool.length) return null;
   pool.sort((a, b) => hash(a.id + 'lapa') - hash(b.id + 'lapa') || (a.id < b.id ? -1 : 1));
   const dn = Math.floor((startOfDay(now) - new Date(2026, 0, 1).getTime()) / MS_DAY + 0.5);
@@ -71,7 +71,7 @@ export const NEED_LABELS = { spacer: 'Spokojny spacer', zdjecia: 'Aktualne zdję
 // Potrzeby psa: ręcznie zaznaczone + wyliczone regułami (bez AI).
 export function dogNeeds(d, walks = []) {
   const out = new Set(d.potrzeby || []);
-  if (['adoptowany', 'w_trakcie'].includes(d.status) || d.archiwum || ['adoptowany', 'zmarl'].includes(d.miejsce)) return [];
+  if (['adoptowany', 'w_trakcie'].includes(d.status) || d.archiwum || d.zniknal_ze_strony || ['adoptowany', 'zmarl'].includes(d.miejsce)) return [];
   if (!(d.zdjecia || []).length) out.add('zdjecia');
   const mine = walks.filter((w) => w.pies_id === d.id);
   if (mine.length) {
@@ -79,4 +79,45 @@ export function dogNeeds(d, walks = []) {
     if (Date.now() - last > 21 * MS_DAY) out.add('spacer');
   }
   return [...out];
+}
+
+// ===== Daty „tyle, ile pamiętasz” (karta psa): „2014”, „03.2014”, „marzec 2014”, „12.03.2014”, „2014-03-12”, „ok. 2014” =====
+const MIES = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+const MIES_ALT = { maj: 4, maja: 4, paz: 9, 'paźdz': 9 };
+// Zwraca { ts, txt } (txt: „2014”, „03.2014” albo „12.03.2014”) lub null, gdy nie da się odczytać.
+export function parseData(v) {
+  const t = String(v || '').trim().toLowerCase().replace(/^ok(oło|\.)?\s*/, '').replace(/\s*r(ok|\.)?\s*$/, '').replace(/[/-]/g, '.').replace(/\s+/g, ' ');
+  if (!t) return null;
+  const now = new Date(), maxY = now.getFullYear() + 20;
+  const ok = (y, m, d) => y >= 1990 && y <= maxY && (!m || (m >= 1 && m <= 12)) && (!d || (d >= 1 && d <= new Date(y, m, 0).getDate()));
+  const two = (n) => String(n).padStart(2, '0');
+  let m;
+  if ((m = /^(\d{4})$/.exec(t))) { const y = +m[1]; return ok(y) ? { ts: new Date(y, 6, 1, 12).getTime(), txt: String(y) } : null; }
+  if ((m = /^(\d{1,2})\.(\d{4})$/.exec(t))) { const mo = +m[1], y = +m[2]; return ok(y, mo) ? { ts: new Date(y, mo - 1, 15, 12).getTime(), txt: two(mo) + '.' + y } : null; }
+  if ((m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(t))) { const d = +m[1], mo = +m[2], y = +m[3]; return ok(y, mo, d) ? { ts: new Date(y, mo - 1, d, 12).getTime(), txt: two(d) + '.' + two(mo) + '.' + y } : null; }
+  if ((m = /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/.exec(t))) { const y = +m[1], mo = +m[2], d = +m[3]; return ok(y, mo, d) ? { ts: new Date(y, mo - 1, d, 12).getTime(), txt: two(d) + '.' + two(mo) + '.' + y } : null; }
+  if ((m = /^(\d{1,2} )?([a-ząćęłńóśźż]+) (\d{4})$/.exec(t))) {
+    const w = m[2]; let mo = MIES_ALT[w] ?? MIES.findIndex((x) => w.startsWith(x)); if (mo < 0) return null; mo += 1;
+    const y = +m[3], d = m[1] ? +m[1] : 0; if (!ok(y, mo, d || undefined)) return null;
+    return d ? { ts: new Date(y, mo - 1, d, 12).getTime(), txt: two(d) + '.' + two(mo) + '.' + y } : { ts: new Date(y, mo - 1, 15, 12).getTime(), txt: two(mo) + '.' + y };
+  }
+  return null;
+}
+export const dataTs = (ts) => { const d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); };
+// Ile czasu minęło: „2 dni”, „5 mies.”, „3 lata”. Przy samym roku liczymy pełne lata.
+export function ileCzasu(ts, tylkoRok = false) {
+  const now = new Date(), d = new Date(ts);
+  if (tylkoRok) { const y = now.getFullYear() - d.getFullYear(); return y <= 0 ? 'poniżej roku' : y + ' ' + (y === 1 ? 'rok' : y % 10 >= 2 && y % 10 <= 4 && (y % 100 < 10 || y % 100 >= 20) ? 'lata' : 'lat'); }
+  const dni = Math.max(0, Math.floor((now - d) / MS_DAY));
+  if (dni < 31) return dni + ' ' + (dni === 1 ? 'dzień' : 'dni');
+  let mies = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth(); if (now.getDate() < d.getDate()) mies--;
+  if (mies < 12) return Math.max(1, mies) + ' mies.';
+  const y = Math.floor(mies / 12); return y + ' ' + (y === 1 ? 'rok' : y % 10 >= 2 && y % 10 <= 4 && (y % 100 < 10 || y % 100 >= 20) ? 'lata' : 'lat');
+}
+// „W schronisku od” psa: wpis administratora (d.od, tekst) albo data publikacji ogłoszenia na stronie (d.od_www).
+export function odKiedy(d) {
+  const r = d.od ? parseData(d.od) : null;
+  if (r) return { txt: r.txt, ile: ileCzasu(r.ts, /^\d{4}$/.test(r.txt)) };
+  const ts = d.data_przyjecia || d.od_www;
+  return ts ? { txt: dataTs(ts), ile: ileCzasu(ts) } : null;
 }

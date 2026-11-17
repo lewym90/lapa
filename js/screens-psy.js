@@ -5,11 +5,9 @@ import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
 import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, uid } from './util.js';
 import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photos.js';
-import { dogBlock } from './adopcje.js';
-import { ktoText } from './kto.js';
-import * as db from './db.js';
 import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
-import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, dostepny, miejsce, days, wToku, stanKarty, OCENA_POLA, OCENA_LBL, LOSY, losPsa } from './teczka.js';
+import { aktywny, byl, miejsce, days, OCENA_POLA, OCENA_LBL } from './teczka.js';
+import { cardAdm, znaczekStrony } from './kompendium.js';
 import { zglDane, chipyPotrzeb } from './wolontariusz.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
@@ -26,40 +24,38 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-// Filtry listy Psy (1.17): tylko te, z których naprawdę się korzysta. „Do uzupełnienia” – tylko administrator i tylko gdy są takie psy.
-const FILTERS = [['aktywne', 'Wszystkie'], ['schronisko', 'W schronisku'], ['nowe', 'Do uzupełnienia'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane']];
+// Filtry listy Psy: Wszystkie, W schronisku, Ulubione i „Byli u nas” (psy, których nie ma już na stronie schroniska).
+const FILTERS = [['aktywne', 'Wszystkie'], ['schronisko', 'W schronisku'], ['ulubione', 'Ulubione'], ['byli', 'Byli u nas']];
+const lata = (d) => { const a = new Date(d.od_www || d.data_przyjecia || d.dodany || Date.now()).getFullYear(), b = new Date(d.zniknal_ze_strony || d.archiwum || Date.now()).getFullYear(); return a === b ? 'u nas w ' + a : `u nas ${a}–${b}`; };
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
-    if (d.archiwum) return false;
-    if (ff === 'adoptowany') return !aktywny(d);
-    if (!dostepny(d)) return false; // w procesie adopcji → zakładka Adopcje
+    if (ff === 'byli') return byl(d);
+    if (byl(d)) return false;
     if (ff === 'aktywne') return true;
-    if (ff === 'nowe') return wToku(d);
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
-  }).sort(kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  }).sort(ff === 'byli' ? (a, b) => (b.zniknal_ze_strony || b.archiwum || 0) - (a.zniknal_ze_strony || a.archiwum || 0) : kolejnosc('psy') === 'boks' ? poBoksie : (a, b) => (b.status === 'pilne') - (a.status === 'pilne') || (a.imie || '').localeCompare(b.imie || '', 'pl'));
 }
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
 function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
-  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); const tok = state.admin && wToku(d), sk = tok ? stanKarty(d) : null; return html`<a class="dcard${wybCls(d)}" href="${tok ? `#/karta/${d.id}/${sk.pierwszy}` : '#/psy/' + d.id}"><div class="pic">${tok ? html`<span class="kuzup">Uzupełnij ${sk.done}/5</span>` : state.admin && d.zniknal_ze_strony && !d.adopcja_potw && d.status === 'adoptowany' ? html`<span class="kuzup">Co się stało?</span>` : ''}${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+  return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id), b = byl(d); return html`<a class="dcard${wybCls(d)}" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${b ? '' : (miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : ['pilne', 'w_trakcie'].includes(d.status) ? statusChip(d.status) : ''}</span></div>
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${b ? html`<div class="m2">${lata(d)}</div>` : lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
-  if (!FILTERS.some(([k]) => k === ff) || (!state.admin && ['nowe', 'zaufanie'].includes(ff))) ff = 'aktywne'; // filtry tylko dla administratora (np. po wyłączeniu trybu administratora)
-  const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
+  if (!FILTERS.some(([k]) => k === ff)) ff = 'aktywne';
+  const [dogs, walks] = await Promise.all([list('psy'), list('spacery')]); const zdr = [];
   return {
     tab: 'psy', title: 'Psy',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
-    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.filter(([k]) => k !== 'nowe' || (state.admin && (ff === 'nowe' || dogs.some(wToku)))).map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
+    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
     <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>
-    <div id="grid">${grid(dogs, walks, zdr)}</div>
-    ${state.admin ? html`<button class="btn gold fab" data-act="a-newdog">${icon('plus')} Przyjmij nowego psa</button>` : ''}`,
+    <div id="grid">${grid(dogs, walks, zdr)}</div>`,
     mount(root) {
       const inp = root.querySelector('#fq'), g = root.querySelector('#grid');
       inp.addEventListener('input', () => { fq = inp.value; g.innerHTML = grid(dogs, walks, zdr).s; hydratePhotos(g); });
@@ -68,26 +64,14 @@ export async function list_() {
   };
 }
 export { list_ as list };
-// #/adoptowane – lista Psy z filtrem „Adoptowane” (także z zakładki Adopcje)
-export async function adoptowane() { ff = 'adoptowany'; return list_(); }
-// Archiwum psów (Ustawienia, tylko administrator): psy za Tęczowym Mostem, które wróciły do właściciela itp. Status zmienia się na karcie psa.
-export async function archiwum() {
-  if (!state.admin) { location.replace('#/start'); return { tab: 'start', html: html`` }; }
-  const dogs = (await list('psy', { archiwum: true })).filter((d) => d.archiwum).sort((a, b) => b.archiwum - a.archiwum);
-  return {
-    tab: 'start', title: 'Archiwum psów', live: true,
-    html: html`${pageBar('Archiwum psów')}<div class="pad stack"><p class="hint" style="color:var(--sage);margin:0">Tych psów nie widać nigdzie w aplikacji. Żeby to zmienić, otwórz psa i dotknij „Zmień status”.</p>
-      ${dogs.length ? dogs.map((d) => html`<a class="row card" href="#/psy/${d.id}" style="gap:12px;text-decoration:none;color:inherit"><span class="avatar sm">${dogThumb(d)}</span><span class="rt"><b>${d.imie}</b><small>${(LOSY.find((x) => x[0] === losPsa(d)) || [])[1] || ''} · ${fmtDate(d.archiwum)}</small></span>${icon('chev')}</a>`)
-        : html`<div class="empty">${icon('box')}<h3>Archiwum jest puste</h3></div>`}</div>`,
-    mount(r) { hydratePhotos(r); }
-  };
-}
+// #/byli (dawniej #/adoptowane i #/archiwum) – lista Psy z filtrem „Byli u nas”
+export async function byli() { ff = 'byli'; return list_(); }
 export const ustawFiltr = (k) => { ff = k; };
 actions['dog-filter'] = (el) => { ff = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 
 // ========== wybór psa (do spaceru, obserwacji, zdjęcia) ==========
 export async function pickDog(cb) {
-  const dogs = (await list('psy')).filter((d) => d.status !== 'adoptowany').sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  const dogs = (await list('psy')).filter(aktywny).sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   if (!dogs.length) { toast('Najpierw dodaj psa (przycisk + → Dodaj psa)', true); return; }
   const paint = (q, root) => {
     const f = dogs.filter((d) => (d.imie || '').toLowerCase().includes(q.toLowerCase()));
@@ -104,47 +88,9 @@ export async function pickDog(cb) {
 // ========== karta psa ==========
 export async function card(id) {
   if (!state.admin) return cardWol(id);
-  const [d, walks, obsAll, zdr] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje'), zdrowieDla(id)]);
-  if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
-  const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start);
-  const km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
-  const obs = obsAll.filter((o) => o.pies_id === id).sort((a, b) => b.ts - a.ts);
-  const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks);
-  const adBlock = state.coordinator ? await dogBlock(id) : null;
-  const dkto = ktoText(await db.getRec('psy', id), null);
-  return {
-    tab: 'psy', title: d.imie, live: true,
-    html: html`<section class="dogtop${wybCls(d)}"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
-        <span style="display:flex;gap:8px"><button class="iconbtn" data-act="dog-fav" data-id="${id}" aria-pressed="${isFav}" aria-label="Ulubiony">${raw(icon('heart').s.replace('class="ico', isFav ? 'style="fill:var(--terra);stroke:var(--terra)" class="ico' : 'class="ico'))}</button>
-        <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
-      <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
-      ${pics.length > 1 ? html`<div class="dots" id="dots" style="">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
-    <section class="dogsheet">${raw(losBox(d))}<h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
-      <div class="meta">${boks(d) ? raw(boksPill(d, 'big')) : miejsce(d) === 'schronisko' && aktywny(d) ? html`<button class="boks add big" data-act="dog-miejsce" data-id="${id}">+ Boks</button>` : ''}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
-      <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
-      ${state.admin && wybrani(d) ? html`<div class="wybbox"><b>Tylko dla wybranych wolontariuszy</b><p>Powód: ${powody(d).join(', ') || 'nie podano'}${kto(d) ? html`<br>Mogą wychodzić: ${kto(d)}` : ''}</p></div>` : ''}
-      ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
-      <div class="rows">
-        ${teczkaRows(d, zdr, { walks: mine, obs })}
-        <button class="row" data-act="dog-walks" data-id="${id}">${icon('paw')}<span class="rt"><b>Historia spacerów</b><small>${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' | ' + km.toFixed(1).replace('.', ',') + ' km' : ''}${mine[0] ? ' | ostatni ' + ago(mine[0].start) : ''}</small></span>${icon('chev')}</button>
-        <button class="row" data-act="dog-obs" data-id="${id}">${icon('heart')}<span class="rt"><b>Notatki wolontariuszy</b><small>${obs.length} ${plural(obs.length, 'obserwacja', 'obserwacje', 'obserwacji')}${obs[0] ? ' | ostatnia ' + ago(obs[0].ts) : ''}</small></span>${icon('chev')}</button>
-        <button class="row" data-act="dog-needs" data-id="${id}">${icon('medic')}<span class="rt"><b>Czego potrzebuje</b><small>${needs.length ? needs.map((k) => NEED_LABELS[k]).join(', ') : 'Nic pilnego. Kliknij, żeby zgłosić potrzebę'}</small></span>${icon('chev')}</button>
-        ${d.zrodlo_url ? html`<a class="row" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener">${icon('link')}<span class="rt"><b>Ogłoszenie na stronie schroniska</b><small>Otwórz w przeglądarce</small></span>${icon('chev')}</a>` : ''}
-      </div>
-      ${dkto ? html`<p class="hint kto" style="text-align:center;margin:10px 0 0">${dkto}</p>` : ''}
-      ${state.coordinator ? adBlock
-        : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div>`}
-      <div class="btnrow" style="margin-top:20px"><button class="btn block" data-act="dog-obs-add" data-id="${id}">${icon('pencil')} Zapisz obserwację</button></div>
-      <div class="btnrow" style="margin-top:10px"><a class="btn ghost" href="#/spacer/${id}">${icon('walk')} Rozpocznij spacer</a><button class="btn ghost" data-act="dog-photo" data-id="${id}">${icon('camera')} Zdjęcia / sesja</button></div>
-      <div class="btnrow" style="margin-top:10px"><button class="btn ghost" data-act="dog-print" data-id="${id}">${icon('download')} Karta do wysłania (PDF)</button><button class="btn ghost" data-act="dog-edit" data-id="${id}">${icon('pencil')} Edytuj</button></div>
-      <p class="hint" style="margin:18px 0 0;text-align:center">${d.zrodlo_url ? 'Dane ze strony schroniska' + (d.zaimportowano ? ' · ' + fmtDate(d.zaimportowano) : '') : 'Dodano ręcznie'}${d.zrodlo_url ? ' · ' : ''}${d.zrodlo_url ? html`<button class="link" style="color:var(--green)" data-act="dog-refresh" data-id="${id}">odśwież</button>` : ''}</p>
-    </section>`,
-    mount(root) {
-      const gal = root.querySelector('#gal'), dots = root.querySelectorAll('#dots i');
-      gal?.addEventListener('scroll', () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.forEach((x, k) => x.classList.toggle('on', k === i)); }, { passive: true });
-      hydratePhotos(root);
-    }
-  };
+  const d = await get('psy', id);
+  const v = d && await cardAdm(id, { pics: dogPics(d), picImg, isFav: favs().has(id) });
+  return v || { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
 }
 const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
 
@@ -155,68 +101,21 @@ actions['dog-walks'] = async (el) => {
 };
 actions['dog-obs'] = async (el) => {
   const obs = (await list('obserwacje')).filter((o) => o.pies_id === el.dataset.id).sort((a, b) => b.ts - a.ts);
-  openSheet(`<h2>Notatki wolontariuszy</h2>${obs.length ? obs.map((o) => `<div class="obs"><div class="oh"><span>${esc(o.autor || '')}${o.typ ? ' · ' + esc(o.typ) : ''}</span><span>${esc(fmtShort(o.ts))} <button class="iconbtn" style="width:28px;height:28px;color:var(--terra-d)" data-act="obs-del" data-id="${esc(o.id || '')}" aria-label="Usuń">${icon('trash').s}</button></span></div><div style="white-space:pre-line">${esc(o.tekst)}</div></div>`).join('') : '<p class="hint" style="font-size:15px">Jeszcze brak notatek.</p>'}<button class="btn block" style="margin-top:16px" data-act="dog-obs-add" data-id="${esc(el.dataset.id)}">${icon('pencil').s} Dodaj obserwację</button>`);
+  openSheet(`<h2>Notatki</h2>${obs.length ? obs.map((o) => `<div class="obs"><div class="oh"><span>${esc(o.autor || '')}</span><span>${esc(fmtShort(o.ts))} <button class="iconbtn" style="width:28px;height:28px;color:var(--terra-d)" data-act="obs-del" data-id="${esc(o.id || '')}" aria-label="Usuń">${icon('trash').s}</button></span></div><div style="white-space:pre-line">${esc(o.tekst)}</div></div>`).join('') : '<p class="hint" style="font-size:15px">Brak notatek.</p>'}<button class="btn block" style="margin-top:16px" data-act="dog-obs-add" data-id="${esc(el.dataset.id)}">${icon('pencil').s} Dodaj notatkę</button>`);
 };
 actions['obs-del'] = async (el) => { if (!el.dataset.id) return; if (await confirmSheet('Usunąć notatkę?', 'Zniknie u wszystkich wolontariuszy.', 'Usuń', true)) { await remove('obserwacje', el.dataset.id); toast('Usunięto'); closeSheet(); } };
 actions['dog-obs-add'] = (el) => obsForm(el.dataset.id);
 export function obsForm(dogId) {
-  openSheet(`<h2>Nowa obserwacja</h2><p class="hint" style="margin:0 0 14px">Zapisz to, co zauważyłeś(-aś). To obserwacja, nie diagnoza. Zalecenia medyczne zatwierdza lekarz weterynarii.</p>
-    <form id="of" novalidate><div class="field"><span class="lbl">Rodzaj</span><div class="chips" id="ot">${['Zachowanie', 'Zdrowie', 'Kontakt z ludźmi', 'Kontakt z psami', 'Inne'].map((t, i) => `<button type="button" class="chip outline ${i ? '' : 'on'}" data-v="${t}">${t}</button>`).join('')}</div></div>
-    <div class="field"><label for="otx">Co zauważyłeś(-aś)?</label><textarea class="textarea" id="otx" maxlength="1500"></textarea></div><div class="err" id="oe"></div>
-    <button class="btn block" type="submit">Zapisz obserwację</button></form>`, (s) => {
-    let typ = 'Zachowanie';
-    s.querySelector('#ot').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (!b) return; typ = b.dataset.v; s.querySelectorAll('#ot .chip').forEach((c) => c.classList.toggle('on', c === b)); });
+  openSheet(`<h2>Nowa notatka</h2><form id="of" novalidate><div class="field"><label for="otx">Notatka o psie</label><textarea class="textarea" id="otx" maxlength="1500" placeholder="np. dziś pierwszy raz podszedł do ręki; po zabiegu oszczędza łapę"></textarea></div><div class="err" id="oe"></div>
+    <button class="btn block" type="submit">Zapisz notatkę</button></form>`, (s) => {
     s.querySelector('#of').addEventListener('submit', async (e) => {
       e.preventDefault(); const t = s.querySelector('#otx').value.trim();
-      if (t.length < 3) { s.querySelector('#oe').textContent = 'Opisz krótko, co zauważyłeś(-aś).'; return; }
-      await save('obserwacje', { pies_id: dogId, tekst: t, typ, ts: Date.now(), autor: getName() }); closeSheet(); toast('Obserwacja zapisana');
+      if (t.length < 3) { s.querySelector('#oe').textContent = 'Napisz krótko, co chcesz zapamiętać.'; return; }
+      await save('obserwacje', { pies_id: dogId, tekst: t, ts: Date.now(), autor: getName() }); closeSheet(); toast('Notatka zapisana');
     });
     s.querySelector('#otx').focus();
   });
 }
-// ========== zdjęcia i sesja zdjęciowa (wiele plików naraz, także z aparatu przez komputer) ==========
-const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
-export async function addPhoto(dogId) {
-  const d0 = await get('psy', dogId); if (!d0) return;
-  openSheet(`<h2>Zdjęcia: ${esc(d0.imie)}</h2>
-    <label class="drop" id="drop" tabindex="0"><b>Przeciągnij tu zdjęcia z komputera</b><span>albo kliknij i wybierz wiele plików naraz (JPG z aparatu też).<br>Na telefonie otworzy się aparat lub galeria.</span>
-      <input type="file" id="pf" accept="image/*" multiple hidden></label>
-    <p class="hint" id="pst" style="margin:10px 0" aria-live="polite"></p>
-    <div id="pmine"></div><div id="psite"></div>`, (s) => {
-    const st = s.querySelector('#pst'); let busy = false;
-    const paint = async () => {
-      const d = await get('psy', dogId); if (!d) return; const mine = d.moje_zdjecia || [], site = d.zdjecia || [];
-      s.querySelector('#pmine').innerHTML = mine.length ? `<h3 class="ph">Zdjęcia dodane w aplikacji (${mine.length})</h3><div class="pgrid">${mine.map((id, n) => `<div class="pt"><img data-photo="${esc(id)}" alt="" src="${GIF}"><div class="pb"><button class="${d.glowne === id ? 'on' : ''}" data-p="main" data-id="${esc(id)}">${d.glowne === id ? '★ Główne' : 'Ustaw główne'}</button><button data-p="dl" data-id="${esc(id)}" data-n="${n + 1}">Pobierz</button><button class="red" data-p="del" data-id="${esc(id)}">Usuń</button></div></div>`).join('')}</div>` : '';
-      s.querySelector('#psite').innerHTML = site.length ? `<h3 class="ph">Ze strony schroniska (${site.length}, tylko podgląd)</h3><div class="pgrid small">${site.slice(0, 24).map((u) => `<div class="pt"><img src="${esc(safeUrl(u.replace(/_l\.(jpe?g)(\?.*)?$/i, '_m.$1$2')) || '')}" loading="lazy" alt=""></div>`).join('')}</div>` : '';
-      hydratePhotos(s);
-    };
-    const handle = async (files) => {
-      files = [...files].filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name)); if (!files.length || busy) return; busy = true; let ok = 0, bad = 0;
-      for (let i = 0; i < files.length; i++) {
-        st.textContent = `Przetwarzam zdjęcie ${i + 1} z ${files.length}…`;
-        try { const id = await addPhotoFile(files[i], true); const d = await get('psy', dogId); d.moje_zdjecia = [...(d.moje_zdjecia || []), id]; if (!d.glowne && !(d.zdjecia || []).length && !(d.moje_zdjecia.length > 1)) d.glowne = id; await save('psy', d); ok++; await paint(); }
-        catch { bad++; }
-      }
-      busy = false; st.textContent = `Dodano: ${ok}${bad ? '. Nie udało się odczytać: ' + bad : ''}. Wysyłają się na serwer w tle.`; try { (await import('./sync.js')).kick(50); } catch { /* */ }
-    };
-    const drop = s.querySelector('#drop'), pf = s.querySelector('#pf');
-    pf.onchange = () => { handle(pf.files); pf.value = ''; };
-    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
-    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
-    drop.addEventListener('drop', (e) => handle(e.dataTransfer.files));
-    s.addEventListener('click', async (e) => {
-      const b = e.target.closest('[data-p]'); if (!b) return; const id = b.dataset.id, d = await get('psy', dogId); if (!d) return;
-      if (b.dataset.p === 'main') { d.glowne = d.glowne === id ? '' : id; await save('psy', d); paint(); }
-      else if (b.dataset.p === 'dl') { const u = await photoSrc(id); if (!u) { toast('Zdjęcie jeszcze się nie wczytało', true); return; } const a = document.createElement('a'); a.href = u; a.download = `${(d.imie || 'pies').replace(/[^\wąćęłńóśźż-]+/gi, '_')}-${b.dataset.n}.jpg`; document.body.appendChild(a); a.click(); a.remove(); }
-      else if (b.dataset.p === 'del') {
-        if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Na pewno?'; setTimeout(() => { if (b.isConnected) { delete b.dataset.sure; b.textContent = 'Usuń'; } }, 3000); return; }
-        d.moje_zdjecia = (d.moje_zdjecia || []).filter((x) => x !== id); if (d.glowne === id) d.glowne = ''; await save('psy', d); await removeLocalPhoto(id); paint(); toast('Zdjęcie usunięte');
-      }
-    });
-    paint();
-  });
-}
-actions['dog-photo'] = (el) => addPhoto(el.dataset.id);
 actions['unlock-sheet'] = () => unlockSheet();
 export function unlockSheet(after) {
   openSheet(`<h2>Hasło administratora</h2><p class="hint" style="margin:0 0 14px">Dla osób pracujących w schronisku. Odblokuje pełną aplikację (Brama, terminarz, edycja kart psów, adopcje, finanse) i zostanie włączone na stałe na tym telefonie.</p>
@@ -239,62 +138,33 @@ actions['dog-needs'] = async (el) => {
   });
 };
 
-// ========== edycja / ręczne dodawanie ==========
-const SEL = (id, label, opts, val) => `<div class="field"><label for="${id}">${label}</label><select class="select" id="${id}">${opts.map(([k, l]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
-actions['dog-edit'] = (el) => { location.hash = `#/karta/${el.dataset.id}/1`; };
-// Usunięcie psa (pomyłka, zmiana koncepcji): razem z jego spacerami, notatkami, zdrowiem, zgłoszeniami, transportami i oznaczeniem.
-// Tylko administrator. Na serwerze zostaje historia wersji (można odtworzyć), a pies ze strony nie zostanie dodany ponownie.
-export async function usunPsa(id) {
-  const d = await get('psy', id); if (!d) return;
-  const [sp, ob, zd, dk, tr, of] = await Promise.all(['spacery', 'obserwacje', 'zdrowie', 'deklaracje', 'transporty', 'oferty'].map((c) => list(c)));
-  const L = { spacery: sp.filter((x) => x.pies_id === id), obserwacje: ob.filter((x) => x.pies_id === id), zdrowie: zd.filter((x) => x.pies_id === id), deklaracje: dk.filter((x) => x.pies_id === id), transporty: tr.filter((x) => x.pies_id === id) };
-  const trIds = new Set(L.transporty.map((x) => x.id)); L.oferty = of.filter((o) => o.typ === 'transport' && trIds.has(o.ref));
-  const ile = [[L.spacery.length, 'spacer', 'spacery', 'spacerów'], [L.obserwacje.length, 'notatka', 'notatki', 'notatek'], [L.zdrowie.length, 'wpis zdrowia', 'wpisy zdrowia', 'wpisów zdrowia'], [L.deklaracje.length, 'zgłoszenie pomocy', 'zgłoszenia pomocy', 'zgłoszeń pomocy'], [L.transporty.length, 'transport', 'transporty', 'transportów']]
-    .filter(([n]) => n).map(([n, a, b, c]) => `${n} ${plural(n, a, b, c)}`);
-  const tekst = `Pies „${d.imie}” zniknie z aplikacji u wszystkich${ile.length ? ', razem z: ' + ile.join(', ') : ''}.${d.zrodlo_id ? ' Ten pies jest na stronie schroniska. Po usunięciu aplikacja nie doda go ponownie przy sprawdzaniu strony.' : ''}`;
-  if (!(await confirmSheet('Usunąć psa?', tekst, 'Usuń psa', true))) return;
-  for (const [col, arr] of Object.entries(L)) for (const x of arr) { await remove(col, x.id); if (col === 'deklaracje' || col === 'oferty') await remove('p_tel', x.id).catch(() => {}); }
-  if (await get('oznaczenia', id)) await remove('oznaczenia', id);
-  await remove('psy', id);
-  closeSheet(); toast(`Usunięto: ${d.imie}`); location.hash = '#/psy';
-}
-actions['dog-usun'] = (el) => usunPsa(el.dataset.id);
-
-// ========== karta psa dla wolontariusza: tylko podgląd ==========
-// Zdjęcia, dane, cechy, opis, charakter, czego potrzebuje (ze zgłoszeniem), historia spacerów, link do ogłoszenia, Udostępnij.
-// Status psa na karcie (administrator): w procesie adopcji / adoptowany / zniknął ze strony / archiwum + przycisk zmiany
-function losBox(d) {
-  if (!state.admin) return '';
-  const k = losPsa(d), lab = (LOSY.find((x) => x[0] === k) || [])[1] || '';
-  const tekst = d.archiwum ? `W archiwum: ${lab}${d.archiwum ? ' · ' + fmtDate(d.archiwum) : ''}. Nie widać go nigdzie w aplikacji.`
-    : k === 'w_trakcie' ? 'W procesie adopcji. Prowadzone w zakładce Adopcje. Wolontariusze go nie widzą.'
-    : k === 'adoptowany' && d.zniknal_ze_strony && !d.adopcja_potw ? `Zniknął${d.plec === 'suka' ? 'a' : ''} ze strony schroniska ${fmtDate(d.zniknal_ze_strony)}, dlatego jest w „Adoptowanych”. Co się naprawdę stało?`
-    : k === 'adoptowany' ? `Adoptowany${d.plec === 'suka' ? 'a' : ''}${d.data_adopcji ? ' · ' + fmtDate(d.data_adopcji) : ''}.` : '';
-  return `<div class="losbox${k === 'dostepny' ? ' cichy' : ''}">${tekst ? `<p>${esc(tekst)}</p>` : ''}<button class="btn sm${k === 'dostepny' ? ' ghost' : ''}" data-act="dog-los" data-id="${esc(d.id)}">${k === 'dostepny' ? 'Status: dostępny · zmień (adopcja, adoptowany…)' : 'Zmień status'}</button>${k === 'w_trakcie' ? ` <a class="btn sm ghost" href="#/adopcje">Adopcje</a>` : ''}</div>`;
-}
+// ========== karta psa dla wolontariusza: tylko podgląd tego, co jest na stronie schroniska ==========
+// Zdjęcia, dane, opis, charakter (z opisu), czego potrzebuje (ze zgłoszeniem), historia spacerów, link do ogłoszenia, Udostępnij.
+// Pies z „Byli u nas”: tylko zdjęcia, dane, hasło i opis.
 async function cardWol(id) {
   const [d, walks, z] = await Promise.all([get('psy', id), list('spacery'), zglDane()]);
-  if (!d || d.archiwum || d.status === 'w_trakcie') return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
+  if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
   const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start), km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
-  const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks), o = d.ocena || {};
+  const b = byl(d), pics = dogPics(d), isFav = favs().has(id), needs = b ? [] : dogNeeds(d, walks), o = b ? {} : d.ocena || {};
   const ocena = OCENA_POLA.filter(([p]) => o[p]).map(([p, l]) => `<div class="ocr"><span>${esc(l)}</span><b class="oc-${esc(o[p])}">${esc(OCENA_LBL[o[p]] || '')}</b></div>`).join('');
   return {
     tab: 'psy', title: d.imie, live: true,
     html: html`<section class="dogtop"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
         <span style="display:flex;gap:8px"><button class="iconbtn" data-act="dog-fav" data-id="${id}" aria-pressed="${isFav}" aria-label="Ulubiony">${raw(icon('heart').s.replace('class="ico', isFav ? 'style="fill:var(--terra);stroke:var(--terra)" class="ico' : 'class="ico'))}</button>
-        <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
+        ${b ? '' : html`<button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button>`}</span></div>
       <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
       ${pics.length > 1 ? html`<div class="dots" id="dots">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
     <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>
-      <div class="meta">${raw(boksPill(d, 'big'))}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + String(d.waga).replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((t) => html`<span>${t}</span>`)}</div>
-      <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + String(d.siersc).toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}</div>
+      ${b ? html`<div class="khead">${raw(znaczekStrony(d))}<span class="hint">${lata(d)}</span></div>` : ''}
+      <div class="meta">${b ? '' : raw(boksPill(d, 'big'))}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + String(d.waga).replace(/^ok\.?\s*/i, ''), !b && d.status && STATUS[d.status]].filter(Boolean).map((t) => html`<span>${t}</span>`)}</div>
+      <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + String(d.siersc).toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}</div>
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : ''}
       ${ocena ? html`<h3 class="wolh">Charakter</h3><div class="ocena">${raw(ocena)}</div>` : ''}
       ${needs.length ? html`<h3 class="wolh">Czego potrzebuje</h3><div class="chips">${raw(chipyPotrzeb(d, needs, z.dek))}</div><p class="hint" style="margin:6px 0 0">Dotknij, żeby zgłosić, że się tym zajmiesz.</p>` : ''}
-      <div class="rows" style="margin-top:14px">
+      ${b ? '' : html`<div class="rows" style="margin-top:14px">
         <button class="row" data-act="dog-walks" data-id="${id}">${icon('paw')}<span class="rt"><b>Historia spacerów</b><small>${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' | ' + km.toFixed(1).replace('.', ',') + ' km' : ''}${mine[0] ? ' | ostatni ' + ago(mine[0].start) : ''}</small></span>${icon('chev')}</button>
         ${d.zrodlo_url ? html`<a class="row" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener">${icon('link')}<span class="rt"><b>Ogłoszenie na stronie schroniska</b><small>Otwórz w przeglądarce</small></span>${icon('chev')}</a>` : ''}
-      </div>
+      </div>`}
     </section>`,
     mount(root) {
       const gal = root.querySelector('#gal'), dots = root.querySelectorAll('#dots i');
@@ -320,42 +190,6 @@ export async function importOne(url) {
   await save('psy', dog);
   return { dog, updated: !!old.id };
 }
-const importErr = (e) => (e instanceof ApiError ? (e.status === 0 ? 'Brak połączenia z serwerem.' : e.status === 400 || e.status === 422 || e.status === 502 ? e.message : 'Błąd serwera (' + e.status + ')') : e.message);
-export function addDogSheet() {
-  openSheet(`<h2>Dodaj psa</h2><p class="hint" style="margin:0 0 14px">Najłatwiej ze strony schroniska: nic nie przepisujesz, zdjęcia i opis dochodzą same.</p>
-    <form id="iu" novalidate><div class="field"><label for="iurl">Link do psa na stronie schroniska</label><input class="input" id="iurl" type="url" inputmode="url" placeholder="schronisko-nowodwor.com.pl/psy-do-adopcji/…" autocapitalize="off"></div>
-    <div class="err" id="ie" role="alert"></div><button class="btn block" type="submit">${icon('download').s} Importuj psa</button></form>
-    <div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="iall">${icon('refresh').s} Importuj wszystkie psy</button><button class="btn ghost" id="iman">${icon('pencil').s} Dodaj ręcznie</button></div>
-    <p class="hint" id="ip" style="margin-top:12px"></p>`, (s) => {
-    const err = s.querySelector('#ie'), prog = s.querySelector('#ip');
-    s.querySelector('#iu').addEventListener('submit', async (e) => {
-      e.preventDefault(); err.textContent = ''; const url = s.querySelector('#iurl').value.trim(); if (!url) { err.textContent = 'Wklej link.'; return; }
-      const b = s.querySelector('button[type=submit]'); b.disabled = true; prog.textContent = 'Pobieram dane…';
-      try { const { dog, updated } = await importOne(/^https?:/i.test(url) ? url : 'https://' + url); closeSheet(); toast(updated ? `Zaktualizowano: ${dog.imie}` : `Dodano: ${dog.imie}`); location.hash = '#/psy/' + dog.id; }
-      catch (x) { b.disabled = false; prog.textContent = ''; err.textContent = importErr(x); }
-    });
-    s.querySelector('#iman').onclick = () => { closeSheet(); location.hash = '#/karta/nowy'; };
-    s.querySelector('#iall').onclick = async () => {
-      err.textContent = ''; const btn = s.querySelector('#iall'); btn.disabled = true; prog.textContent = 'Szukam psów na stronie…';
-      try {
-        const r = await api('/import/links'); const links = r.links || []; let ok = 0, fail = 0;
-        for (let i = 0; i < links.length; i++) {
-          prog.textContent = `Importuję ${i + 1} z ${links.length}…`;
-          try { await importOne(links[i]); ok++; } catch { fail++; }
-        }
-        prog.textContent = `Gotowe: ${ok} psów${fail ? ', nieudane: ' + fail : ''}.`; if (!links.length) err.textContent = 'Nie znalazłem psów na stronie.';
-      } catch (x) { err.textContent = importErr(x); prog.textContent = ''; }
-      btn.disabled = false;
-    };
-  });
-}
-actions['a-dog'] = () => addDogSheet();
-actions['dog-refresh'] = async (el) => {
-  const d = await get('psy', el.dataset.id); if (!d?.zrodlo_url) return;
-  toast('Odświeżam…');
-  try { await importOne(d.zrodlo_url); toast('Odświeżono ze strony schroniska'); } catch (x) { toast(importErr(x), true); }
-};
-
 // ========== udostępnianie i karta PDF ==========
 actions['dog-share'] = async (el) => {
   const d = await get('psy', el.dataset.id), url = d.zrodlo_url || SITE + '/psy-do-adopcji';
@@ -363,18 +197,6 @@ actions['dog-share'] = async (el) => {
   if (navigator.share) { try { await navigator.share({ title: `${d.imie} — Schronisko Nowodwór`, text, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Skopiowano opis i link'); } catch { toast('Nie udało się skopiować', true); }
 };
-actions['dog-print'] = async (el) => {
-  const d = await get('psy', el.dataset.id); const pics = (d.zdjecia || []).slice(0, 4);
-  const inner = `<div style="font-family:Georgia,serif;color:#173B32;padding:8mm;max-width:190mm;margin:auto">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #B18A52;padding-bottom:6px"><b style="font-size:30px;letter-spacing:.06em">ŁAPA</b><span style="font-size:11px;letter-spacing:.3em;color:#B18A52">NOWODWÓR</span></div>
-    <h1 style="font-size:44px;margin:14px 0 2px">${esc(d.imie)} ${sexSymbol(d.plec)}</h1>
-    <div style="font:14px Arial,sans-serif;color:#444;margin-bottom:10px">${esc([d.wiek, d.wielkosc, d.waga && 'waga ' + d.waga, d.wzrost && 'wzrost ' + d.wzrost, d.siersc && 'sierść: ' + d.siersc, STATUS[d.status]].filter(Boolean).join('  ·  '))}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${pics.map((u) => `<img src="${esc(safeUrl(u))}" referrerpolicy="no-referrer" style="width:100%;height:220px;object-fit:cover;border-radius:8px">`).join('')}</div>
-    <p style="font:15px/1.5 Arial,sans-serif;color:#222;white-space:pre-line;margin:14px 0">${esc(d.opis || '')}</p>
-    <div style="font:13px Arial,sans-serif;border-top:1px solid #ccc;padding-top:8px;color:#333">Więcej o ${esc(d.imie)} i zasady adopcji: ${esc(d.zrodlo_url || SITE)}<br>Wolontariat schroniska dla psów w Nowodworze · schronisko-nowodwor.com.pl</div></div>`;
-  await printPreview(inner, 'Karta psa');
-};
-
 // Jednorazowe odświeżenie psów zaimportowanych starszym parserem (błędne opisy, brak cech)
 let refreshing = false, lastTry = 0;
 export async function refreshStale() {

@@ -198,6 +198,18 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.18.0 (wersja testowa): strona schroniska jedynym źródłem psów, karta psa jako kompendium
+
+Decyzje właściciela (17.11.2026): aplikacja nie dubluje strony i social mediów. Wolontariusze bez zmian.
+- **Strona = jedyne źródło psów.** Pojawienie się, zniknięcie, status („w procesie adopcji”), miejsce (DT, hotelik z hasła), opis, dane i zdjęcia zawsze jak na stronie (`dogmerge.js`: bez ręcznych blokad). Serwer czyta stronę co godzinę 6–22 i o 2 w nocy (`SITE_SYNC_HOURS` domyślnie `2,6,…,22`).
+- **Byli u nas** (filtr w Psy, dla obu ról; zastępuje „Adoptowane” i archiwum): pies, którego nie ma na stronie (`zniknal_ze_strony`). Bez klikania. Wraca na stronę → wraca do aplikacji z całą kartą. Wolontariusz widzi u takiego psa tylko dane ze strony i lata pobytu.
+- **Usunięte:** przyjmowanie/dodawanie psa (karta w 5 krokach, „Do uzupełnienia”, import z linku), statusy i miejsce psa, zakładka Adopcje, archiwum, droga psa, ocena zachowania, kanały „gdzie ogłoszony”, teksty do postów, Social media, karta PDF, sesja zdjęć, usuwanie psa. Pliki `karta.js`, `szkic.js`, `nowe.js`, `social.js` skasowane. Domy tymczasowe (rejestr osób) zostają.
+- **Karta psa administratora (`kompendium.js`)**: nagłówek (zdjęcia, imię, opis z oznaczenia, boks, znaczek ze strony), **Ważne** (pomarańczowe pole, tylko gdy wpisane), **Dane** (ze strony tylko do odczytu; „W schronisku od” = data publikacji ogłoszenia `od_www`, ołówek, sam rok wystarczy; boks; czip), **Oznaczenie i opis**, **Zdrowie** (kafelki: szczepienie, odrobaczenie, pchły i kleszcze, kastracja; stałe leki; choroby/alergie/dieta; wizyty i zabiegi z datą „tyle, ile pamiętasz” i kosztem, następny termin → „Dziś i do zrobienia”), **Dokumenty** (zdjęcia), **Dla wolontariuszy** (czego potrzebuje, historia spacerów), **Notatki**. Bez dopisków „ze strony”.
+- Daty: `util.js` `parseData` („2014”, „03.2014”, „marzec 2014”, „12.03.2014”, „ok. 2014”), `odKiedy`, `ileCzasu`.
+- Serwer: wolontariusz nie dostaje pól administratora (whitelist `PSY_POLA` bez `wazne`, `leki`, `choroby`, `chip`, `dokumenty`, `od`, `tagi`, `zdr`).
+- „Dziś i do zrobienia”: tylko terminy zabiegów i błąd sprawdzania strony.
+- Testy: nowe `byli1.py`, `komp1.py`; usunięte testy usuniętych funkcji (karta1, usun1, los1, droga1, social1, teksty1).
+
 ## 1.17.2 (wersja testowa): poprawki po testach
 
 - Psy: filtry tylko Wszystkie / W schronisku / Ulubione / Adoptowane; „Do uzupełnienia” tylko dla admina i tylko gdy są takie psy. Usunięte: DT, hotelik, pilne, „zdobywamy zaufanie”.

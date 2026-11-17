@@ -10,4 +10,4 @@ with sync_playwright() as p:
     pg.keyboard.press('Escape'); go(pg,'#/pomoc'); pg.wait_for_timeout(500)
     t=pg.inner_text('#app'); print(repr(t[t.find('Karma'):][:160])); check('potrzeba lista','Dodał(a): Basia' in t and 'Dolicz dostawę' in t)
     go(pg,'#/psy/k1'); pg.wait_for_timeout(600)
-    t=pg.inner_text('#app'); check('karta psa','Ostatnia zmiana: Ania' in t); print(errs)
+    t=pg.inner_text('#app'); check('karta psa (1.18: bez dopisku o ostatniej zmianie)','Nimus' in t and 'Ostatnia zmiana' not in t); print(errs)

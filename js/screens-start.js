@@ -3,8 +3,7 @@ import { boksPill, wybCls, linie, opisLine, wybPill } from './znak.js';
 import { html, icon, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, plusBtn } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
-import { gaps, wToku } from './teczka.js';
-import { zalegle } from './adopcje.js';
+import { gaps } from './teczka.js';
 import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
 import { noweZgloszenia } from './wolontariusz.js';
@@ -15,8 +14,8 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 
 export async function start() {
   const [dogs, walks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('komunikaty'), list('zdrowie')]);
-  const todo = gaps(dogs, zdr, walks), adLate = await zalegle(), lost = await aktywneLiczba();
-  const nowePsy = dogs.filter(wToku), dog = dogOfDay(dogs); const dzis = await dzisItems(), nZgl = await noweZgloszenia();
+  const todo = gaps(dogs, zdr, walks), lost = await aktywneLiczba();
+  const dog = dogOfDay(dogs); const dzis = await dzisItems(), nZgl = await noweZgloszenia();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
@@ -28,7 +27,7 @@ export async function start() {
         <a class="dogtag" href="#/psy/${dog.id}">${icon('paw')}<span>Piesek dnia:</span> <b>${dog.imie}</b> ${raw(boksPill(dog, 'in'))} ${icon('chev')}</a>${raw(opisLine(dog, 'na-ciemnym'))}${raw(wybPill(dog, 'pill'))}</div></section>`
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span>
         <div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div>
-        <a class="dogtag" href="#/karta/nowy">${icon('plus')}<span>Przyjmij nowego psa</span></a></div></section>`;
+        <a class="dogtag" href="#/psy">${icon('paw')}<span>Psy</span></a></div></section>`;
 
   return {
     tab: 'start', title: 'Start',
@@ -44,9 +43,6 @@ export async function start() {
     </div>
     ${nZgl ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zgloszenia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--gold)">${icon('user')}<span><b>Nowe zgłoszenia wolontariuszy: ${nZgl}</b><br><span class="hint">Kto chce pomóc: potrzeby, transport, spacery. Z telefonami.</span></span>${icon('chev')}</a></div>` : ''}
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
-    <div class="pad" style="margin-top:16px"><a class="przyjmij" href="#/karta/nowy">${icon('plus')}<span><b>Przyjmij nowego psa</b><small>Karta psa w 5 prostych krokach</small></span>${icon('chev')}</a></div>
-    ${nowePsy.length ? html`<div class="pad" style="margin-top:12px"><a class="card" href="#/nowe" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('pencil')}<span><b>Do uzupełnienia: ${nowePsy.length}</b><br><span class="hint">${nowePsy.slice(0, 3).map((d) => d.imie).join(', ')}${nowePsy.length > 3 ? '…' : ''}</span></span>${icon('chev')}</a></div>` : ''}
-    ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
     <div class="pad" style="margin-top:16px">${dzisCard(dzis)}</div>
     ${helpDogs.length ? html`<div class="sec"><h2>Potrzebują Cię dziś</h2><a class="link" href="#/pomoc">Wszystkie</a></div>
       <div class="pad stack">${helpDogs.slice(0, 3).map((d) => html`<a class="row card" style="border:0" href="#/psy/${d.id}"><span class="avatar sm${wybCls(d)}">${dogImg(d.zdjecia?.[0], d.imie)}</span>
