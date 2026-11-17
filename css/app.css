@@ -570,5 +570,11 @@ small .adbadge{display:table;margin:3px 0 4px}
 .pomhint{margin:0 4px 2px;color:var(--sage);font-size:13.5px}
 .field[hidden]{display:none}
 .dcard .pic:has(.bx .boks) .st{top:44px}
-.ev .what span.wybl,.need span.wybl,.zglr span.wybl{color:#fff}
+.ev .what span.wybl,.need span.wybl,.zglr span.wybl,.ev .what span.wybi,.ev .what .wybi{color:#fff}
+.ev .what span.opisi{color:var(--green)}
 .pad.komp .kbox{color:var(--graphite)}
+.kd.blok{grid-template-columns:1fr auto;row-gap:4px}
+.kd.blok>span{grid-column:1;grid-row:1}.kd.blok>b{grid-column:1;grid-row:2;font-weight:500;font-size:15px;line-height:1.45}.kd.blok>.ico{grid-column:2;grid-row:1/3}
+.kd:not(.ed).blok>b{grid-column:1/-1}
+.kwt{min-width:0;overflow-wrap:anywhere}.kd>b{overflow-wrap:anywhere}
+@media (max-width:360px){.kwpis{grid-template-columns:74px 1fr;gap:4px 8px}.kwk{grid-column:2}.kd{grid-template-columns:minmax(96px,36%) 1fr auto}}

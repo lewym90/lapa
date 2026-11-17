@@ -42,11 +42,16 @@ dogs[9].opis='Zmieniony opis dziewiątego psa, który został usunięty w aplika
 lim=5; const before=JSON.stringify((await all()).map(x=>x.id).sort()); dogs[1].opis='NIE POWINNO SIĘ ZAPISAĆ, bo strona wygląda na zepsutą i nic nie zapisujemy.'; s=await run();
 ck('7: zepsuta lista => błąd, bez zmian '+s.blad.slice(0,60),s.ok===false&&!(await dog(1)).opis.includes('NIE POWINNO'));
 lim=999; s=await run(); ck('8: po naprawie znów działa',s.ok&&(await dog(1)).opis.includes('NIE POWINNO'));
+// 1.19: pies dodany kiedyś ręcznie (bez strony) → „Byli u nas”; gdy pojawi się na stronie pod tym imieniem → łączy się i wraca
+await fetch(B+'/sync',{method:'POST',headers:H,body:JSON.stringify({changes:[{col:'psy',id:'mrecz',data:{id:'mrecz',imie:'Burek30',wazne:'notatka admina'},updated_at:Date.now(),deleted:false,by:'Ania'},{col:'psy',id:'mrecz2',data:{id:'mrecz2',imie:'Ręczny'},updated_at:Date.now(),deleted:false,by:'Ania'}]})});
+s=await run(); let mr=(await all()).find(x=>x.id==='mrecz2'); ck('8b: ręczny pies bez strony → byli u nas',!!mr.zniknal_ze_strony);
+dogs[30]=mk(30); s=await run(); mr=(await all()).find(x=>x.id==='mrecz'); ck('8c: ręczny pies pojawił się na stronie → połączony, wraca, notatka zostaje '+JSON.stringify({z:mr.zniknal_ze_strony,src:mr.zrodlo_id,w:mr.wazne}),!mr.zniknal_ze_strony&&String(mr.zrodlo_id)==='30'&&mr.wazne==='notatka admina');
+s=await run(); ck('8d: kolejne sprawdzenie bez zmian dla ręcznych '+JSON.stringify(s.zniknelo_nazwy),s.zniknelo===0);
 // 1.18: pies znika ze strony → „Byli u nas” (znacznik zniknal_ze_strony, status bez zmian); wraca → sam wraca (także z dawnego archiwum)
 await edit(6,(x)=>({...x,poza_strona:Date.now()-86400e3})); // znacznik z poprzedniej wersji
 await edit(8,(x)=>({...x,archiwum:Date.now(),archiwum_los:'zmarl'}));
 const z2=dogs[2], z6=dogs[6], z8=dogs[8]; delete dogs[2]; delete dogs[6]; delete dogs[8];
-s=await run(); d=await dog(2); ck('9: zniknął → byli u nas '+JSON.stringify({st:d.status,m:d.miejsce,z:!!d.zniknal_ze_strony,n:s.zniknelo}),!!d.zniknal_ze_strony&&d.status==='do_adopcji'&&d.miejsce==='schronisko'&&s.zniknelo===3&&s.zniknelo_nazwy.includes('Burek2'));
+s=await run(); d=await dog(2); ck('9: zniknął → byli u nas '+JSON.stringify({st:d.status,m:d.miejsce,z:!!d.zniknal_ze_strony,n:s.zniknelo,nz:s.zniknelo_nazwy}),!!d.zniknal_ze_strony&&d.status==='do_adopcji'&&d.miejsce==='schronisko'&&s.zniknelo===3&&s.zniknelo_nazwy.includes('Burek2'));
 d=await dog(6); ck('9b: stary znacznik usunięty, byli u nas',!!d.zniknal_ze_strony&&!d.poza_strona);
 d=await dog(8); ck('9c: dawne archiwum też w byli u nas',!!d.zniknal_ze_strony);
 s=await run(); ck('9d: drugie sprawdzenie bez zmian',s.zniknelo===0);

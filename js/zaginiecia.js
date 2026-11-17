@@ -36,13 +36,13 @@ export async function karta(id) {
   if (!z) return { tab: 'start', html: html`${pageBar('Zaginięcie')}<div class="empty"><h3>Nie ma takiego zgłoszenia</h3><a class="btn gold" href="#/zaginiecia">Wróć do listy</a></div>` };
   const d = z.pies_id ? await get('psy', z.pies_id) : null, adm = state.admin;
   const wart = (k) => (k === 'kiedy' ? kiedyTxt(z) : k === 'kontakt' ? z.kontakt || KONTAKT_DOM : z[k] || '');
-  const pola = POLA.map(([k, l]) => (adm ? `<button type="button" class="kd ed" data-act="zag-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`
-    : wart(k) ? `<div class="kd"><span>${l}</span><b>${esc(wart(k))}</b></div>` : '')).join('');
+  const pola = POLA.map(([k, l]) => (adm ? `<button type="button" class="kd ed${wart(k).length > 40 ? ' blok' : ''}" data-act="zag-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`
+    : wart(k) ? `<div class="kd${wart(k).length > 40 ? ' blok' : ''}"><span>${l}</span><b>${esc(wart(k))}</b></div>` : '')).join('');
   const akt = [...(z.akt || [])].sort((a, b) => b.ts - a.ts);
   return {
     tab: 'start', title: z.imie, live: true,
     html: html`${pageBar(z.imie || 'Zaginięcie')}<div class="pad komp">
-      <div class="khead">${d ? html`<a class="avatar sm" href="#/psy/${d.id}">${dogThumb(d)}</a>` : ''}<span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></div>
+      <div class="khead">${d ? html`<a class="avatar sm" href="#/psy/${d.id}" aria-label="Karta psa: ${d.imie}">${dogThumb(d)}</a>` : ''}<span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></div>
       <div class="kbox">${raw(pola)}</div>
       <h2 class="kh">Aktualizacje</h2>
       <div class="kbox knotki">${akt.length ? raw(akt.map((a) => `<div class="obs"><div class="oh"><span>${esc(a.autor || '')}</span><span>${esc(dataTs(a.ts))}</span></div><div style="white-space:pre-line">${esc(a.text)}</div></div>`).join('')) : html`<p class="kpusto">Brak aktualizacji.</p>`}

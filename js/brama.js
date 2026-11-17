@@ -44,9 +44,9 @@ export async function brama() {
   const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${d.status === 'w_trakcie' ? '<span class="adbadge">w procesie adopcji</span>' : ''}${btn.sub}</small></span></button>${btn.html}</div>`;
   let body = '';
   if (tab === 'wydaj') {
-    const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` })),
-      ...juz.filter(f).map((d) => dogRow(d, { sub: `dziś był już ${s.dzis.filter((w) => w.pies_id === d.id).length}x`, html: `<button class="btn ghost" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` }))];
-    body = rows.join('') || `<div class="empty">${icon('paw').s}<h3>Brak psów</h3><p>Dodaj psy w zakładce Psy.</p></div>`;
+    const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: d.plec === 'suka' ? 'dziś jeszcze nie była' : 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` })),
+      ...juz.filter(f).map((d) => dogRow(d, { sub: `dziś ${d.plec === 'suka' ? 'była' : 'był'} już ${s.dzis.filter((w) => w.pies_id === d.id).length}x`, html: `<button class="btn ghost" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` }))];
+    body = rows.join('') || `<div class="empty">${icon('paw').s}<h3>Brak psów</h3><p>Psy pojawią się same, gdy serwer sprawdzi stronę schroniska.</p></div>`;
   } else if (tab === 'out') {
     const rows = [...s.out.values()].sort(s.wgBoksu || ((a, b) => a.start - b.start)).filter((w) => (w.pies_imie || '').toLowerCase().includes(ql)).map((w) => {
       const d = s.lista.find((x) => x.id === w.pies_id) || { imie: w.pies_imie };
@@ -100,14 +100,14 @@ actions['br-out'] = async (el) => {
     s.querySelector('#wo').addEventListener('submit', async (e) => {
       e.preventDefault();
       const w = { id: 'w' + uid(), tryb: 'brama', pies_id: d.id, pies_imie: d.imie, start: Date.now(), end: null, dystans_km: 0, autor: getName(), osoba: s.querySelector('#wo_o').value.trim(), kontakt: s.querySelector('#wo_k').value.trim() };
-      await save('spacery', w); closeSheet(); toast(`${d.imie} wydany o ${hhmm(w.start)}`); rerender();
+      await save('spacery', w); closeSheet(); toast(`${d.imie} ${d.plec === 'suka' ? 'wydana' : 'wydany'} o ${hhmm(w.start)}`); rerender();
     });
   });
 };
 actions['br-back'] = async (el) => {
   const w = await get('spacery', el.dataset.id); if (!w || w.end) return;
   w.end = Date.now(); w.czas_min = (w.end - w.start) / 60000; await save('spacery', w);
-  toast(`${w.pies_imie} wrócił, spacer ${dur(min(w.end - w.start))}`); rerender();
+  const pd = await get('psy', w.pies_id); toast(`${w.pies_imie} ${pd && pd.plec === 'suka' ? 'wróciła' : 'wrócił'}, spacer ${dur(min(w.end - w.start))}`); rerender();
 };
 actions['br-info'] = async (el) => {
   const w = await get('spacery', el.dataset.id); if (!w) return;

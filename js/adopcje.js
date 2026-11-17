@@ -34,7 +34,7 @@ export async function dtKarta(id) {
   if (!p) return { tab: 'start', html: html`${pageBar('Domy tymczasowe')}<div class="empty"><h3>Nie ma takiego wpisu</h3><a class="btn gold" href="#/dt">Wróć do listy</a></div>` };
   const byId = Object.fromEntries(dogs.map((d) => [d.id, d])), ps = (p.psy || []).map((i) => byId[i]).filter(Boolean);
   const wart = (k) => (k === 'adres' ? adres(p) : p[k] || '');
-  const pola = POLA.map(([k, l]) => `<button type="button" class="kd ed" data-act="dt-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`).join('');
+  const pola = POLA.map(([k, l]) => `<button type="button" class="kd ed${wart(k).length > 40 ? ' blok' : ''}" data-act="dt-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`).join('');
   return {
     tab: 'start', title: p.imie || 'Dom tymczasowy', live: true,
     html: html`${pageBar(p.imie || 'Dom tymczasowy')}<div class="pad komp">

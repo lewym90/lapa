@@ -26,7 +26,7 @@ export function znaczekStrony(d) {
   return t.join('');
 }
 const pole = (label, val, f) => (f
-  ? `<button type="button" class="kd ed" data-act="k-edit" data-f="${f}" data-id="{ID}"><span>${label}</span><b>${val || '<i>dodaj</i>'}</b>${pen()}</button>`
+  ? `<button type="button" class="kd ed${String(val).length > 40 ? ' blok' : ''}" data-act="k-edit" data-f="${f}" data-id="{ID}"><span>${label}</span><b>${val || '<i>dodaj</i>'}</b>${pen()}</button>`
   : val ? `<div class="kd"><span>${label}</span><b>${val}</b></div>` : '');
 
 export async function cardAdm(id, { pics, picImg, isFav }) {

@@ -412,7 +412,14 @@ async function syncSite(reason = 'auto') {
       // Gdy pies wróci na stronę, sam wraca do aplikacji ze wszystkimi notatkami (status i miejsce ze strony).
       const ids = new Set(links.map((l) => /\/(\d+)\/?$/.exec(l)?.[1]).filter(Boolean)), now = Date.now();
       for (const x of db.prepare("SELECT * FROM records WHERE col='psy' AND deleted=0").all()) {
-        const d = JSON.parse(x.data); if (!d.zrodlo_id) continue;
+        const d = JSON.parse(x.data);
+        // Pies dodany kiedyś ręcznie w aplikacji (bez ogłoszenia na stronie): od 1.19 strona jest jedynym źródłem, więc trafia do „Byli u nas”.
+        // Gdy pojawi się na stronie pod tym samym imieniem, wyżej zostaje połączony z ogłoszeniem i wraca.
+        if (!d.zrodlo_id) {
+          if (d.zniknal_ze_strony) continue;
+          d.zniknal_ze_strony = now; res.zniknelo++; res.zniknelo_nazwy.push(d.imie);
+          hist.run(x.col, x.id, x.data, x.updated_at, x.deleted, x.by, now); put.run('psy', x.id, JSON.stringify(d), now, 0, 'strona'); continue;
+        }
         let ch = false;
         if (d.poza_strona || d.poza_n) { delete d.poza_strona; delete d.poza_n; ch = true; } // znaczniki z wcześniejszych wersji
         if (!ids.has(String(d.zrodlo_id))) {

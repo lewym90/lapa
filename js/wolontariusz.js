@@ -183,10 +183,11 @@ export async function startWol() {
     : html`<section class="hero nodog"><span class="pawbig">${icon('paw')}</span><div class="copy"><h2>Dziś możesz zmienić czyjś dzień</h2><div class="goldline"></div></div></section>`;
   const mine = next && z.zg.find((r) => r.key === next.key && r.status === 'tak' && czyMoje(r.id));
   const wiersz = (href, t, txt, cls = '') => `<a class="dzw${cls}" href="${esc(href)}"><span class="dzt">${esc(t)}</span><span class="dzx">${esc(txt)}</span>${icon('chev').s}</a>`;
-  const pomoc = [potrz && `${potrz} ${potrz === 1 ? 'potrzeba' : potrz < 5 ? 'potrzeby' : 'potrzeb'}`, trans && `${trans} ${trans === 1 ? 'transport' : trans < 5 ? 'transporty' : 'transportów'}`, help && `${help} ${help === 1 ? 'pies' : help < 5 ? 'psy' : 'psów'}`].filter(Boolean);
+  const pl = (n, a, b, c) => `${n} ${n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c}`;
+  const pomoc = [potrz && pl(potrz, 'potrzeba', 'potrzeby', 'potrzeb'), trans && pl(trans, 'transport', 'transporty', 'transportów'), help && pl(help, 'pies', 'psy', 'psów')].filter(Boolean);
   const rows = [
     ...lost.map((x) => wiersz('#/zaginiecia/' + x.id, 'szukamy', 'Zaginął: ' + x.imie, ' pilne')),
-    ...(next ? [wiersz('#/spacery', next.status === 'odwolany' ? 'odwołane' : fmtDayLong(next.start) + ', ' + fmtTime(next.start), next.status === 'odwolany' ? 'Sobotnie spacery odwołane' : mine ? 'Sobotnie spacery · będziesz ✓' : 'Sobotnie spacery pod bramą', next.status === 'odwolany' ? ' pilne' : '')] : []),
+    ...(next ? [wiersz('#/spacery', next.status === 'odwolany' ? 'odwołane' : fmtShort(next.start), next.status === 'odwolany' ? 'Sobotnie spacery odwołane' : mine ? 'Sobotnie spacery · będziesz ✓' : 'Sobotnie spacery pod bramą', next.status === 'odwolany' ? ' pilne' : '')] : []),
     ...(pomoc.length ? [wiersz('#/pomoc', 'możesz pomóc', pomoc.join(', '))] : [])
   ];
   return { tab: 'start', title: 'Start', live: true,
