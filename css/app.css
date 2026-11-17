@@ -647,3 +647,8 @@ button.zco.zlink{background:none;border:0;padding:0;text-align:left;font:inherit
 .adcard .avatar{width:72px;height:72px;border-radius:14px}
 .adcard h3{margin:0;font-family:var(--serif);font-size:21px}.adcard .btnrow{margin-top:10px;grid-column:1/-1}
 .adosoba{font-size:14px;margin-top:4px}
+/* 1.17.2: pole daty nie wychodzi poza ekran (iOS) */
+input.input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;min-width:0;box-sizing:border-box;text-align:left}
+input.input[type=date]::-webkit-date-and-time-value{text-align:left}
+.adbadge{font-size:11px;padding:1px 8px;margin:0 6px 0 0;vertical-align:1px;line-height:1.5}
+small .adbadge{display:table;margin:3px 0 4px}

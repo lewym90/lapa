@@ -198,6 +198,13 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.17.2 (wersja testowa): poprawki po testach
+
+- Psy: filtry tylko Wszystkie / W schronisku / Ulubione / Adoptowane; „Do uzupełnienia” tylko dla admina i tylko gdy są takie psy. Usunięte: DT, hotelik, pilne, „zdobywamy zaufanie”.
+- Karta psa: pole daty na iOS nie wychodzi poza ekran (appearance:none, max-width:100%).
+- Dziś i do zrobienia: usunięte przypomnienie „Na stronie: do adopcji. Zmień status na stronie” (porównywało stary status z aplikacji ze stroną; przycisk otwierał arkusz kanałów). Arkusz kanałów nazywa się „Gdzie ogłoszony: X”.
+- Brama: znaczek „w procesie adopcji” w osobnej linii pod imieniem, nad opisem.
+
 ## 1.17.1 (wersja testowa): psy ze strony same, status psa, prosta zakładka Adopcje
 Prośba właściciela: bez potwierdzania. Pies ze strony = w aplikacji, pies znika ze strony = „Adoptowane”. O adopcji decyduje wyłącznie administrator.
 - Serwer (sprawdzanie strony): pies, którego nie ma na liście strony, od razu dostaje `status/miejsce: 'adoptowany'` i znacznik `zniknal_ze_strony` (pierwsze sprawdzenie; stare znaczniki `poza_strona` sprzątane). Gdy wróci na stronę: status ze strony (`status_www`), miejsce z hasła. Pies w archiwum zostaje w archiwum (decyzja administratora). Raport: `zniknelo`, `wrocilo`, `zniknelo_nazwy`. Bez przypomnień „Adoptowany?” i „Dodany automatycznie”.

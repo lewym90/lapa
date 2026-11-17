@@ -26,7 +26,8 @@ export const dogThumb = (d) => {
 
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
-const FILTERS = [['aktywne', 'Wszystkie dostępne'], ['schronisko', 'W schronisku'], ['dt', 'W domu tymczasowym'], ['hotelik', 'W hoteliku'], ['nowe', 'Do uzupełnienia'], ['zaufanie', 'Zdobywamy zaufanie'], ['pilne', 'Pilne'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane']];
+// Filtry listy Psy (1.17): tylko te, z których naprawdę się korzysta. „Do uzupełnienia” – tylko administrator i tylko gdy są takie psy.
+const FILTERS = [['aktywne', 'Wszystkie'], ['schronisko', 'W schronisku'], ['nowe', 'Do uzupełnienia'], ['ulubione', 'Ulubione'], ['adoptowany', 'Adoptowane']];
 function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
@@ -36,7 +37,6 @@ function filterDogs(dogs, walks = []) {
     if (!dostepny(d)) return false; // w procesie adopcji → zakładka Adopcje
     if (ff === 'aktywne') return true;
     if (ff === 'nowe') return wToku(d);
-    if (ff === 'zaufanie') return zaufanieAktywne(d, walks.filter((w) => w.pies_id === d.id));
     if (ff === 'ulubione') return f.has(d.id);
     if (ff === 'schronisko' || ff === 'dt' || ff === 'hotelik') return miejsce(d) === ff;
     return d.status === ff;
@@ -56,7 +56,7 @@ export async function list_() {
     tab: 'psy', title: 'Psy',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
-    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.filter(([k]) => state.admin || !['nowe', 'zaufanie'].includes(k)).map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
+    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.filter(([k]) => k !== 'nowe' || (state.admin && (ff === 'nowe' || dogs.some(wToku)))).map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
     <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>
     <div id="grid">${grid(dogs, walks, zdr)}</div>
     ${state.admin ? html`<button class="btn gold fab" data-act="a-newdog">${icon('plus')} Przyjmij nowego psa</button>` : ''}`,

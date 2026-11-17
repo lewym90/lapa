@@ -30,7 +30,9 @@ with sync_playwright() as p:
     # Brama: pies w procesie adopcji jest, oznaczony, da się wydać
     go(pa, '#/brama', 800); pa.click('[data-act=br-tab][data-t=wydaj]'); pa.wait_for_timeout(300)
     row = pa.locator('.row', has_text='Cezar').first
-    check('Brama: pies w procesie adopcji jest i ma oznaczenie', row.count() == 1 and 'W procesie adopcji' in row.inner_text())
+    try: row.locator('small .adbadge').wait_for(timeout=4000)
+    except Exception: pass
+    check('Brama: pies w procesie adopcji jest i ma oznaczenie pod imieniem', row.count() == 1 and row.locator('small .adbadge').count() == 1)
     check('Brama: można go wydać', row.locator('[data-act=br-out]').count() == 1)
     check('Brama: bez adoptowanych i archiwum', 'Bella' not in text(pa) and 'Dina' not in text(pa))
     # karta psa: Zmień status → W procesie adopcji

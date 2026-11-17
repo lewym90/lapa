@@ -261,7 +261,7 @@ actions['dog-zdrowie'] = async (el) => {
 // ===== kanały publikacji =====
 actions['dog-kanaly'] = async (el) => {
   const d = await get('psy', el.dataset.id), k = d.kanaly || {};
-  openSheet(`<h2>Gdzie jest ${esc(d.imie)}?</h2><p class="hint" style="margin:0 0 12px">Zaznacz, gdzie pies jest już ogłoszony. Na Starcie zobaczysz, czego jeszcze brakuje.</p><form id="kf" novalidate>
+  openSheet(`<h2>Gdzie ogłoszony: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Zaznacz, gdzie pies jest już ogłoszony. Na Starcie zobaczysz, czego jeszcze brakuje.</p><form id="kf" novalidate>
     ${KANALY.map(([x, l]) => `<label class="check"><input type="checkbox" data-k="${x}" ${k[x] ? 'checked' : ''}> ${l}${k[x] ? ` <span class="hint">od ${esc(fmtDate(k[x]))}</span>` : ''}</label>`).join('')}
     <button class="btn block" type="submit" style="margin-top:12px">Zapisz</button></form>`, (s) => {
     s.querySelector('#kf').addEventListener('submit', async (e) => {
@@ -386,7 +386,6 @@ export function gaps(dogs, zdrAll, walksAll = []) {
     if (nt && !quiet) { const sk = stanKarty(d); out.push({ d, kind: 'karta', sev: 2, text: `Karta psa: ${sk.done} z ${sk.total}. Brakuje: ${sk.brak.join(', ')}`, act: 'karta-open', k: sk.pierwszy }); }
     if (!quiet && !nt && (!hasPics(d))) out.push({ d, kind: 'foto', sev: 2, text: 'Brak zdjęć. Potrzebna sesja', act: 'dog-photo' });
     if (k.fb && !k.www && days(k.fb) >= 2) out.push({ d, kind: 'www', sev: 2, text: `Na Facebooku od ${days(k.fb)} dni, nie ma na stronie`, act: 'dog-kanaly' });
-    if (d.www_status && d.status && d.www_status !== d.status && d.status !== 'schronisko' && d.status !== 'w_trakcie') out.push({ d, kind: 'status', sev: 2, text: `Na stronie: ${d.www_status === 'do_adopcji' ? 'do adopcji' : d.www_status}. Zmień status na stronie`, act: 'dog-kanaly' });
     if (!quiet && (d.data_przyjecia && miejsce(d) === 'schronisko' && days(d.data_przyjecia) >= 180 && !d.kampania)) out.push({ d, kind: 'halas', sev: 1, text: `W schronisku ${days(d.data_przyjecia)} dni. Czas na „zróbmy hałas”`, act: 'dog-teksty' });
     for (const z of zdrDue(zdrAll.filter((x) => x.pies_id === d.id))) out.push({ d, kind: 'zdrowie', sev: z.termin < now ? 3 : 2, text: `${TYP[z.typ]}: ${z.termin < now ? 'termin minął ' + fmtDate(z.termin) : 'do ' + fmtDate(z.termin)}`, act: 'dog-zdrowie' });
   }

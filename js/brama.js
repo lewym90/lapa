@@ -41,7 +41,7 @@ export async function brama() {
   const juz = s.lista.filter((d) => !s.out.has(d.id) && s.bylo.has(d.id));
   const ql = q.toLowerCase();
   const f = (d) => (d.imie || '').toLowerCase().includes(ql);
-  const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Oznaczenie i opis: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}${d.status === 'w_trakcie' ? '<span class="adbadge">W procesie adopcji</span>' : ''}<small>${btn.sub}</small></span></button>${btn.html}</div>`;
+  const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Oznaczenie i opis: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${d.status === 'w_trakcie' ? '<span class="adbadge">w procesie adopcji</span>' : ''}${btn.sub}</small></span></button>${btn.html}</div>`;
   let body = '';
   if (tab === 'wydaj') {
     const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` })),
