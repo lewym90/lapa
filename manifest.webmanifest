@@ -18,7 +18,7 @@
     { "src": "icons/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
   "shortcuts": [
-    { "name": "Rozpocznij spacer", "short_name": "Spacer", "url": "./?action=walk", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Brama: wydaj psa", "short_name": "Brama", "url": "./#/brama", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Psy", "short_name": "Psy", "url": "./#/psy", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

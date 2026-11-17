@@ -322,7 +322,7 @@ actions['c-ref'] = async (el) => {
   } else if (t === 'transport') {
     const x = await get('transporty', id); if (!x) return none();
     openSheet(`<h2>Transport: ${esc(x.pies_imie || 'pies')}</h2><p class="sub">${esc(x.skad)} → ${esc(x.dokad)}${x.kiedy ? ' · ' + esc(fmtDate(x.kiedy) + ' ' + fmtTime(x.kiedy)) : ''}</p><p class="hint">Status: ${esc({ szuka: 'Poszukiwany kierowca', przypisany: 'Przypisany', zrealizowany: 'Zrealizowany', anulowany: 'Anulowany' }[x.status] || x.status || '')}${x.kierowca ? ' · kierowca: ' + esc(x.kierowca) : ''}</p>${x.uwagi ? `<p>${esc(x.uwagi)}</p>` : ''}
-      <button class="btn gold block" data-go="#/transport">Przejdź do transportów</button><button class="btn ghost block" style="margin-top:8px" data-sheet-close>Wróć do czatu</button>`, (s) => goBtn(s));
+      <button class="btn gold block" data-go="#/pomoc">Przejdź do Pomocy</button><button class="btn ghost block" style="margin-top:8px" data-sheet-close>Wróć do czatu</button>`, (s) => goBtn(s));
   }
 };
 const goBtn = (s) => s.querySelectorAll('[data-go]').forEach((b) => { b.onclick = () => { closeSheet(); location.hash = b.dataset.go; }; });

@@ -3,9 +3,8 @@
 // Wspólne kawałki (lista zgłoszeń, przyciski) są używane też na ekranach administratora.
 import { html, raw, esc, icon, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, confirmSheet } from './ui.js';
 import { list, listRecs, save, remove, get } from './store.js';
-import { ktoText } from './kto.js';
 import { state, getName, getTel, setTel } from './auth.js';
-import { opisPotrzeby, uid, dogOfDay, dogNeeds, NEED_LABELS, needLabel, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
+import { opisPotrzeby, uid, dogOfDay, dogNeeds, needLabel, greeting, fmtDayLong, fmtTime, fmtDate, fmtShort, dayKey } from './util.js';
 import { boksPill, wybCls, linie } from './znak.js';
 import { soboty } from './terminarz.js';
 import { hydratePhotos } from './photos.js';
@@ -97,7 +96,7 @@ export async function potrzebyHtml() {
   return open.map((n) => {
     const of = z.of.filter((o) => o.typ === 'potrzeba' && o.ref === n.id && o.stan !== 'odrzucona'), mine = of.find((o) => czyMoje(o.id));
     const glowa = `<b style="font-size:17px">${esc(opisPotrzeby(n))}</b>${n.priorytet === 'pilne' ? ' <span class="chip terra" style="min-height:24px;padding:1px 9px;font-size:12px">Pilne</span>' : ''}`;
-    return `<div class="need">${state.admin ? `<button class="needh" data-act="need-edit" data-id="${esc(n.id)}">${glowa}${icon('pencil').s}</button>` : `<div>${glowa}</div>`}
+    return `<div class="need">${state.admin ? `<button class="needh" data-act="need-edit" data-id="${esc(n.id)}"><span>${glowa}</span>${icon('pencil').s}</button>` : `<div>${glowa}</div>`}
       ${of.length ? `<div class="sub" style="margin-top:6px"><b>Przywiozą:</b> ${esc(imiona(of))}</div>` : ''}
       ${state.admin ? zglAdminList(of, z.tel, 'oferty') : `<div class="btnrow" style="margin-top:10px">${mine ? `<button class="btn sm ghost" data-act="of-cofnij" data-col="oferty" data-id="${esc(mine.id)}">${icon('check').s} Przywiozę · Wycofaj</button>` : `<button class="btn sm gold" data-act="of-potrzeba" data-id="${esc(n.id)}">${icon('gift').s} Mogę przywieźć</button>`}</div>`}</div>`;
   }).join('');

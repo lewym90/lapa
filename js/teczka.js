@@ -1,12 +1,11 @@
 // Wspólne zasady psa (od 1.18 strona schroniska jest jedynym źródłem psów, statusu i miejsca),
-// oznaczenie psa (administrator), wpisy zdrowia, stan sprawdzania strony i „Dziś i do zrobienia”.
-import { html, icon, esc, openSheet, closeSheet, toast, actions } from './ui.js';
+// oznaczenie psa (administrator), wpisy zdrowia, stan sprawdzania strony i terminy zabiegów (karta „Dziś” na Starcie).
+import { esc, openSheet, closeSheet, toast, actions } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state } from './auth.js';
 import { MS_DAY, fmtDate } from './util.js';
 import { api } from './api.js';
-import { POWODY, OPISY, boksPill, wybCls, linie } from './znak.js';
-import { raw } from './ui-core.js';
+import { POWODY, OPISY } from './znak.js';
 
 export const ZDROWIE_TYPY = [['szczepienie', 'Szczepienie'], ['odrobaczanie', 'Odrobaczanie'], ['pchly', 'Pchły i kleszcze'], ['kastracja', 'Kastracja / sterylizacja'], ['chip', 'Czip'], ['weterynarz', 'Wizyta u weterynarza'], ['lek', 'Lek / leczenie'], ['badanie', 'Badanie'], ['inne', 'Inne']];
 export const TYP = Object.fromEntries(ZDROWIE_TYPY);
@@ -65,7 +64,7 @@ export async function siteStatus() {
   return _st;
 }
 
-// ===== „Dziś i do zrobienia”: terminy zabiegów (np. szczepienie) =====
+// ===== terminy zabiegów (np. szczepienie) do karty „Dziś” na Starcie =====
 export function gaps(dogs, zdrAll) {
   const out = [], now = Date.now();
   for (const d of dogs) {
@@ -73,14 +72,4 @@ export function gaps(dogs, zdrAll) {
     for (const z of zdrDue(zdrAll.filter((x) => x.pies_id === d.id))) out.push({ d, kind: 'zdrowie', sev: z.termin < now ? 3 : 2, text: `${TYP[z.typ] || z.typ}: ${z.termin < now ? 'termin minął ' + fmtDate(z.termin) : 'do ' + fmtDate(z.termin)}` });
   }
   return out.sort((a, b) => b.sev - a.sev || (a.d.imie || '').localeCompare(b.d.imie || '', 'pl'));
-}
-import { dzisItems, dzisCard } from './terminarz.js';
-export async function zrobic() {
-  const [dogs, zdr] = await Promise.all([list('psy'), list('zdrowie')]); const g = gaps(dogs, zdr); const st = await siteStatus(), err = st && st.enabled !== false && st.ok === false ? st.blad || 'Nieznany błąd.' : null;
-  const { pageBar } = await import('./ui.js'); const { dogThumb } = await import('./screens-psy.js');
-  return {
-    tab: 'start', title: 'Dziś i do zrobienia', live: true,
-    html: html`${pageBar('Dziś i do zrobienia')}<div class="pad" style="margin-bottom:12px">${dzisCard(await dzisItems())}</div>${err || g.length ? html`<div class="sec" style="margin-top:0"><h2>Psy: terminy zabiegów</h2></div>` : ''}<div class="pad stack">${err ? html`<div class="card gap"><span class="rt"><b>Serwer nie mógł sprawdzić strony schroniska</b><small>${err}</small></span><button class="btn sm ghost" data-act="set-site">Sprawdź teraz</button></div>` : ''}${g.map((x) => html`<a class="card gap gi" href="#/psy/${x.d.id}"><span class="gp${wybCls(x.d)}">${dogThumb(x.d)}</span><span class="rt"><b>${x.d.imie} ${raw(boksPill(x.d, 'in'))}</b>${raw(linie(x.d))}<small>${x.text}</small></span>${icon('chev')}</a>`)}</div>`,
-    mount(root) { import('./photos.js').then((m) => m.hydratePhotos(root)); }
-  };
 }

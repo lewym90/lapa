@@ -146,18 +146,3 @@ export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" da
 actions.back = () => { if (history.length > 1) history.back(); else location.hash = '#/start'; };
 
 // Podgląd do wydruku: pełnoekranowa nakładka z przyciskami (print() samo w PWA na telefonie bywa bez efektu)
-export async function printPreview(inner, title = 'Do wydruku') {
-  document.querySelector('.ppv')?.remove();
-  const box = document.createElement('div'); box.className = 'ppv';
-  box.innerHTML = `<div class="ppv-bar"><button class="btn ghost" data-ppv="x">Zamknij</button><b>${esc(title)}</b><button class="btn gold" data-ppv="p">Drukuj</button></div><div class="ppv-page printonly">${inner}</div>`;
-  document.body.appendChild(box);
-  const onKey = (e) => { if (e.key === 'Escape') { box.remove(); document.removeEventListener('keydown', onKey); } };
-  document.addEventListener('keydown', onKey);
-  box.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-ppv]'); if (!b) return;
-    if (b.dataset.ppv === 'x') { box.remove(); document.removeEventListener('keydown', onKey); }
-    else { try { window.print(); } catch { toast('Drukowanie niedostępne. Zrób zrzut ekranu lub użyj Udostępnij w przeglądarce', true); } }
-  });
-  const imgs = [...box.querySelectorAll('img')];
-  await Promise.race([Promise.all(imgs.map((i) => (i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; })))), new Promise((r) => setTimeout(r, 4000))]);
-}

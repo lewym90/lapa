@@ -32,7 +32,7 @@ with sync_playwright() as p:
     t=pg.inner_text('.card.dzis')
     check('Start „Dziś”: zaległy zabieg', 'termin minął' in t and 'Burek' in t and pg.locator('.dzw.pilne', has_text='Burek').count()==1)
     # wydarzenia bez zapisów
-    pg.evaluate("location.hash='#/wydarzenia'"); pg.wait_for_selector('.ev.walk'); pg.wait_for_timeout(400)
+    pg.evaluate("location.hash='#/spacery'"); pg.wait_for_selector('.ev.walk'); pg.wait_for_timeout(400)
     t=pg.inner_text('#app'); check('wydarzenia: brak zapisów', 'Zgłoś udział' not in t and 'zapisał' not in t and 'Sobotnie spacery' in t)
     check('sobotnie: bez przycisku „Post”', pg.locator('[data-act=walk-post]').count()==0)
     pg.screenshot(path='n_wyd.png',full_page=True)

@@ -116,8 +116,8 @@ export function dzisCard(d) {
     ${first.length ? first.map((x) => html`<div class="task"><span class="tt">${x.e.tytul}</span><span class="dchip">${hasTime(x.t) ? toTime(x.t) : 'cały dzień'}</span></div>`) : (d.overdue.length || d.walk ? '' : html`<p class="sub" style="margin:8px 0 4px">Na dziś nic w terminarzu. Dodaj wpis przyciskiem <b>+</b>.</p>`)}</section>`;
 }
 
-// ===== widok: zakładki Sobotnie spacery / Terminarz =====
-let tab = 'sob', filt = 'wszystko';
+// ===== widok: zakładki Terminarz / Sobotnie spacery (Terminarz domyślnie) =====
+let tab = 'ter', filt = 'wszystko';
 export async function wydarzenia(opts = {}) {
   if (opts.tab) tab = opts.tab; if (opts.filt) filt = opts.filt;
   await migruj();
@@ -127,7 +127,7 @@ export async function wydarzenia(opts = {}) {
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">${tab === 'sob' ? 'Sobotnie spacery' : 'Terminarz'}</h1>${plusBtn(tab === 'sob' ? 'sb-extra' : 'tm-new', tab === 'sob' ? 'Dodaj termin spaceru' : 'Dodaj wpis')}</header>
-    <div class="pad" style="display:flex;gap:8px;margin-bottom:6px">${raw(tb('sob', 'Sobotnie spacery') + tb('ter', 'Terminarz'))}</div>${raw(body)}`
+    <div class="pad" style="display:flex;gap:8px;margin-bottom:6px">${raw(tb('ter', 'Terminarz') + tb('sob', 'Sobotnie spacery'))}</div>${raw(body)}`
   };
 }
 export const curTab = () => tab;
@@ -189,7 +189,7 @@ async function terView(zg) {
   rows.sort((a, b) => a.t - b.t); over.sort((a, b) => a.t - b.t);
   const chip = (k, l) => `<button class="chip dark ${filt === k ? 'on' : ''}" data-act="tm-filt" data-k="${k}">${l}</button>`;
   const row = (r) => {
-    if (r.k === 'tr') { const p = parts(r.t); return `<a class="ev trans" href="#/transport"><div class="when"><b>${p.n}</b><small>${esc(p.m)}</small></div><div class="what"><b>Transport: ${imieZnaki(psy[r.x.pies_id], r.x.pies_imie || 'pies')}</b><span>${esc(r.x.skad)} → ${esc(r.x.dokad)}</span></div>${icon('chev').s}</a>`; }
+    if (r.k === 'tr') { const p = parts(r.t); return `<a class="ev trans" href="#/pomoc"><div class="when"><b>${p.n}</b><small>${esc(p.m)}</small></div><div class="what"><b>Transport: ${imieZnaki(psy[r.x.pies_id], r.x.pies_imie || 'pies')}</b><span>${esc(r.x.skad)} → ${esc(r.x.dokad)}</span></div>${icon('chev').s}</a>`; }
     const e = r.e, p = parts(r.t), done = isDone(e, r.t), priv = e.widocznosc === 'ja', who = priv ? [] : forKey(zg, evKey('tm', e.id)).filter((z) => z.status === 'tak');
     return `<div class="ev" style="width:calc(100% - 32px);${done || e.status === 'odwolany' ? 'opacity:.6' : ''}">${e.zadanie ? `<button class="chk" data-act="tm-done" data-id="${esc(e.id)}" data-t="${r.t}" aria-pressed="${done}" aria-label="Odhacz">${icon('check').s}</button>` : ''}
       <button class="what" style="text-align:left;background:none;border:0;padding:0" data-act="tm-open" data-id="${esc(e.id)}"><div style="display:flex;gap:10px;align-items:center"><div class="when" style="width:46px"><b>${p.n}</b><small>${esc(p.m)}</small></div><div style="min-width:0"><b style="${done ? 'text-decoration:line-through' : ''}">${esc(e.tytul)}${e.status === 'odwolany' ? ' · ODWOŁANE' : ''}</b>
@@ -234,7 +234,7 @@ actions['tm-open'] = async (el) => {
 // ===== formularz wpisu (nowy/edycja) =====
 export async function terForm(e0, preset = {}) {
   const isNew = !e0; const e = e0 || { widocznosc: preset.widocznosc || 'wszyscy', zadanie: preset.widocznosc === 'ja', ...preset };
-  const dogs = (await list('psy')).filter((d) => d.status !== 'adoptowany').sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
+  const dogs = (await list('psy')).filter((d) => !d.zniknal_ze_strony && !d.archiwum && d.status !== 'adoptowany').sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
   const p = e.powtarzaj, sel = !p ? '' : p.co === 1 ? '1' + p.jedn : 'x';
   openSheet(`<h2>${isNew ? 'Nowy wpis' : 'Edytuj wpis'}</h2><form id="tf" novalidate>
     <div class="field"><label for="tt">Co? (dowolny tekst)</label><input class="input" id="tt" maxlength="140" value="${esc(e.tytul || '')}" placeholder="np. lek dla Alfa, adopcja o 17:00, kastracja Alfa"></div>
@@ -267,5 +267,3 @@ export async function terForm(e0, preset = {}) {
   });
 }
 actions['tm-new'] = () => terForm();
-actions['a-event'] = () => terForm(null, { widocznosc: 'wszyscy' });
-actions['a-task'] = () => terForm(null, { widocznosc: 'ja' });

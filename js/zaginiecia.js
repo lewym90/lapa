@@ -20,7 +20,7 @@ export function postZ(z) {
 export async function zaginiecia() {
   const [zs, dogs] = await Promise.all([list('zaginiecia'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const a = zs.filter(aktywne).sort((x, y) => (y.kiedy || 0) - (x.kiedy || 0)), f = zs.filter((z) => !aktywne(z)).sort((x, y) => (y.znaleziony_ts || 0) - (x.znaleziony_ts || 0));
-  const card = (z) => { const d = byId[z.pies_id]; return `<a class="card gap gi" href="#/zaginiecia/${esc(z.id)}" style="text-decoration:none;color:inherit"><span class="gp">${d ? dogThumb(d).s : `<div class="nophoto">${icon('paw').s}</div>`}</span><span class="rt"><b>${esc(z.imie || '')}</b><small>${esc([kiedyTxt(z), z.gdzie].filter(Boolean).join(' · '))}</small></span><span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></a>`; };
+  const card = (z) => { const d = byId[z.pies_id]; return `<a class="card dtc" href="#/zaginiecia/${esc(z.id)}"><span class="avatar sm">${d ? dogThumb(d).s : `<div class="nophoto">${icon('paw').s}</div>`}</span><span class="rt"><b>${esc(z.imie || '')}</b><small>${esc([kiedyTxt(z), z.gdzie].filter(Boolean).join(' · '))}</small></span><span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></a>`; };
   return {
     tab: 'start', title: 'Zaginięcia', live: true,
     html: html`${pageBar(state.admin ? 'Zaginięcia' : 'Zaginione psy', { right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}

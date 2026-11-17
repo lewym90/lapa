@@ -1,7 +1,7 @@
 // Znaczki psa:
 // - numer boksu (wpisuje administrator, widzą wszyscy; pole d.boks; tylko gdy pies jest w schronisku) – wszędzie, gdzie pojawia się pies,
 // - „Tylko dla wybranych” z powodem i krótki opis psa (administrator; kolekcja „oznaczenia”, doklejana jako d.ozn) – widzi tylko administrator.
-// Nie trafiają do tekstów postów, plakatów ani karty PDF.
+// Nie trafiają do tekstów na zewnątrz (np. gotowy tekst o zaginięciu).
 import { esc } from './ui-core.js';
 import { actions } from './ui.js';
 import { state } from './auth.js';
@@ -31,7 +31,7 @@ export const wybPill = (d, cls = '') => (adm(d) && wybrani(d) ? `<span class="wy
 export const opisLine = (d, cls = '') => (adm(d) && opis(d) ? `<span class="opisl ${cls}">${esc(opis(d))}</span>` : '');
 // Pod imieniem w wierszach list (Brama, wybór psa, Start, Pomoc, Nowe psy, Dziś…): opis administratora i „Tylko wybrani”.
 export const linie = (d) => (adm(d) ? `${opisLine(d)}${wybrani(d) ? `<span class="wybt">${esc(wybraniTxt(d))}</span>` : ''}` : '');
-// Imię ze znaczkami w miejscach bez zdjęcia (terminarz, transport, czat, adopcje, finanse): krótko, w jednej linii.
+// Imię ze znaczkami w miejscach bez zdjęcia (terminarz, transport, czat, domy tymczasowe, finanse): krótko, w jednej linii.
 export const imieZnaki = (d, imie) => {
   const n = esc(imie ?? (d && d.imie) ?? '');
   if (!d) return n;

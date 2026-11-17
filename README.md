@@ -1,6 +1,6 @@
 # ŁAPA — Nowodwór
 
-Aplikacja PWA dla wolontariuszy Schroniska dla Psów w Nowodworze: kartoteka psów, spacery i obserwacje, wspólny kalendarz, transporty, potrzeby, import ogłoszeń ze strony schroniska. Działa offline, synchronizuje się z serwerem.
+Aplikacja PWA dla wolontariuszy Schroniska dla Psów w Nowodworze: psy ze strony schroniska (same się pojawiają i znikają), karta psa dla administratorów, Brama (wydawanie psów na spacery), terminarz i sobotnie spacery, pomoc (potrzeby, transport), zaginięcia, domy tymczasowe i hoteliki, finanse, czat. Działa offline, synchronizuje się z serwerem.
 
 - `index.html`, `css/`, `js/`, `sw.js`, `manifest.webmanifest`: aplikacja (bez budowania, wystarczy GitHub Pages).
 - `server/`: serwer wspólnych danych (Node 22, bez zależności). Instalacja na VPS: `server/install.sh`.

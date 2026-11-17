@@ -1,12 +1,12 @@
 import { raw } from './ui-core.js';
-import { boksPill, wybCls, linie, opisLine, wybPill } from './znak.js';
-import { html, icon, esc, openSheet, closeSheet, toast, actions, brandBar, pageBar, dogImg, plusBtn } from './ui.js';
-import { list, save, remove, get } from './store.js';
+import { boksPill, opisLine, wybPill } from './znak.js';
+import { html, icon, esc, openSheet, closeSheet, toast, brandBar, dogImg } from './ui.js';
+import { list, save } from './store.js';
 import { state, getName } from './auth.js';
 import { gaps, siteStatus } from './teczka.js';
 import { dzisItems, dzisWiersze } from './terminarz.js';
 import { noweZgloszenia } from './wolontariusz.js';
-import { greeting, dogOfDay, dogNeeds, fmtShort, NEED_LABELS, fmtDate } from './util.js';
+import { greeting, dogOfDay, fmtShort, fmtDate } from './util.js';
 
 const seenK = 'lapa.kseen';
 const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -36,7 +36,7 @@ export async function start() {
   return {
     tab: 'start', title: 'Start', live: true,
     html: html`${brandBar(dot)}
-    <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p><a class="nchip" href="#/czat" hidden>${icon('chat')}<span class="nchip-t"></span></a></section>
+    <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="pad" style="margin-top:16px"><section class="card dzis" aria-label="Dziś"><h3>Dziś</h3>${rows.length ? raw(rows.join('')) : html`<p class="sub" style="margin:6px 0 2px">Na dziś nic. Spokojnego dnia!</p>`}</section></div>

@@ -3,11 +3,10 @@ import { state, init, login, getName, setName, logout, lock, unlock } from './au
 import { on, emit } from './bus.js';
 import { status as syncStatus, kick } from './sync.js';
 import { ApiError } from './api.js';
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, ustawRole } from './ui.js';
+import { html, raw, icon, esc, closeSheet, toast, actions, ustawRole } from './ui.js';
 ustawRole(() => state.admin);
 import { VERSION, TEST } from './config.js';
 import { initUpdates } from './update.js';
-import * as T from './teczka.js';
 import * as A from './adopcje.js';
 import * as Z from './zaginiecia.js';
 import * as F from './finanse.js';
@@ -90,7 +89,7 @@ async function render(keepScroll = false) {
   scrollTo(0, y);
   document.title = (TEST ? 'TEST · ' : '') + (view.title ? view.title + ' · ' : '') + 'ŁAPA — Nowodwór';
 }
-addEventListener('hashchange', () => { closeSheet(); document.querySelectorAll('.ppv').forEach((e) => e.remove()); render(); }); // przejście dalej zamyka też podgląd do druku / plakat
+addEventListener('hashchange', () => { closeSheet(); render(); });
 
 // odświeżanie po zmianie danych (bez psucia wpisywania tekstu)
 let rt;
@@ -173,7 +172,6 @@ actions.menu = () => {
   paintSync(el.querySelector('#sp'));
 };
 actions.bell = () => S.komunikatySheet();
-actions['a-obs'] = () => { P.pickDog((d) => P.obsForm(d.id)); };
 
 function paintSync(el) {
   if (!el) return;

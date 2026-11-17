@@ -1,10 +1,10 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
-import { list, save, get, remove } from './store.js';
-import { getName, state } from './auth.js';
-import { fmtDate, fmtTime, hhmm, minutesText, ago, distanceKm, uid } from './util.js';
+import { save, get, remove } from './store.js';
+import { state } from './auth.js';
+import { fmtDate, fmtTime, minutesText } from './util.js';
 import { dogThumb } from './screens-psy.js';
-import { addPhotoFile, hydratePhotos } from './photos.js';
-import { boksPill, wybCls, linie, opisLine, wybPill, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
+import { hydratePhotos } from './photos.js';
+import { boksPill, wybCls, linie } from './znak.js';
 
 
 
@@ -29,8 +29,8 @@ export async function report(id) {
       <div style="display:flex;gap:14px;align-items:center"><span class="avatar sm${d ? wybCls(d) : ''}">${d ? dogThumb(d) : html`<div class="nophoto">${icon('paw')}</div>`}</span>
         <div><h2 style="font-size:26px;color:var(--graphite)">${w.pies_imie} ${d ? raw(boksPill(d, 'in')) : ''}</h2>${d ? raw(linie(d)) : ''}<div class="sub">Spacer · ${fmtDate(w.start)} · ${w.autor || ''}</div></div></div>
       <ul class="tl" style="margin-top:14px">${(w.os_czasu || []).map((e) => html`<li><span class="dotp"></span><span class="tm">${fmtTime(e.t)}</span><span>${e.txt}</span></li>`)}</ul>
-      <div class="stats"><div class="stat">${icon('route')}<div><small>Dystans</small><b>${w.dystans_km ? w.dystans_km.toFixed(1).replace('.', ',') + ' km' : '—'}</b></div></div>
-        <div class="stat">${icon('clock')}<div><small>Czas</small><b>${minutesText(w.czas_min || 0)}</b></div></div></div>
+      <div class="stats">${w.dystans_km ? html`<div class="stat">${icon('route')}<div><small>Dystans</small><b>${w.dystans_km.toFixed(1).replace('.', ',') + ' km'}</b></div></div>` : ''}
+        <div class="stat">${icon('clock')}<div><small>Czas</small><b>${!w.end && w.tryb === 'brama' ? 'trwa' : minutesText(w.czas_min || (w.end ? (w.end - w.start) / 60000 : 0))}</b></div></div></div>
       ${tags.length ? html`<div class="chips" style="margin-bottom:14px">${tags}</div>` : ''}
       <h3 style="font-size:18px;margin:6px 0 8px;display:flex;justify-content:space-between">Notatka ze spaceru ${state.admin ? html`<button class="iconbtn" style="width:32px;height:32px;color:var(--green)" data-act="rep-note" data-id="${id}" aria-label="Edytuj notatkę">${icon('pencil')}</button>` : ''}</h3>
       <div class="notebox">${w.notatka || 'Bez notatki.'}</div>

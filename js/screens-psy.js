@@ -1,12 +1,12 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, printPreview, pageBar } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
 import { api, ApiError } from './api.js';
 import { SITE } from './config.js';
-import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS, uid } from './util.js';
-import { addPhotoFile, hydratePhotos, photoSrc, removeLocalPhoto } from './photos.js';
-import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
-import { aktywny, byl, miejsce, days, OCENA_POLA, OCENA_LBL } from './teczka.js';
+import { fmtDate, fmtShort, ago, dogNeeds, NEED_LABELS } from './util.js';
+import { hydratePhotos } from './photos.js';
+import { boksPill, wybPill, wybCls, boks, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
+import { aktywny, byl, miejsce, OCENA_POLA, OCENA_LBL } from './teczka.js';
 import { cardAdm, znaczekStrony } from './kompendium.js';
 import { zglDane, chipyPotrzeb } from './wolontariusz.js';
 
@@ -42,9 +42,9 @@ function filterDogs(dogs, walks = []) {
 function lastWalk(walks, id) { const w = walks.filter((x) => x.pies_id === id); return w.length ? Math.max(...w.map((x) => x.end || x.start)) : 0; }
 function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
-  if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
+  if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Psy pojawią się same, gdy serwer sprawdzi stronę schroniska.'}</p></div>`;
   return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id), b = byl(d); return html`<a class="dcard${wybCls(d)}" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${b ? '' : (miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : ['pilne', 'w_trakcie'].includes(d.status) ? statusChip(d.status) : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${b ? html`<div class="m2">${lata(d)}</div>` : lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}${d.wiek || d.wielkosc ? html`<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ')}</div>` : ''}${b ? html`<div class="m2">${lata(d)}</div>` : lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
   if (!FILTERS.some(([k]) => k === ff)) ff = 'aktywne';
@@ -69,10 +69,10 @@ export async function byli() { ff = 'byli'; return list_(); }
 export const ustawFiltr = (k) => { ff = k; };
 actions['dog-filter'] = (el) => { ff = el.dataset.k; dispatchEvent(new HashChangeEvent('hashchange')); };
 
-// ========== wybór psa (do spaceru, obserwacji, zdjęcia) ==========
+// ========== wybór psa (notatka, transport, dom tymczasowy) ==========
 export async function pickDog(cb) {
   const dogs = (await list('psy')).filter(aktywny).sort((a, b) => (a.imie || '').localeCompare(b.imie || '', 'pl'));
-  if (!dogs.length) { toast('Najpierw dodaj psa (przycisk + → Dodaj psa)', true); return; }
+  if (!dogs.length) { toast('Nie ma jeszcze psów. Pojawią się same ze strony schroniska.', true); return; }
   const paint = (q, root) => {
     const f = dogs.filter((d) => (d.imie || '').toLowerCase().includes(q.toLowerCase()));
     root.innerHTML = f.length ? f.map((d) => `<button class="row" data-pick="${esc(d.id)}"><span class="avatar sm${wybCls(d)}">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${sexSymbol(d.plec)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${esc([d.wiek, d.wielkosc].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</button>`).join('') : '<p class="hint">Nie ma takiego psa.</p>';
@@ -97,7 +97,7 @@ const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n %
 actions['dog-fav'] = (el) => { const f = favs(); f.has(el.dataset.id) ? f.delete(el.dataset.id) : f.add(el.dataset.id); lsSet('lapa.fav', [...f]); dispatchEvent(new HashChangeEvent('hashchange')); };
 actions['dog-walks'] = async (el) => {
   const mine = (await list('spacery')).filter((w) => w.pies_id === el.dataset.id).sort((a, b) => b.start - a.start);
-  openSheet(`<h2>Historia spacerów</h2>${mine.length ? mine.map((w) => `<a class="row" href="#/raport/${esc(w.id)}"><span class="rt"><b>${esc(fmtDate(w.start))}</b><small>${esc(w.autor || '')} · ${Math.round((w.czas_min || 0))} min${w.dystans_km ? ' · ' + w.dystans_km.toFixed(1).replace('.', ',') + ' km' : ''}</small></span>${icon('chev').s}</a>`).join('') : '<p class="hint" style="font-size:15px">Brak udokumentowanych spacerów.</p>'}`);
+  openSheet(`<h2>Historia spacerów</h2>${mine.length ? mine.map((w) => `<a class="row" href="#/raport/${esc(w.id)}"><span class="rt"><b>${esc(fmtDate(w.start))}</b><small>${esc([w.osoba || w.autor || '', !w.end && w.tryb === 'brama' ? 'teraz na spacerze' : Math.round(w.czas_min || (w.end ? (w.end - w.start) / 60000 : 0)) + ' min', w.dystans_km ? w.dystans_km.toFixed(1).replace('.', ',') + ' km' : ''].filter(Boolean).join(' · '))}</small></span>${icon('chev').s}</a>`).join('') : '<p class="hint" style="font-size:15px">Brak udokumentowanych spacerów.</p>'}`);
 };
 actions['dog-obs'] = async (el) => {
   const obs = (await list('obserwacje')).filter((o) => o.pies_id === el.dataset.id).sort((a, b) => b.ts - a.ts);
@@ -118,7 +118,7 @@ export function obsForm(dogId) {
 }
 actions['unlock-sheet'] = () => unlockSheet();
 export function unlockSheet(after) {
-  openSheet(`<h2>Hasło administratora</h2><p class="hint" style="margin:0 0 14px">Dla osób pracujących w schronisku. Odblokuje pełną aplikację (Brama, terminarz, edycja kart psów, adopcje, finanse) i zostanie włączone na stałe na tym telefonie.</p>
+  openSheet(`<h2>Hasło administratora</h2><p class="hint" style="margin:0 0 14px">Dla osób pracujących w schronisku. Odblokuje pełną aplikację (Brama, terminarz, karty psów, domy tymczasowe, finanse) i zostanie włączone na stałe na tym telefonie.</p>
     <form id="uf" novalidate><div class="field"><label for="up">Hasło administratora</label><input class="input" id="up" type="password" autocomplete="off" autocapitalize="off"></div><div class="err" id="ue" role="alert"></div><button class="btn block" type="submit">${icon('unlock').s} Odblokuj</button></form>`, (s) => {
     s.querySelector('#uf').addEventListener('submit', async (e) => {
       e.preventDefault(); const b = s.querySelector('button'); b.disabled = true;
@@ -196,7 +196,7 @@ export async function importOne(url) {
   await save('psy', dog);
   return { dog, updated: !!old.id };
 }
-// ========== udostępnianie i karta PDF ==========
+// ========== udostępnianie ==========
 actions['dog-share'] = async (el) => {
   const d = await get('psy', el.dataset.id), url = d.zrodlo_url || SITE + '/psy-do-adopcji';
   const text = `${d.imie}${d.wiek ? ', ' + d.wiek : ''} szuka domu. ${(d.opis || '').slice(0, 200)}${(d.opis || '').length > 200 ? '…' : ''}`;

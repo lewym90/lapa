@@ -4,7 +4,7 @@ import * as db from './db.js';
 import { VOL_WRITE } from './config.js';
 
 // Od 1.16 dwie role: wolontariusz (podgląd + własne zgłoszenia) i administrator (wszystko, zostaje zalogowany).
-// state.coordinator zostaje jako synonim administratora (dane osobowe: adopcje, DT, finanse).
+// state.coordinator zostaje jako synonim administratora (dane osobowe: domy tymczasowe, finanse, telefony).
 export const state = { loggedIn: !!getToken(), coordinator: false, admin: false };
 const NAME = 'lapa.name', ADMIN = 'lapa.admin', TEL = 'lapa.tel';
 const ls = {

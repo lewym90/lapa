@@ -198,6 +198,20 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.19.2 (wersja testowa): audyt całej aplikacji
+
+Przejrzane wszystkie ekrany i okna (administrator i wolontariusz, telefon i komputer) oraz kod. Poprawione:
+- Pozostałości po usuniętych funkcjach: martwy ekran „Dziś i do zrobienia” (`teczka.js`), nieużywane akcje (`a-obs`, `a-task`, `a-event`), podgląd do druku (`printPreview`), dawny ekran wydarzeń, nieużywane importy i ok. 60 nieużywanych reguł CSS (kafelki, karta w 5 krokach, social media, druk, plakat, droga psa).
+- Linki do usuniętych ekranów: transport w terminarzu i w czacie prowadzi do Pomocy, skrót aplikacji „Rozpocznij spacer” → „Brama: wydaj psa”.
+- Teksty: puste listy i wybór psa (psy przychodzą same ze strony), opis trybu administratora, okno hasła, podpowiedź terminu zabiegu („przypomni na Starcie”).
+- Terminarz: domyślnie i jako pierwsza zakładka Terminarz (pasek „Terminarz” otwiera terminarz), sobotnie spacery jako druga.
+- Lista Psy: znaczek „W procesie adopcji” nie zasłania boksu; bez kreski „—”, gdy brak wieku.
+- Czerwone „Tylko wybrani” czytelne w terminarzu i Pomocy; „Pilne” obok nazwy potrzeby; tytuły okien nie wchodzą pod krzyżyk.
+- Zaginięcia: imię psa na liście; tekst aktualizacji widoczny na ciemnym tle (karty DT, zaginięć i finansów).
+- Historia spacerów i raport: spacer z Bramy pokazuje osobę i „teraz na spacerze”/czas zamiast „0 min”, bez pustego „Dystans —”.
+- Start: bez podwójnej informacji o czacie (zostaje znaczek na ikonie czatu).
+- Nowy test `funk1.py` (przepływy z audytu).
+
 ## 1.19.1 (wersja testowa): „Inne” w „Czego potrzebuje”
 
 - Karta psa → „Czego potrzebuje”: przycisk „Inne” pokazuje pole na dowolny tekst. Zapis w `potrzeby` jako `inne:tekst` (bez zmian na serwerze, wolontariusze widzą tekst jako zwykłą potrzebę i mogą się zgłosić). `util.js` `needLabel`.

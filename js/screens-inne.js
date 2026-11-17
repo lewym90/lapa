@@ -1,22 +1,21 @@
-import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
-import { list, listRecs, save, remove, get } from './store.js';
+import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
+import { list, save, get } from './store.js';
 import { state, getName, setName, getTel, setTel, lock, logout } from './auth.js';
 import { VERSION } from './config.js';
 import { checkUpdate } from './update.js';
 import { status as syncStatus, kick } from './sync.js';
 import * as db from './db.js';
 import { hydratePhotos } from './photos.js';
-import { opisPotrzeby, nextSaturdays, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime, startOfDay, slug, dogNeeds, NEED_LABELS } from './util.js';
-import { pickDog, dogThumb } from './screens-psy.js';
+import { opisPotrzeby, dayKey, fmtShort, fmtDate, fmtDayLong, fmtTime } from './util.js';
+import { pickDog } from './screens-psy.js';
 import { raw } from './ui-core.js';
-import { boksPill, wybCls, linie, imieZnaki } from './znak.js';
+import { imieZnaki } from './znak.js';
 import { zglDane, transportZgl, pomocPsyHtml, potrzebyHtml } from './wolontariusz.js';
 import { PODZIEKOWANIE } from './tekst.js';
 import { api } from './api.js';
 import { resetSiteStatus } from './teczka.js';
-import { ktoText, ktoInto } from './kto.js';
+import { ktoInto } from './kto.js';
 import { settingsCard, syncPush } from './push.js';
-import { zgloszenia, udzialBlock, evKey, forKey } from './udzial.js';
 
 const dayParts = (t) => { const d = new Date(t); return { n: d.getDate(), m: new Intl.DateTimeFormat('pl-PL', { month: 'short' }).format(d).replace('.', '') }; };
 const names = (a) => (a.length <= 3 ? a.join(', ') : a.slice(0, 3).join(', ') + ' +' + (a.length - 3));
@@ -107,7 +106,7 @@ export async function settings() {
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Podpisuje Twoje wpisy, spacery i zgłoszenia.</p>
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       ${notif}
-      <section class="card"><h3>${icon('lock')} Administrator</h3><p class="sub" style="margin:2px 0 12px">Tryb administratora: wszystkie uprawnienia, w tym dane osobowe (adopcje, domy tymczasowe, finanse), Brama, terminarz, oznaczanie psów. Zostaje włączony na stałe na tym telefonie.</p>
+      <section class="card"><h3>${icon('lock')} Administrator</h3><p class="sub" style="margin:2px 0 12px">Tryb administratora: wszystkie uprawnienia, w tym dane osobowe (domy tymczasowe i hoteliki, finanse, telefony zgłoszeń), Brama, terminarz, karty psów. Zostaje włączony na stałe na tym telefonie.</p>
         <button class="btn ghost block" data-act="set-lock">${icon('lock')} Wyłącz tryb administratora</button></section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button><button class="btn ghost" data-act="set-resync">Pobierz dane od nowa</button></div></section>
@@ -132,7 +131,7 @@ async function settingsWol() {
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       <section class="card"><h3>Twój telefon</h3><p class="sub" style="margin:2px 0 12px">Podpowiada się przy zgłoszeniach („Mogę przywieźć”, „Mogę pojechać”, „Będę”). Zapisany tylko na tym telefonie. Przy zgłoszeniu widzi go wyłącznie administrator (przez 30 dni).</p>
         <form id="stl" class="field" style="margin:0"><input class="input" id="stli" type="tel" aria-label="Twój telefon" maxlength="20" value="${getTel()}" autocomplete="tel" placeholder="np. 600 100 200"><button class="btn block" style="margin-top:10px" type="submit">Zapisz telefon</button></form></section>
-      <section class="card"><h3>${icon('lock')} Pracujesz w schronisku?</h3><p class="sub" style="margin:2px 0 12px">Hasło administratora odblokuje pełną aplikację: Bramę, terminarz, karty psów do edycji, adopcje i resztę.</p>
+      <section class="card"><h3>${icon('lock')} Pracujesz w schronisku?</h3><p class="sub" style="margin:2px 0 12px">Hasło administratora odblokuje pełną aplikację: Bramę, terminarz, karty psów i resztę.</p>
         <button class="btn block" data-act="unlock-sheet">${icon('unlock')} Odblokuj hasłem administratora</button></section>
       <section class="card"><h3>Synchronizacja</h3><p class="sub" style="margin:2px 0 12px" id="sst">${pend ? pend + ' zmian czeka na wysłanie.' : 'Wszystko zapisane na serwerze.'}${syncStatus.last ? ' Ostatnio: ' + fmtTime(syncStatus.last) + '.' : ''}</p>
         <div class="btnrow"><button class="btn ghost" data-act="set-sync">${icon('refresh')} Synchronizuj teraz</button></div></section>
@@ -150,7 +149,7 @@ actions['set-site'] = async () => {
   try { await api('/site/sync', { method: 'POST', body: {} }); } catch { toast('Brak połączenia z serwerem', true); return; }
   for (let i = 0; i < 120; i++) {
     await new Promise((r) => setTimeout(r, 2500)); const h = await api('/health').catch(() => null), s = h && h.site, el = document.getElementById('sitest'); if (!s) continue; if (el) el.textContent = siteText(s);
-    if (!s.running && s.t > t0) { resetSiteStatus(); kick(10); if (location.hash === '#/zrobic') dispatchEvent(new HashChangeEvent('hashchange')); toast(s.ok ? ([s.nowych ? `nowych psów: ${s.nowych}` : '', s.zniknelo ? `zniknęło ze strony: ${s.zniknelo}` : '', s.wrocilo ? `wróciło: ${s.wrocilo}` : ''].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase()) || 'Sprawdzone. Bez zmian') : 'Nie udało się sprawdzić strony', !s.ok); return; }
+    if (!s.running && s.t > t0) { resetSiteStatus(); kick(10); if (location.hash === '#/start' || location.hash === '') dispatchEvent(new HashChangeEvent('hashchange')); toast(s.ok ? ([s.nowych ? `nowych psów: ${s.nowych}` : '', s.zniknelo ? `zniknęło ze strony: ${s.zniknelo}` : '', s.wrocilo ? `wróciło: ${s.wrocilo}` : ''].filter(Boolean).join(', ').replace(/^./, (c) => c.toUpperCase()) || 'Sprawdzone. Bez zmian') : 'Nie udało się sprawdzić strony', !s.ok); return; }
     if (i >= 3 && !s.running && s.t === t0) { toast('Serwer sprawdzał stronę przed chwilą'); return; }
   }
 };

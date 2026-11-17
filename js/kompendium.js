@@ -3,7 +3,7 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, confirmSheet, sexSymbol, safeUrl } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { getName } from './auth.js';
-import { dogNeeds, NEED_LABELS, needLabel, ago, parseData, dataTs, odKiedy } from './util.js';
+import { dogNeeds, needLabel, ago, parseData, dataTs, odKiedy } from './util.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
 import { boksPill, wybCls, wybrani, powody, kto, opis as opisAdm, opisLine, czyscBoks } from './znak.js';
 import { ZDROWIE_TYPY, TYP, zdrowieDla, byl, miejsce } from './teczka.js';
@@ -139,7 +139,7 @@ actions['k-zdr'] = async (el) => {
     <div class="field"><label for="kz_d">Kiedy</label><input class="input" id="kz_d" maxlength="30" autocomplete="off" placeholder="np. 12.03.2024, 03.2024 albo 2024" value="${esc(z ? dz(z) : dataTs(Date.now()))}"></div>
     <div class="field"><label for="kz_n">Co dokładnie (opcjonalnie)</label><textarea class="textarea" id="kz_n" maxlength="600" placeholder="np. szczepionka na wściekliznę; lek i dawka; wynik badania">${esc(z?.notatka || '')}</textarea></div>
     <div class="field"><label for="kz_k">Koszt w zł (opcjonalnie)</label><input class="input" id="kz_k" inputmode="decimal" maxlength="10" value="${z?.koszt ? esc(String(z.koszt).replace('.', ',')) : ''}"></div>
-    <div class="field"><label for="kz_x">Następny termin (opcjonalnie, przypomni w „Dziś i do zrobienia”)</label><input class="input" id="kz_x" maxlength="30" autocomplete="off" placeholder="np. 12.03.2025" value="${esc(z?.termin_txt || (z?.termin ? dataTs(z.termin) : ''))}"></div>
+    <div class="field"><label for="kz_x">Następny termin (opcjonalnie, przypomni na Starcie)</label><input class="input" id="kz_x" maxlength="30" autocomplete="off" placeholder="np. 12.03.2027" value="${esc(z?.termin_txt || (z?.termin ? dataTs(z.termin) : ''))}"></div>
     <div class="err" id="kz_e" role="alert"></div><button class="btn block" type="submit">Zapisz</button>
     ${z ? '<button type="button" class="btn ghost block" id="kz_del" style="margin-top:8px;color:var(--terra-d)">Usuń wpis</button>' : ''}</form>`, (s) => {
     const er = s.querySelector('#kz_e');
