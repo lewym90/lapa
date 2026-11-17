@@ -231,7 +231,7 @@ function mountKarta(app, d0, n) {
       await zapisz(); const d = (id && await get('psy', id)) || cur;
       if ((String(d.opis || '').trim() || String(d.haslo || '').trim()) && !(await confirmSheet('Zastąpić obecny tekst?', 'Hasło i opis zostaną zastąpione szkicem ułożonym z danych psa. Potem możesz go poprawić.', 'Zastąp'))) return;
       const h = szkicHasla(d), o = szkicOpisu(d);
-      el('#k_haslo').value = h; el('#k_opis').value = o; pend.haslo = h; pend.opis = o; await zapisz(); toast('Szkic gotowy. Przeczytaj i popraw, co chcesz');
+      el('#k_haslo').value = h; el('#k_opis').value = o; { const t = el('#k_opis'); t.style.height = 'auto'; t.style.height = Math.max(220, t.scrollHeight + 4) + 'px'; t.scrollTop = 0; } pend.haslo = h; pend.opis = o; await zapisz(); toast('Szkic gotowy. Przeczytaj i popraw, co chcesz');
       el('#k_opis').focus();
     } else if (k === 'foto1') {
       if (!id) { await zapisz(); if (!id) { err.textContent = 'Najpierw wpisz imię psa, potem dodaj zdjęcie.'; el('#k_imie')?.focus(); return; } }
