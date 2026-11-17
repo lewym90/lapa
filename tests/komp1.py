@@ -1,5 +1,5 @@
 # 1.18: karta psa administratora – kompendium: Ważne (pomarańczowe), Dane (strona tylko do odczytu, „W schronisku od” z datą ze strony
-# i ołówkiem, sam rok wystarczy), Oznaczenie, Zdrowie (kafelki, leki, choroby, wpisy z datą „tyle, ile pamiętasz”, koszt),
+# i ołówkiem, sam rok wystarczy), Wydawanie na spacer, Zdrowie (kafelki, leki, choroby, wpisy z datą „tyle, ile pamiętasz”, koszt),
 # Dokumenty (zdjęcia), Dla wolontariuszy, Notatki. Bez statusów, kanałów, tekstów do postów, drogi psa i usuwania.
 from playwright.sync_api import sync_playwright
 from wspolne import *
@@ -19,8 +19,9 @@ with sync_playwright() as p:
     now = pa.evaluate('Date.now()')
     save(pa, 'psy', {'id': 'd1', 'imie': 'Wilma', 'plec': 'suka', 'wiek': 'ok. 6 lat', 'waga': '18 kg', 'wielkosc': 'średnia', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'boks': '12', 'zdjecia': [], 'zrodlo_id': '1', 'zrodlo_url': 'https://example.com/psy/1', 'od_www': pa.evaluate('new Date(2021,10,18,12).getTime()'), 'haslo': 'WILMA - spokojna dama', 'opis': 'Spokojna suczka.', 'zdr': {'kastr': 'tak'}})
     go(pa, '#/psy/d1', 1000); t = text(pa)
-    for s_ in ['Dane', 'Oznaczenie i opis', 'Zdrowie', 'Dokumenty', 'Dla wolontariuszy', 'Notatki']:
+    for s_ in ['Dane', 'Wydawanie na spacer', 'Zdrowie', 'Dokumenty', 'Dla wolontariuszy', 'Notatki']:
         check('sekcja ' + s_, s_ in t)
+    check('Wydawanie na spacer: „Każdy” i pusty opis', pa.locator('.kd', has_text='Kto może wyprowadzać').locator('text=Każdy').count() == 1 and pa.locator('.kd', has_text='Krótki opis').count() == 1)
     check('dane ze strony', all(x in t for x in ['Suka', 'ok. 6 lat', '18 kg', 'średnia']))
     check('W schronisku od: data ze strony i liczba lat', '18.11.2021' in t and ('4 lata' in t or '5 lat' in t), t[:600])
     check('bez dawnych elementów', not any(x in t for x in ['Zmień status', 'Gdzie jest ogłoszony', 'Teksty do postów', 'Zaufanie i spacery', 'Karta psa:', 'Usuń psa', 'Ocena zachowania', 'Edytuj', 'PDF', 'Zdjęcia / sesja']), t)

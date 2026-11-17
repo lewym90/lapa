@@ -25,12 +25,12 @@ actions['dog-oznacz'] = async (el) => {
   if (!state.admin) { toast('To może zmienić tylko administrator', true); return; }
   const d = await get('psy', el.dataset.id); if (!d) return;
   const o = d.ozn || {}, w = o.wybrani || {}, sel = new Set(w.powody || []);
-  openSheet(`<h2>Oznaczenie: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Widzą je tylko administratorzy: w Bramie, na liście Psy, na karcie psa i w innych miejscach. Wolontariusze tego nie widzą. Nie widać, kto je ustawił.</p><form id="of2" novalidate>
-    <div class="field"><span class="lbl">Krótki opis psa (pod imieniem, zamiast hasła ze strony)</span><div class="chips" id="oz_o">${['', ...OPISY].map((k) => `<button type="button" class="chip outline ${(o.opis || '') === k ? 'on' : ''}" data-op="${esc(k)}" aria-pressed="${(o.opis || '') === k}">${k ? esc(k) : 'bez opisu'}</button>`).join('')}</div></div>
-    <label class="check" style="margin-top:6px"><input type="checkbox" id="oz_on" ${w.on ? 'checked' : ''}> <b>Tylko dla wybranych wolontariuszy</b> (czerwona obwódka)</label>
+  openSheet(`<h2>Wydawanie na spacer: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Kto może wyprowadzać psa i krótki opis pod imieniem w Bramie. Widzą to tylko administratorzy (Brama, lista Psy, karta psa). Wolontariusze tego nie widzą. Nie widać, kto to ustawił.</p><form id="of2" novalidate>
+    <div class="field"><span class="lbl">Krótki opis (pod imieniem, zamiast hasła ze strony)</span><div class="chips" id="oz_o">${['', ...OPISY].map((k) => `<button type="button" class="chip outline ${(o.opis || '') === k ? 'on' : ''}" data-op="${esc(k)}" aria-pressed="${(o.opis || '') === k}">${k ? esc(k) : 'bez opisu'}</button>`).join('')}</div></div>
+    <label class="check" style="margin-top:6px"><input type="checkbox" id="oz_on" ${w.on ? 'checked' : ''}> <b>Wyprowadzają tylko wybrani wolontariusze</b></label>
     <div class="field" style="margin-top:12px"><span class="lbl">Dlaczego (możesz zaznaczyć kilka)</span><div class="chips">${POWODY.map(([k, l]) => `<button type="button" class="chip outline pw ${sel.has(k) ? 'on' : ''}" data-pw="${k}">${l}</button>`).join('')}</div></div>
     <div class="field"><label for="oz_i">Inny powód (opcjonalnie)</label><input class="input" id="oz_i" maxlength="40" placeholder="np. ucieka, gryzie smycz" value="${esc(w.inny || '')}" data-nodraft></div>
-    <div class="field"><label for="oz_k">Kto może z nim wychodzić (opcjonalnie)</label><input class="input" id="oz_k" maxlength="120" placeholder="np. Justyna, Marek" value="${esc(w.kto || '')}" data-nodraft></div>
+    <div class="field"><label for="oz_k">Kto może wyprowadzać (opcjonalnie)</label><input class="input" id="oz_k" maxlength="120" placeholder="np. Justyna, Marek" value="${esc(w.kto || '')}" data-nodraft></div>
     <div class="err" id="oz_e" role="alert"></div><button class="btn block" type="submit">Zapisz</button></form>`, (s) => {
     const on = s.querySelector('#oz_on'); let op = OPISY.includes(o.opis) ? o.opis : '';
     s.querySelectorAll('[data-op]').forEach((b) => b.addEventListener('click', () => { op = b.dataset.op; s.querySelectorAll('[data-op]').forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); }); }));

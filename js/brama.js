@@ -41,7 +41,7 @@ export async function brama() {
   const juz = s.lista.filter((d) => !s.out.has(d.id) && s.bylo.has(d.id));
   const ql = q.toLowerCase();
   const f = (d) => (d.imie || '').toLowerCase().includes(ql);
-  const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Oznaczenie i opis: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${d.status === 'w_trakcie' ? '<span class="adbadge">w procesie adopcji</span>' : ''}${btn.sub}</small></span></button>${btn.html}</div>`;
+  const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${d.status === 'w_trakcie' ? '<span class="adbadge">w procesie adopcji</span>' : ''}${btn.sub}</small></span></button>${btn.html}</div>`;
   let body = '';
   if (tab === 'wydaj') {
     const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` })),
@@ -67,7 +67,7 @@ export async function brama() {
     html: html`${pageBar('Brama – spacery', { back: false })}<div class="pad">
       <p class="sub" style="margin:4px 0 12px">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}, <b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z ${s.lista.length} psów. Bez spaceru: <b>${nieWyd.length}</b>.</p>
       <div style="display:flex;gap:8px;margin-bottom:12px">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size) + tb('out', 'Poza', s.out.size) + tb('wrocily', 'Wróciły', s.wrocily.length))}</div>
-      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div>${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}<p class="hint" style="margin:6px 2px 0;color:var(--sage);font-size:13px">Dotknij imienia psa, żeby go oznaczyć (tylko dla wybranych, krótki opis). Widzą to tylko administratorzy.</p></div>
+      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div>${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}<p class="hint" style="margin:6px 2px 0;color:var(--sage);font-size:13px">Dotknij imienia psa, żeby ustawić wydawanie na spacer (kto może wyprowadzać, krótki opis). Widzą to tylko administratorzy.</p></div>
       <div class="pad stack" id="bl" style="margin-top:8px">${raw(body)}</div>
       <div style="height:16px"></div>`,
     mount(root) {

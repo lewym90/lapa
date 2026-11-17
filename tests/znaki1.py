@@ -44,7 +44,7 @@ with sync_playwright() as p:
     sync(pa)
     go(pa, '#/psy/d1', 900)
     pa.click('[data-act=dog-oznacz]'); pa.wait_for_selector('#of2')
-    check('okno: informacja, że widzą tylko administratorzy', 'Widzą je tylko administratorzy' in pa.inner_text('.sheet'))
+    check('okno: „Wydawanie na spacer”, widzą tylko administratorzy', 'Wydawanie na spacer' in pa.inner_text('.sheet') and 'Widzą to tylko administratorzy' in pa.inner_text('.sheet'))
     check('opis z listy: 4 możliwości + bez opisu', pa.locator('[data-op]').count() == 5 and pa.locator('#oz_o input').count() == 0)
     pa.click('[data-op="dla aktywnych"]')
     pa.check('#oz_on'); pa.click('#of2 button[type=submit]'); pa.wait_for_timeout(300)
@@ -52,7 +52,7 @@ with sync_playwright() as p:
     pa.click('[data-pw=wycofany]'); pa.click('[data-pw=silny]'); pa.fill('#oz_k', 'Justyna, Marek'); pa.click('#of2 button[type=submit]'); pa.wait_for_timeout(700)
     t = text(pa)
     check('karta (administrator): opis pod imieniem', 'dla aktywnych' in pa.inner_text('.dogsheet .opisl'))
-    check('karta (administrator): oznaczenie tylko dla wybranych', 'Tylko dla wybranych: wycofany, silny' in t and 'mogą wychodzić: Justyna, Marek' in t)
+    check('karta (administrator): wydawanie na spacer – tylko wybrani', 'Tylko wybrani: wycofany, silny · Justyna, Marek' in t and pa.locator('.kd', has_text='Krótki opis').locator('text=dla aktywnych').count() == 1)
     check('karta (administrator): czerwona ramka na zdjęciach', pa.locator('.dogtop.wyb').count() == 1)
     check('karta: bez podpisu kto oznaczył', 'Admin' not in pa.inner_text('.dogsheet'))
     sync(pa)
@@ -68,7 +68,7 @@ with sync_playwright() as p:
     l = pg.locator('.dcard', has_text='Luna')
     check('DT: bez boksu, hasło ze strony zostaje', l.locator('.boks').count() == 0 and 'w domu tymczasowym' in l.inner_text())
     go(pg, '#/psy/d1', 900); t = text(pg)
-    check('administrator karta: opis i oznaczenie', 'dla aktywnych' in t and 'Tylko dla wybranych' in t)
+    check('administrator karta: opis i wydawanie na spacer', 'dla aktywnych' in t and 'Tylko wybrani' in t)
     check('karta psa: „Ostatnia zmiana” nie zdradza, kto oznaczył', 'Admin' not in t)
     for h, nazwa in [('#/pomoc', 'Pomoc')]:
         go(pg, h, 900); row = pg.locator('.row, .card, .need', has_text='Saba').last
@@ -82,7 +82,7 @@ with sync_playwright() as p:
     check('wolontariusz lista: hasło ze strony, bez opisu, z boksem', 'w cieniu strachu' in k.inner_text() and 'dla aktywnych' not in k.inner_text() and k.locator('.bx .boks').inner_text() == 'Boks 7a')
     check('wolontariusz: lokalnie brak oznaczeń', pv.evaluate("async()=>(await (await import('/js/db.js')).getAll('oznaczenia')).length") == 0)
     go(pv, '#/psy/d1', 900); t = text(pv)
-    check('wolontariusz: karta bez opisu i ramki', 'dla aktywnych' not in t and 'Tylko dla wybranych' not in t and 'Oznaczenie i opis psa' not in t)
+    check('wolontariusz: karta bez opisu i ramki', 'dla aktywnych' not in t and 'Tylko dla wybranych' not in t and 'Tylko wybrani' not in t and 'Wydawanie na spacer' not in t and 'Oznaczenie i opis psa' not in t)
     for h in ['#/pomoc', '#/start', '#/transport']:
         go(pv, h, 900); check(f'wolontariusz {h}: bez oznaczeń', 'dla aktywnych' not in text(pv) and 'Tylko wybrani' not in text(pv) and pv.locator('#app .wyb').count() == 0)
     # pod spodem: nawet gdyby dane trafiły na telefon, funkcje nie pokażą ich wolontariuszowi

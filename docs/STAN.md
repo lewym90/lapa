@@ -198,6 +198,11 @@ Prośba właściciela: przyjęcie nowego psa było za skomplikowane (schowany �
 - Wejścia: „Przyjmij nowego psa” na Starcie, na liście Psy, w menu i w „+”. Menu: „Do uzupełnienia” (`#/nowe` = lista Psy z filtrem). Stara sekcja „Nowe psy” i jej okna usunięte (stare adresy przekierowują).
 - Testy: karta1.py (48), nowe1.py usunięty, poprawione e3, droga1, usun1, audyt (635: trasy karty, wyjście, „Edytuj”).
 
+## 1.19.3 (wersja testowa): „Wydawanie na spacer” zamiast „Oznaczenie i opis”
+
+- Karta psa: sekcja „Wydawanie na spacer” z dwoma wierszami: „Kto może wyprowadzać” (Każdy / Tylko wybrani: powody · imiona) i „Krótki opis” (pod imieniem w Bramie). Oba otwierają to samo okno „Wydawanie na spacer: imię”. Historia spacerów zostaje w „Dla wolontariuszy”.
+- Ta sama nazwa w Bramie (podpowiedź i opis przycisku imienia) i w oknie (bez „czerwonej obwódki”, „Kto może wyprowadzać”).
+
 ## 1.19.2 (wersja testowa): audyt całej aplikacji
 
 Przejrzane wszystkie ekrany i okna (administrator i wolontariusz, telefon i komputer) oraz kod. Poprawione:

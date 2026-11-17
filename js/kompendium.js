@@ -47,7 +47,7 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
     pole('Płeć', d.plec === 'suka' ? 'Suka' : d.plec === 'samiec' ? 'Samiec' : ''), pole('Wiek', esc(d.wiek || '')), pole('Waga', esc(d.waga || '')), pole('Wielkość', esc(d.wielkosc || '')),
     pole('W schronisku od', od ? esc(od.txt) + (byl(d) ? '' : ` <em>· ${esc(od.ile)}</em>`) : '', 'od'), pole('Boks', esc(d.boks || ''), 'boks'), pole('Czip', esc(d.chip || ''), 'chip')
   ].join('').replaceAll('{ID}', esc(id)) + (() => { const u = uKogo(osoby, id); return u ? `<a class="kd ed" href="#/dt/${esc(u.id)}"><span>${esc(RODZAJ[u.rodzaj || 'dt'])}</span><b>${esc(u.imie || '')}</b>${icon('chev').s}</a>` : ''; })();
-  const oz = [wybrani(d) ? 'Tylko dla wybranych' + (powody(d).length ? ': ' + powody(d).join(', ') : '') + (kto(d) ? ` · mogą wychodzić: ${kto(d)}` : '') : '', opisAdm(d) ? '„' + opisAdm(d) + '”' : ''].filter(Boolean).join(' · ');
+  const kto1 = wybrani(d) ? 'Tylko wybrani' + (powody(d).length ? ': ' + powody(d).join(', ') : '') + (kto(d) ? ` · ${kto(d)}` : '') : 'Każdy';
   return {
     tab: 'psy', title: d.imie, live: true,
     html: html`<section class="dogtop${wybCls(d)}"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
@@ -62,8 +62,9 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
 
       <h2 class="kh">Dane</h2><div class="kbox">${raw(dane)}</div>
 
-      <h2 class="kh">Oznaczenie i opis</h2>
-      <div class="kbox"><button type="button" class="kd ed" data-act="dog-oznacz" data-id="${id}"><span>Oznaczenie</span><b>${oz || raw('<i>bez oznaczenia i opisu</i>')}</b>${raw(pen())}</button></div>
+      <h2 class="kh">Wydawanie na spacer</h2>
+      <div class="kbox"><button type="button" class="kd ed" data-act="dog-oznacz" data-id="${id}"><span>Kto może wyprowadzać</span><b>${kto1}</b>${raw(pen())}</button>
+        <button type="button" class="kd ed" data-act="dog-oznacz" data-id="${id}"><span>Krótki opis</span><b>${opisAdm(d) || raw('<i>dodaj</i>')}</b>${raw(pen())}</button></div>
 
       <h2 class="kh">Zdrowie</h2>
       <div class="kafle">${raw(kafle)}</div>
