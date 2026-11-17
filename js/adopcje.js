@@ -1,4 +1,4 @@
-// Droga adopcji i domy tymczasowe: dane osobowe, tylko po odblokowaniu hasłem koordynatora (kolekcje p_*).
+// Droga adopcji i domy tymczasowe: dane osobowe, tylko dla administratora (kolekcje p_*).
 import { raw } from './ui-core.js';
 import { wybCls, imieZnaki } from './znak.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
@@ -20,7 +20,7 @@ const etapOf = (a) => a.etap || STARE[a.status] || 'kontakt';
 const SEL = (id, label, opts, val) => `<div class="field"><label for="${id}">${label}</label><select class="select" id="${id}">${opts.map(([k, l]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 const d10 = (t) => { const d = new Date(t || Date.now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const tel = (t) => String(t || '').replace(/[^\d+]/g, '');
-const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title)}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div></div>` });
+const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title)}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` });
 
 // Pies zmienia status razem z postępem adopcji.
 async function syncDog(a, prevEtap) {

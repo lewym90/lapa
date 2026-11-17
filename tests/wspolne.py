@@ -4,6 +4,7 @@ import json, urllib.request
 BASE = 'http://127.0.0.1:8000/?api=http://127.0.0.1:18999'
 API = 'http://127.0.0.1:18999'
 WOL = 'wolontariusz-haslo-1'
+ADM = 'administrator-haslo-3'
 errs = []
 wynik = {'ok': 0, 'bad': 0}
 
@@ -25,7 +26,7 @@ def newpage(b, vp={'width': 390, 'height': 900}):
     return ctx, pg
 
 
-def login(pg, name, pw=WOL):
+def login(pg, name, pw=ADM):
     pg.goto(BASE); pg.wait_for_selector('#lf'); pg.fill('#pw', pw); pg.click('#lb'); pg.wait_for_selector('#nf'); pg.fill('#nm', name); pg.click('#nf button[type=submit]')
     pg.wait_for_selector('text=Wchodzę'); pg.click('text=Wchodzę'); pg.wait_for_selector('.hello')
     pg.evaluate("async()=>{const d=await import('/js/db.js');const n=new Date();await d.metaSet('poranny',n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'))}")

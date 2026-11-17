@@ -3,7 +3,8 @@ import { state, init, login, getName, setName, logout, lock, unlock } from './au
 import { on, emit } from './bus.js';
 import { status as syncStatus, kick } from './sync.js';
 import { ApiError } from './api.js';
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, ustawRole } from './ui.js';
+ustawRole(() => state.admin);
 import { VERSION } from './config.js';
 import { initUpdates } from './update.js';
 import * as T from './teczka.js';
@@ -19,6 +20,7 @@ import * as TM from './terminarz.js';
 import * as C from './czat.js';
 import * as SO from './social.js';
 import * as NW from './nowe.js';
+import * as WO from './wolontariusz.js';
 import { firstPrompt, syncPush } from './push.js';
 
 const app = document.getElementById('app');
@@ -29,27 +31,43 @@ const routes = [
   [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])],
   [/^\/brama$/, () => B.brama()], [/^\/spacer$/, () => W.pick()], [/^\/spacer\/([\w-]+)$/, (m) => W.walk(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
   [/^\/czat$/, () => C.czat()], [/^\/wydarzenia$/, () => TM.wydarzenia()], [/^\/pomoc$/, () => X.help()], [/^\/transport$/, () => X.transport()],
-  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => (m[1] ? NW.przyjecie(m[1]) : NW.nowe())], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
+  [/^\/zadania$/, () => TM.wydarzenia({ tab: 'ter', filt: 'ja' })], [/^\/terminarz$/, () => TM.wydarzenia({ tab: 'ter', filt: 'wszystko' })], [/^\/sobotnie$/, () => TM.wydarzenia({ tab: 'sob' })], [/^\/zrobic$/, () => T.zrobic()], [/^\/nowe(?:\/([\w-]+))?$/, (m) => (m[1] ? NW.przyjecie(m[1]) : NW.nowe())], [/^\/adopcje$/, () => A.adopcje()], [/^\/dt$/, () => A.dt()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/finanse$/, () => F.finanse()], [/^\/social(?:\/([\w-]+)(?:\/([\w-]+))?)?$/, (m) => SO.social(m[1], m[2])], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()],
+  [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/zgloszenia$/, () => WO.zgloszeniaAdmin()]
+];
+// Trasy wolontariusza (te same adresy, widoki tylko do podglądu + zgłoszenia).
+const ROUTES_WOL = [
+  [/^\/?$/, () => WO.startWol()], [/^\/start$/, () => WO.startWol()],
+  [/^\/psy$/, () => P.list()], [/^\/psy\/([\w-]+)$/, (m) => P.card(m[1])], [/^\/raport\/([\w-]+)$/, (m) => W.report(m[1])],
+  [/^\/pomoc$/, () => WO.pomocWol()], [/^\/potrzeby$/, () => WO.potrzebyWol()], [/^\/transport$/, () => X.transport()],
+  [/^\/sobotnie$/, () => WO.sobotyWol()], [/^\/zaginiecia$/, () => Z.zaginiecia()], [/^\/ustawienia$/, () => X.settings()], [/^\/dziekujemy$/, () => X.thanks()]
 ];
 const TABS = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], null, ['wydarzenia', 'Terminarz', 'calendar'], ['pomoc', 'Pomoc', 'heart']];
+// Wolontariusz: cztery zakładki obok siebie + Start, bez „+”.
+const TABS_WOL = [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['pomoc', 'Pomoc', 'heart'], ['potrzeby', 'Potrzeby', 'box'], ['transport', 'Transport', 'truck']];
+// Trasy dostępne dla wolontariusza (reszta: tylko administrator).
+const wolnoWol = (path) => ROUTES_WOL.some(([re]) => re.test(path));
 
 
 // Panel boczny na komputerze (od 860 px): to samo menu co „trzy kreski”, tylko stale rozwinięte.
 // Jedno menu dla telefonu (trzy kreski) i komputera (panel boczny): pogrupowane według tego, czego szukasz.
+const MENU_WOL = [
+  ['Dla wolontariusza', [['start', 'Start', 'home'], ['psy', 'Psy', 'paw'], ['pomoc', 'Pomoc dla psów', 'heart'], ['potrzeby', 'Potrzeby rzeczowe', 'box'], ['transport', 'Transport', 'truck'], ['sobotnie', 'Sobotnie spacery', 'calendar'], ['zaginiecia', 'Zaginione psy', 'alert']]],
+  ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
+];
 const MENU = [
   ['Dziś', [['start', 'Start', 'home'], ['czat', 'Czat wolontariuszy', 'chat'], ['zrobic', 'Dziś i do zrobienia', 'check']]],
   ['Psy', [['nowe', 'Nowe psy', 'plus'], ['psy', 'Psy', 'paw'], ['brama', 'Brama: wydawanie psów', 'walk'], ['spacer', 'Spacer z wolontariuszem', 'route'], ['adopcje', 'Adopcje', 'heart'], ['dt', 'Domy tymczasowe', 'pin']]],
   ['Terminy', [['sobotnie', 'Sobotnie spacery', 'calendar'], ['terminarz', 'Terminarz', 'list'], ['zadania', 'Moje prywatne wpisy', 'lock'], ['transport', 'Transport', 'truck']]],
-  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
+  ['Schronisko', [['pomoc', 'Pomoc i potrzeby', 'heart'], ['zgloszenia', 'Zgłoszenia wolontariuszy', 'user'], ['zaginiecia', 'Zaginięcia', 'alert'], ['social', 'Social media', 'share'], ['finanse', 'Finanse', 'box']]],
   ['Aplikacja', [['ustawienia', 'Ustawienia', 'sliders'], ['dziekujemy', 'Dziękujemy', 'gift']]]
 ];
-const menuHtml = (cls, on) => MENU.map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : x[0] === 'nowe' ? '<span class="nbadge" hidden></span>' : ''}</a>`).join('')).join('');
+const menuHtml = (cls, on) => (state.admin ? MENU : MENU_WOL).map(([g, items]) => `<div class="slab">${g}</div>` + items.map((x) => `<a class="${cls}${on(x[0]) ? ' on' : ''}" href="#/${x[0]}"${on(x[0]) ? ' aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span>${x[0] === 'czat' ? '<span class="cbadge" hidden></span>' : x[0] === 'nowe' ? '<span class="nbadge" hidden></span>' : ''}</a>`).join('')).join('');
 const segNow = () => location.hash.replace(/^#\//, '').split('/')[0] || 'start';
 const isOn = (k) => { const seg = segNow(); return seg === k || (k === 'spacer' && seg === 'raport') || (seg === 'wydarzenia' && k === (TM.curTab() === 'sob' ? 'sobotnie' : 'terminarz')); };
 function side() {
   return `<aside class="side" aria-label="Menu"><div class="sbrand">${icon('paw').s}<div><b>ŁAPA</b><small>NOWODWÓR</small></div></div>
-    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator · wszystkie uprawnienia' : state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
-    <button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>
+    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator' : 'Wolontariusz'}</span></div>
+    ${state.admin ? `<button class="btn gold block sadd" data-act="add">${icon('plus').s} Dodaj</button>` : ''}
     ${menuHtml('sl', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp2" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span><div class="sver">ŁAPA ${VERSION}</div></aside>`;
 }
@@ -57,7 +75,7 @@ function side() {
 function nav(tab) {
   const t = (x) => x ? `<a class="tab ${tab === x[0] ? 'on' : ''}" href="#/${x[0]}" ${tab === x[0] ? 'aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`
     : `<button class="plus" data-act="add" aria-label="Dodaj">${icon('plus').s}</button>`;
-  return `<nav class="nav" aria-label="Główna nawigacja">${TABS.map(t).join('')}</nav>`;
+  return `<nav class="nav${state.admin ? '' : ' wol'}" aria-label="Główna nawigacja">${(state.admin ? TABS : TABS_WOL).map(t).join('')}</nav>`;
 }
 
 let current = null, renderId = 0;
@@ -65,11 +83,12 @@ async function render(keepScroll = false) {
   if (!state.loggedIn) return showLogin();
   if (!getName()) return showName();
   const id = ++renderId, path = location.hash.replace(/^#/, '') || '/start';
+  if (!state.admin && !wolnoWol(path)) { location.replace('#/start'); toast('Ta część aplikacji jest dla administratorów'); return; }
   const y = keepScroll ? scrollY : 0;
   let view;
   try {
-    for (const [re, fn] of routes) { const m = re.exec(path); if (m) { view = await fn(m); break; } }
-    view ||= await S.start();
+    for (const [re, fn] of (state.admin ? routes : ROUTES_WOL)) { const m = re.exec(path); if (m) { view = await fn(m); break; } }
+    view ||= state.admin ? await S.start() : await WO.startWol();
   } catch (e) { console.error(e); view = { html: html`<div class="empty"><h3>Coś poszło nie tak</h3><p>${e.message}</p><a class="btn gold" href="#/start">Wróć na Start</a></div>`, tab: 'start' }; }
   if (id !== renderId) return;
   current = view;
@@ -94,7 +113,7 @@ on('change', () => {
     render(true);
   }, 250);
 });
-on('auth', () => { if (!state.loggedIn || !getName()) render(); else { render(true); setTimeout(() => TM.poranny(), 2500); setTimeout(syncPush, 1500); setTimeout(firstPrompt, 4500); } });
+on('auth', () => { if (!state.loggedIn || !getName()) render(); else { render(true); if (state.admin) { setTimeout(() => TM.poranny(), 2500); setTimeout(syncPush, 1500); setTimeout(firstPrompt, 4500); } } }); // poranny komunikat i powiadomienia czatu: tylko administrator
 on('authlost', () => { toast('Sesja wygasła – zaloguj się ponownie', true); });
 
 // ---------- logowanie ----------
@@ -153,7 +172,7 @@ function showName() {
 actions.menu = () => {
   const el = document.createElement('div'); el.className = 'drawer';
   el.innerHTML = `<div class="scrim"></div><nav aria-label="Menu">
-    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator · wszystkie uprawnienia' : state.coordinator ? 'Koordynator · dane osobowe odblokowane' : 'Wolontariusz'}</span></div>
+    <div class="who2"><b>${esc(getName() || 'Wolontariusz')}</b><span>${state.admin ? 'Administrator' : 'Wolontariusz'}</span></div>
     ${menuHtml('', isOn)}
     <div style="flex:1"></div><span class="syncpill" id="sp" style="align-self:flex-start;margin:8px 12px"><i></i><span></span></span>
     <div style="font-size:12px;color:var(--sage);padding:0 12px">ŁAPA ${VERSION}</div></nav>`;
@@ -201,9 +220,9 @@ on('sync', () => { paintSync(document.getElementById('sp')); paintSync(document.
   kick(100);
   initUpdates();
   C.initChat();
-  if (state.loggedIn && getName()) { setTimeout(syncPush, 2000); setTimeout(firstPrompt, 4500); }
-  setTimeout(() => { if (state.loggedIn) P.refreshStale(); }, 4000);
-  setTimeout(() => TM.poranny(), 3000);
+  if (state.loggedIn && getName() && state.admin) { setTimeout(syncPush, 2000); setTimeout(firstPrompt, 4500); }
+  setTimeout(() => { if (state.loggedIn && state.admin) P.refreshStale(); }, 4000);
+  setTimeout(() => { if (state.admin) TM.poranny(); }, 3000);
 })();
 export { render, lock, unlock, emit, logout, raw };
 

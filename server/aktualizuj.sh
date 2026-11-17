@@ -26,9 +26,9 @@ fi
 # 2) Skrypt zmiany hasła: wolontariusz, koordynator, administrator
 cat > "$APP/zmien-haslo.sh" <<'Z'
 #!/usr/bin/env bash
-# Zmiana hasła. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|koordynator|administrator
+# Zmiana hasła. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|administrator
 set -uo pipefail
-case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; koordynator) KEY=PASS_COORDINATOR_HASH;; administrator) KEY=PASS_ADMIN_HASH;; *) echo "Użycie: $0 wolontariusz|koordynator|administrator"; exit 1;; esac
+case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; administrator) KEY=PASS_ADMIN_HASH;; *) echo "Użycie: $0 wolontariusz|administrator"; exit 1;; esac
 [ "$(id -u)" = 0 ] || { echo "uruchom jako root"; exit 1; }
 read -rsp "Nowe hasło (min. 8 znaków): " P1; echo; read -rsp "Powtórz hasło: " P2; echo
 [ "$P1" = "$P2" ] || { echo "Hasła się różnią."; exit 1; }
@@ -39,7 +39,14 @@ systemctl restart lapa && echo "Gotowe. Osoby z tym hasłem zostaną poproszone 
 Z
 chmod 700 "$APP/zmien-haslo.sh"
 
-# 3) Kod serwera (z kopią i sprawdzeniem; przy błędzie wraca poprzednia wersja)
+# 3) Kopia bazy przed aktualizacją (serwer zatrzymany na chwilę, żeby kopia była spójna)
+if [ -f "$APP/data/lapa.db" ]; then
+  KOP="$APP/data/kopia-przed-aktualizacja-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$KOP"
+  systemctl stop lapa; cp -a "$APP"/data/lapa.db* "$KOP"/; systemctl start lapa
+  echo "Kopia bazy: $KOP"
+fi
+
+# 4) Kod serwera (z kopią i sprawdzeniem; przy błędzie wraca poprzednia wersja)
 cp lapa-server.mjs lapa-server.mjs.bak
 [ -f dogmerge.mjs ] && cp dogmerge.mjs dogmerge.mjs.bak || true
 curl -fsSL "$JS/dogmerge.js" -o dogmerge.new.mjs

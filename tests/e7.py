@@ -21,7 +21,7 @@ def srv(path, tok):
     except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b'{}')
 
 with sync_playwright() as p:
-    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'wolontariusz-haslo-1','Ania')
+    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'administrator-haslo-3','Ania')
     pg.evaluate("""async()=>{const s=await import('/js/store.js');for(const [i,n] of [['a','Adila'],['b','Burek'],['c','Cola']])await s.save('psy',{id:i,imie:n,plec:'samiec',status:'do_adopcji',zdjecia:[]});}""")
     go(pg,'#/brama'); pg.wait_for_selector('[data-act=br-out]')
     check('3 psy do wydania', pg.locator('[data-act=br-out]').count()==3)

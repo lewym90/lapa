@@ -9,7 +9,10 @@ D = 864e5
 TRASY = ['#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/brama', '#/spacer', '#/raport/w3', '#/czat', '#/wydarzenia', '#/pomoc', '#/transport',
          '#/zadania', '#/terminarz', '#/sobotnie', '#/zrobic', '#/nowe', '#/nowe/m1', '#/adopcje', '#/dt', '#/zaginiecia', '#/finanse', '#/social',
          '#/social/adopcja', '#/social/adopcja/d1', '#/social/halas', '#/social/dt', '#/social/pomoc', '#/social/adoptowany', '#/social/spacery',
-         '#/social/odwolanie', '#/social/relacja', '#/social/maxizoo', '#/social/podziekowanie', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego']
+         '#/social/odwolanie', '#/social/relacja', '#/social/maxizoo', '#/social/podziekowanie', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego',
+         '#/potrzeby', '#/zgloszenia']
+# 1.16: wolontariusz ma tylko podgląd tych ekranów; inne przekierowują na Start
+WOL_TRASY = {'#/start', '#/psy', '#/psy/d1', '#/psy/d2', '#/psy/m1', '#/raport/w3', '#/pomoc', '#/potrzeby', '#/transport', '#/sobotnie', '#/zaginiecia', '#/ustawienia', '#/dziekujemy', '#/psy/nie-ma-takiego'}
 
 
 def seed(pg):
@@ -36,6 +39,12 @@ def sprawdz_ekran(pg, h, kto, szer):
     go(pg, h, 800)
     t = text(pg)
     tag = f'{kto} {szer}px {h}'
+    if kto == 'wolontariusz':
+        if h not in WOL_TRASY:
+            check(tag + ': tylko dla administratora → Start', pg.evaluate('location.hash') == '#/start', pg.evaluate('location.hash')); return
+        akcje = set(pg.locator('#app [data-act]').evaluate_all('(e)=>e.map(x=>x.dataset.act)'))
+        zle = akcje - VOL
+        check(tag + ': tylko dozwolone przyciski', not zle, zle)
     check(tag + ': otwiera się', 'Coś poszło nie tak' not in t and len(t.strip()) > 10, t[:120])
     ov = pg.evaluate('document.documentElement.scrollWidth - innerWidth')
     check(tag + ': nic nie wychodzi poza ekran', ov <= 1, ov)
@@ -67,21 +76,23 @@ def okno(pg, nazwa, otworz):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    for kto, haslo in [('wolontariusz', WOL), ('administrator', ADM)]:
+    for kto, haslo in [('administrator', ADM), ('wolontariusz', WOL)]:
         for vp in [{'width': 390, 'height': 844}, {'width': 1280, 'height': 860}]:
             ctx, pg = newpage(b, vp); login(pg, kto[:4].capitalize(), haslo)
-            if kto == 'wolontariusz' and vp['width'] == 390: seed(pg); sync(pg)
-            else: sync(pg, 1500)
             if kto == 'administrator' and vp['width'] == 390:
+                seed(pg)
                 save(pg, 'oznaczenia', {'id': 'd1', 'opis': 'wycofany', 'wybrani': {'on': True, 'powody': ['wycofany', 'silny', 'trudny'], 'inny': 'gryzie smycz i ucieka', 'kto': 'Justyna, Marek, Dorota, Ania, Kasia'}})
                 save(pg, 'oznaczenia', {'id': 'd2', 'opis': 'dla aktywnych', 'wybrani': {'on': True, 'powody': ['silny'], 'inny': '', 'kto': ''}})
                 sync(pg)
+            else: sync(pg, 1500)
+            if kto == 'wolontariusz':
+                VOL = set(pg.evaluate("async()=>[...(await import('/js/ui.js')).VOL_ACTIONS]"))
             for h in TRASY:
                 sprawdz_ekran(pg, h, kto, vp['width'])
-            if vp['width'] == 390:
+            if vp['width'] == 390 and kto == 'administrator':
                 # okna na karcie psa
                 go(pg, '#/psy/d1', 800)
-                for act in ['dog-miejsce', 'dog-ocena', 'dog-zdrowie', 'dog-kanaly', 'dog-teksty', 'dog-walks', 'dog-obs', 'dog-needs', 'dog-photo', 'dog-obs-add', 'dog-edit'] + (['dog-oznacz'] if kto == 'administrator' else []):
+                for act in ['dog-miejsce', 'dog-ocena', 'dog-zdrowie', 'dog-kanaly', 'dog-teksty', 'dog-walks', 'dog-obs', 'dog-needs', 'dog-photo', 'dog-obs-add', 'dog-edit', 'dog-oznacz']:
                     okno(pg, f'{kto} karta psa {act}', lambda a=act: pg.locator(f'#app [data-act={a}]').first.click())
                 # „+” i okna z niego
                 go(pg, '#/start', 700)
@@ -90,12 +101,34 @@ with sync_playwright() as p:
                     def otworz(a=act):
                         pg.click('nav.nav [data-act=add]'); pg.wait_for_selector('#sheet-root .sheet'); pg.click(f'#sheet-root [data-act={a}]'); pg.wait_for_timeout(400)
                     okno(pg, f'{kto} + {act}', otworz)
-                # Brama: okno wydania i edycji
+                # Brama: okno wydania, edycji i oznaczenia (dotknięcie imienia)
                 go(pg, '#/brama', 700); pg.click('[data-act=br-tab][data-t=wydaj]'); pg.wait_for_timeout(300)
                 okno(pg, f'{kto} Brama: wydaj', lambda: pg.locator('[data-act=br-out]').first.click())
+                okno(pg, f'{kto} Brama: oznaczenie', lambda: pg.locator('.bimie').first.click())
                 pg.click('[data-act=br-tab][data-t=out]'); pg.wait_for_timeout(300)
                 okno(pg, f'{kto} Brama: dane osoby', lambda: pg.locator('[data-act=br-info]').first.click())
                 pg.click('[data-act=br-tab][data-t=wydaj]'); pg.wait_for_timeout(200)
+                go(pg, '#/transport', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
+                tabs = ['start', 'psy', 'wydarzenia', 'pomoc']
+            elif vp['width'] == 390:
+                go(pg, '#/psy/d1', 800)
+                okno(pg, f'{kto} karta psa: historia spacerów', lambda: pg.locator('#app [data-act=dog-walks]').first.click())
+                okno(pg, f'{kto} karta psa: zgłoszenie potrzeby', lambda: pg.locator('#app [data-act=decl]').first.click())
+                go(pg, '#/pomoc', 700); okno(pg, f'{kto} pomoc: zgłoszenie', lambda: pg.locator('#app [data-act=decl]').first.click())
+                go(pg, '#/potrzeby', 700); okno(pg, f'{kto} potrzeby: mogę przywieźć', lambda: pg.locator('#app [data-act=of-potrzeba]').first.click())
+                go(pg, '#/transport', 700); okno(pg, f'{kto} transport', lambda: pg.locator('[data-act=tr-open]').first.click())
+                pg.locator('[data-act=tr-open]').first.click(); pg.wait_for_selector('#sheet-root .sheet')
+                check(f'{kto} transport: bez przycisków administratora', pg.locator('#sheet-root #tb').count() == 0 and pg.locator('#sheet-root [data-act=of-transport]').count() == 1)
+                pg.click('#sheet-root [data-act=of-transport]'); pg.wait_for_timeout(400)
+                check(f'{kto} transport: okno zgłoszenia', pg.locator('#zw').count() == 1); close_sheet(pg)
+                go(pg, '#/sobotnie', 700); okno(pg, f'{kto} sobotnie: będę', lambda: pg.locator('#app [data-act=sob-bede]').first.click())
+                go(pg, '#/zaginiecia', 700); okno(pg, f'{kto} zaginięcia', lambda: pg.locator('#app [data-act=zag-open]').first.click())
+                pg.locator('#app [data-act=zag-open]').first.click(); pg.wait_for_selector('#z_pt')
+                check(f'{kto} zaginięcia: tylko podgląd', pg.locator('#z_e, #z_x, #z_f, #z_ua').count() == 0); close_sheet(pg)
+                go(pg, '#/ustawienia', 700); okno(pg, f'{kto} hasło administratora', lambda: pg.click('#app [data-act=unlock-sheet]'))
+                go(pg, '#/start', 700); okno(pg, f'{kto} komunikaty', lambda: pg.click('#app [data-act=bell]'))
+                tabs = ['start', 'psy', 'pomoc', 'potrzeby', 'transport']
+            if vp['width'] == 390:
                 # menu (trzy kreski) zamyka się i prowadzi do każdego punktu
                 go(pg, '#/start', 700); pg.click('[data-act=menu]'); pg.wait_for_selector('.drawer')
                 n = pg.locator('.drawer nav a').count(); pg.click('.drawer .scrim'); pg.wait_for_timeout(200)
@@ -106,7 +139,7 @@ with sync_playwright() as p:
                     check(f'{kto}: menu → {href}', pg.evaluate('location.hash') == href and pg.locator('.drawer').count() == 0 and 'Coś poszło nie tak' not in text(pg))
                 # dolny pasek
                 go(pg, '#/start', 500)
-                for tab in ['start', 'psy', 'wydarzenia', 'pomoc']:
+                for tab in tabs:
                     pg.click(f'nav.nav a[href="#/{tab}"]'); pg.wait_for_timeout(400)
                     check(f'{kto}: dolny pasek → {tab}', pg.evaluate('location.hash') == '#/' + tab)
             ctx.close()

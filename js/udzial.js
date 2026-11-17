@@ -1,7 +1,7 @@
 // Zgłoszenia udziału: wielu wolontariuszy może zapisać się przy jednym wydarzeniu lub sobotnim spacerze.
 import { html, raw, esc, openSheet, closeSheet, toast, actions } from './ui.js';
 import { list, save, remove, get } from './store.js';
-import { getName } from './auth.js';
+import { getName, state } from './auth.js';
 import { slug } from './util.js';
 
 export const evKey = (kind, id) => `${kind}_${String(id).replace(/[^A-Za-z0-9_-]/g, '')}`.slice(0, 40);
@@ -34,7 +34,9 @@ actions['zg-set'] = async (el) => {
 actions['zg-open'] = async (el) => {
   const key = el.dataset.key, title = el.dataset.title || 'Kto bierze udział';
   const all = forKey(await zgloszenia(), key), me = getName(), mine = all.find((x) => x.imie === me);
-  const row = (z) => `<div class="row" style="gap:10px"><span class="rt"><b>${esc(z.imie)}</b><small>${esc(z.notatka || '')}</small></span></div>`;
+  const tel = state.admin ? Object.fromEntries((await list('p_tel')).map((t) => [t.id, t.tel])) : {};
+  const telA = (t) => (t ? ` <a class="kontakt" href="tel:${esc(String(t).replace(/[^\d+]/g, ''))}">${esc(t)}</a>` : '');
+  const row = (z) => `<div class="row" style="gap:10px"><span class="rt"><b>${esc(z.imie)}${telA(tel[z.id])}</b><small>${esc(z.notatka || '')}</small></span></div>`;
   const grp = (st, label) => { const a = all.filter((x) => x.status === st); return a.length ? `<h3 style="font-size:17px;margin:14px 0 6px">${label} (${a.length})</h3><div class="rows">${a.map(row).join('')}</div>` : ''; };
   openSheet(`<h2>${esc(title)}</h2>${grp('tak', 'Biorą udział')}${grp('nie', 'Nie mogą')}${all.length ? '' : '<p class="hint">Nikt się jeszcze nie zgłosił.</p>'}
     <form id="zf" style="margin-top:16px"><div class="field"><label for="zn">Twoja uwaga (np. „zawiozę o 9:00”, „mogę po 14:00”)</label><input class="input" id="zn" maxlength="120" value="${esc(mine?.notatka || '')}"></div>

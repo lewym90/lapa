@@ -12,19 +12,33 @@ const PORT = +(process.env.PORT || 8797);
 const HOST = process.env.HOST || '127.0.0.1';
 const DB_FILE = process.env.DB_FILE || './data/lapa.db';
 const HASH_VOL = process.env.PASS_VOLUNTEER_HASH || '';
-const HASH_COORD = process.env.PASS_COORDINATOR_HASH || '';
+// Od 1.16 są dwie role: wolontariusz (tylko podgląd + własne zgłoszenia) i administrator (wszystko). Hasło koordynatora nie działa.
 const HASH_ADMIN = process.env.PASS_ADMIN_HASH || ''; // administrator: wszystkie uprawnienia, bez wygasania; puste = rola wyłączona
 const ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://lewym90.github.io,http://localhost:8000,http://127.0.0.1:8000').split(',');
-const VOL_TTL = +(process.env.VOL_TTL_MS || 24 * 3600e3);
-const COORD_TTL = +(process.env.COORD_TTL_MS || 3600e3);
+const VOL_TTL = +(process.env.VOL_TTL_MS || 180 * 86400e3); // wolontariusz zostaje zalogowany (180 dni bez używania)
 const MAX_BODY = 1_000_000;
 const MAX_RECORD = 200_000;
 
-if (!HASH_VOL || !HASH_COORD) { console.error('Brak PASS_VOLUNTEER_HASH / PASS_COORDINATOR_HASH'); process.exit(1); }
+if (!HASH_VOL) { console.error('Brak PASS_VOLUNTEER_HASH'); process.exit(1); }
+if (!HASH_ADMIN) console.error('UWAGA: brak PASS_ADMIN_HASH – nikt nie może edytować danych (tylko podgląd).');
 const fp = (h) => crypto.createHash('sha256').update(h).digest('hex').slice(0, 16);
-const FP_VOL = fp(HASH_VOL), FP_COORD = fp(HASH_COORD), FP_ADMIN = HASH_ADMIN ? fp(HASH_ADMIN) : '';
-// Kolekcja zapisywana tylko przez administratora (oznaczenie „tylko dla wybranych” i krótki opis psa). Czytają wszyscy, bez podpisu autora.
+const FP_VOL = fp(HASH_VOL), FP_ADMIN = HASH_ADMIN ? fp(HASH_ADMIN) : '';
+// Kolekcja bez podpisu autora (oznaczenie „tylko dla wybranych” i krótki opis psa).
 const ADMIN_COLS = new Set(['oznaczenia']);
+// ----- Uprawnienia wolontariusza (od 1.16) -----
+// Zapis: tylko własne zgłoszenia („zajmę się”, „będę”, „mogę przywieźć / pojechać”) i własny numer telefonu do nich.
+const VOL_WRITE = new Set(['deklaracje', 'zgloszenia', 'oferty', 'p_tel']);
+// Odczyt: tylko to, co widzi wolontariusz (Psy, Pomoc, Potrzeby, Transport, Sobotnie spacery, Zaginięcia, komunikaty).
+const VOL_READ = new Set(['psy', 'spacery', 'potrzeby', 'transporty', 'deklaracje', 'zgloszenia', 'oferty', 'spacery_sob', 'zaginiecia', 'komunikaty']);
+// Z danych psa wolontariusz dostaje tylko te pola (bez czipa, opiekuna DT, kanałów, karty przyjęcia, notatek).
+const PSY_POLA = ['imie', 'plec', 'wiek', 'wielkosc', 'waga', 'wzrost', 'siersc', 'tagi', 'opis', 'haslo', 'status', 'miejsce', 'zdjecia', 'moje_zdjecia', 'glowne', 'ocena', 'potrzeby', 'boks', 'data_przyjecia', 'zrodlo_url', 'zaimportowano', 'id'];
+function dlaWolontariusza(col, data) {
+  if (!data || typeof data !== 'object') return data;
+  if (col === 'psy') { const o = {}; for (const k of PSY_POLA) if (k in data) o[k] = data[k]; return o; }
+  if (col === 'spacery') { const { kontakt, ...rest } = data; void kontakt; return rest; }
+  return data;
+}
+const TEL_DAYS = +(process.env.TEL_DAYS || 30); // telefony wolontariuszy przy zgłoszeniach: tylko tyle dni
 const KONTAKT_DAYS = +(process.env.KONTAKT_DAYS || 30); // numer telefonu / Messenger osoby z Bramy: tylko tyle dni
 
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
@@ -46,6 +60,9 @@ CREATE TABLE IF NOT EXISTS sessions(
   th TEXT PRIMARY KEY, created INTEGER, vol_seen INTEGER, fp_vol TEXT, coord_until INTEGER DEFAULT 0, fp_coord TEXT DEFAULT '');
 `);
 try { db.exec("ALTER TABLE sessions ADD COLUMN fp_admin TEXT DEFAULT ''"); } catch { /* kolumna już jest */ }
+try { db.exec('ALTER TABLE push ADD COLUMN admin INTEGER NOT NULL DEFAULT 0'); } catch { /* kolumna już jest */ }
+// Kto utworzył zgłoszenie wolontariusza (skrót identyfikatora telefonu): tylko on może je zmienić albo wycofać.
+db.exec('CREATE TABLE IF NOT EXISTS owners(col TEXT NOT NULL, id TEXT NOT NULL, dev TEXT NOT NULL, ts INTEGER, PRIMARY KEY(col,id))');
 
 // ---------- hasła ----------
 function verifyPassword(pw, stored) {
@@ -67,10 +84,10 @@ setInterval(() => { for (const [k, v] of fails) if (Date.now() - v.t > WINDOW) f
 
 // ---------- sesje ----------
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
-function newSession(coord, admin = false) {
+function newSession(admin = false) {
   const token = crypto.randomBytes(32).toString('base64url'), now = Date.now();
   db.prepare('INSERT INTO sessions(th,created,vol_seen,fp_vol,coord_until,fp_coord,fp_admin) VALUES(?,?,?,?,?,?,?)')
-    .run(sha(token), now, now, FP_VOL, coord ? now + COORD_TTL : 0, coord ? FP_COORD : '', admin ? FP_ADMIN : '');
+    .run(sha(token), now, now, FP_VOL, 0, '', admin ? FP_ADMIN : '');
   return token;
 }
 // Sesja administratora: ważna, dopóki nie zmieni się hasło administratora (nie wygasa po czasie i po zmianie hasła wolontariusza).
@@ -81,11 +98,11 @@ function getSession(req, touchActive) {
   const th = sha(m[1]), row = db.prepare('SELECT * FROM sessions WHERE th=?').get(th), now = Date.now();
   const admin = isAdminRow(row);
   if (!row || (!admin && (row.fp_vol !== FP_VOL || now - row.vol_seen > VOL_TTL))) { if (row) db.prepare('DELETE FROM sessions WHERE th=?').run(th); return null; }
-  const coord = admin || (row.coord_until > now && row.fp_coord === FP_COORD);
-  const active = req.headers['x-active'] === '1' || touchActive;
+  void touchActive;
   if (now - row.vol_seen > Math.min(30e3, VOL_TTL / 10)) db.prepare('UPDATE sessions SET vol_seen=? WHERE th=?').run(now, th);
-  if (coord && active && !admin) db.prepare('UPDATE sessions SET coord_until=? WHERE th=?').run(now + COORD_TTL, th);
-  return { th, coord, admin, coordUntil: admin ? 0 : coord ? (active ? now + COORD_TTL : row.coord_until) : 0 };
+  // dev: losowy identyfikator telefonu (nagłówek x-lapa-dev) – po nim rozpoznajemy „własne” zgłoszenia wolontariusza
+  const dev = /^[A-Za-z0-9_-]{16,64}$/.test(req.headers['x-lapa-dev'] || '') ? sha(req.headers['x-lapa-dev']) : th;
+  return { th, coord: admin, admin, coordUntil: 0, dev };
 }
 setInterval(() => db.prepare("DELETE FROM sessions WHERE vol_seen < ? AND (fp_admin IS NULL OR fp_admin = '' OR fp_admin != ?)").run(Date.now() - VOL_TTL, FP_ADMIN || '-'), 3600e3).unref();
 
@@ -152,7 +169,7 @@ const warsawHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/W
 const isQuiet = () => { const h = warsawHour(); return QUIET.from > QUIET.to ? h >= QUIET.from || h < QUIET.to : h >= QUIET.from && h < QUIET.to; };
 const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 async function notifyChat(d) { // d: dane nowej wiadomości
-  const rows = db.prepare('SELECT * FROM push').all();
+  const rows = db.prepare('SELECT * FROM push WHERE admin=1').all(); // czat jest tylko dla administratorów
   const preview = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 110) || (d.foto ? '📷 Zdjęcie' : d.ref?.nazwa ? String(d.ref.nazwa).slice(0, 80) : 'Nowa wiadomość');
   const body = (d.kind === 'prosba' ? '🙋 Prośba o pomoc: ' : d.pilne ? '❗ ' : '') + preview;
   const mentioned = (n) => Array.isArray(d.wzm) && d.wzm.some((x) => sameName(x, n));
@@ -190,7 +207,21 @@ function pruneKontakty() {
     if (rows.length) sseBroadcast();
   } catch (e) { console.error('Czyszczenie kontaktów:', e.message); }
 }
-const pruneAll = () => { pruneChat(); pruneKontakty(); };
+// Telefony wolontariuszy przy zgłoszeniach (kolekcja p_tel): po TEL_DAYS dniach znikają razem z historią; imię przy zgłoszeniu zostaje.
+function pruneTelefony() {
+  const lim = Date.now() - TEL_DAYS * 86400e3;
+  try {
+    // znacznik usunięcia (bez danych) zamiast twardego usunięcia, żeby telefony administratorów też go skasowały
+    const rows = db.prepare("SELECT id FROM records WHERE col='p_tel' AND deleted=0 AND COALESCE(json_extract(data,'$.ts'), updated_at) < ?").all(lim);
+    const put = db.prepare("INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES('p_tel',?,'{}',?,1,'')");
+    for (const r of rows) put.run(r.id, Date.now());
+    const n = rows.length;
+    db.prepare("DELETE FROM history WHERE col='p_tel' AND COALESCE(json_extract(data,'$.ts'), updated_at) < ?").run(lim);
+    db.prepare("DELETE FROM owners WHERE col='p_tel' AND id NOT IN (SELECT id FROM records WHERE col='p_tel')").run();
+    if (n) sseBroadcast();
+  } catch (e) { console.error('Czyszczenie telefonów:', e.message); }
+}
+const pruneAll = () => { pruneChat(); pruneKontakty(); pruneTelefony(); };
 setInterval(pruneAll, 6 * 3600e3).unref(); setTimeout(pruneAll, process.env.LAPA_TEST_FAST ? 300 : 20e3).unref();
 
 // ---------- HTTP ----------
@@ -401,7 +432,7 @@ function readRaw(req, max) {
 function corsFor(req) {
   const origin = req.headers.origin;
   return origin && ORIGINS.includes(origin)
-    ? { 'access-control-allow-origin': origin, vary: 'Origin', 'access-control-allow-headers': 'authorization,content-type,x-active', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-max-age': '600' } : {};
+    ? { 'access-control-allow-origin': origin, vary: 'Origin', 'access-control-allow-headers': 'authorization,content-type,x-active,x-lapa-dev', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-max-age': '600' } : {};
 }
 async function handle(req, res) {
   const cors = corsFor(req);
@@ -417,11 +448,10 @@ async function handle(req, res) {
     if (wait) return send2(429, { error: 'Za dużo prób. Spróbuj za kilka minut.', retry_after: wait });
     const { password } = await readJson(req);
     if (typeof password !== 'string' || password.length < 1 || password.length > 200) return send2(400, { error: 'Brak hasła' });
-    const isAdmin = !!HASH_ADMIN && verifyPassword(password, HASH_ADMIN);
-    const isCoord = isAdmin || verifyPassword(password, HASH_COORD), isVol = !isCoord && verifyPassword(password, HASH_VOL);
-    if (!isCoord && !isVol) { addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło' }); }
-    const token = newSession(isCoord && !isAdmin, isAdmin);
-    return send2(200, { token, coordinator: isCoord, admin: isAdmin, vol_ttl_ms: VOL_TTL, coord_ttl_ms: COORD_TTL });
+    const isAdmin = !!HASH_ADMIN && verifyPassword(password, HASH_ADMIN), isVol = !isAdmin && verifyPassword(password, HASH_VOL);
+    if (!isAdmin && !isVol) { addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło' }); }
+    const token = newSession(isAdmin);
+    return send2(200, { token, coordinator: isAdmin, admin: isAdmin, vol_ttl_ms: VOL_TTL });
   }
 
   const s = getSession(req, false);
@@ -438,21 +468,20 @@ async function handle(req, res) {
       db.prepare('UPDATE sessions SET fp_admin=? WHERE th=?').run(FP_ADMIN, s.th);
       return send2(200, { ok: true, coordinator: true, admin: true, coord_until: 0 });
     }
-    if (typeof password !== 'string' || !verifyPassword(password, HASH_COORD)) { addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło koordynatora' }); }
-    const until = Date.now() + COORD_TTL;
-    db.prepare('UPDATE sessions SET coord_until=?, fp_coord=? WHERE th=?').run(until, FP_COORD, s.th);
-    return send2(200, { ok: true, coordinator: true, coord_until: until });
+    addFail(ip); await new Promise((r) => setTimeout(r, 500)); return send2(401, { error: 'Nieprawidłowe hasło administratora' });
   }
 
   // GET /sync?since=N&private=0|1  — zmiany od numeru N; private=1 tylko dla koordynatora
   if (p === '/sync' && req.method === 'GET') {
     const wantPrivate = url.searchParams.get('private') === '1';
-    if (wantPrivate && !s.coord) return send2(403, { error: 'Wymagane hasło koordynatora', locked: true });
+    if (wantPrivate && !s.admin) return send2(403, { error: 'Wymagane hasło administratora', locked: true });
     const since = Math.max(0, parseInt(url.searchParams.get('since') || '0', 10) || 0), limit = 300;
     const rows = db.prepare(`SELECT seq,col,id,data,updated_at,deleted,by FROM records WHERE seq>? AND ${wantPrivate ? "col LIKE 'p\\_%' ESCAPE '\\'" : "col NOT LIKE 'p\\_%' ESCAPE '\\'"} ORDER BY seq LIMIT ?`).all(since, limit + 1);
     const more = rows.length > limit; if (more) rows.pop();
-    const changes = rows.map((r) => ({ seq: r.seq, col: r.col, id: r.id, data: JSON.parse(r.data), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by }));
-    return send2(200, { changes, seq: changes.length ? changes[changes.length - 1].seq : since, more, server_time: Date.now() });
+    const last = rows.length ? rows[rows.length - 1].seq : since; // kursor przesuwa się także za rekordami, których wolontariusz nie dostaje
+    const widac = s.admin ? rows : rows.filter((r) => VOL_READ.has(r.col));
+    const changes = widac.map((r) => ({ seq: r.seq, col: r.col, id: r.id, data: s.admin ? JSON.parse(r.data) : dlaWolontariusza(r.col, JSON.parse(r.data)), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by }));
+    return send2(200, { changes, seq: last, more, server_time: Date.now(), admin: s.admin });
   }
 
   // POST /sync {changes:[{col,id,data,updated_at,deleted,by}]}
@@ -463,19 +492,26 @@ async function handle(req, res) {
     const get = db.prepare('SELECT * FROM records WHERE col=? AND id=?');
     const hist = db.prepare('INSERT INTO history(col,id,data,updated_at,deleted,by,replaced_at) VALUES(?,?,?,?,?,?,?)');
     const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
+    const ownGet = db.prepare('SELECT dev FROM owners WHERE col=? AND id=?'), ownPut = db.prepare('INSERT OR IGNORE INTO owners(col,id,dev,ts) VALUES(?,?,?,?)');
     db.exec('BEGIN');
     try {
       for (const c of changes) {
         const r = { col: c?.col, id: c?.id };
         if (!COL_RE.test(c?.col || '') || !ID_RE.test(c?.id || '') || !Number.isFinite(c?.updated_at)) { results.push({ ...r, status: 'invalid' }); continue; }
-        if (isPrivate(c.col) && !s.coord) { results.push({ ...r, status: 'locked' }); continue; }
-        if (ADMIN_COLS.has(c.col) && !s.admin) { results.push({ ...r, status: 'forbidden' }); continue; }
+        if (!s.admin && !VOL_WRITE.has(c.col)) { results.push({ ...r, status: 'forbidden' }); continue; }
+        const old0 = get.get(c.col, c.id);
+        if (!s.admin) { // wolontariusz: tylko nowe albo własne zgłoszenie
+          const own = ownGet.get(c.col, c.id);
+          if (old0 ? !(own && own.dev === s.dev) : false) { results.push({ ...r, status: 'forbidden' }); continue; }
+          if (c.col === 'oferty' && c.data && typeof c.data === 'object') c.data = { ...c.data, stan: 'nowa' }; // przyjmuje tylko administrator
+        }
         const json = JSON.stringify(c.data ?? {});
         if (json.length > MAX_RECORD) { results.push({ ...r, status: 'too_big' }); continue; }
-        const ts = Math.min(Math.floor(c.updated_at), now + 5 * 60e3), old = get.get(c.col, c.id);
+        const ts = Math.min(Math.floor(c.updated_at), now + 5 * 60e3), old = old0;
         if (old && old.updated_at > ts && old.by !== 'strona') { results.push({ ...r, status: 'stale' }); continue; } // zmiana wolontariusza wygrywa z automatycznym zapisem ze strony (strona i tak wróci przy następnym sprawdzeniu)
         if (old) hist.run(old.col, old.id, old.data, old.updated_at, old.deleted, old.by, now);
         put.run(c.col, c.id, json, ts, c.deleted ? 1 : 0, ADMIN_COLS.has(c.col) ? '' : String(c.by || '').slice(0, 60));
+        if (VOL_WRITE.has(c.col) && !old) ownPut.run(c.col, c.id, s.dev, now);
         if (c.col === 'czat' && !old && !c.deleted && now - ts < 2 * 86400e3 && c.data && typeof c.data === 'object') fresh.push(c.data);
         results.push({ ...r, status: 'ok' });
       }
@@ -490,7 +526,7 @@ async function handle(req, res) {
   if (p === '/history' && req.method === 'GET') {
     const col = url.searchParams.get('col') || '', id = url.searchParams.get('id') || '';
     if (!COL_RE.test(col) || !ID_RE.test(id)) return send2(400, { error: 'Zły rekord' });
-    if (isPrivate(col) && !s.coord) return send2(403, { error: 'Wymagane hasło koordynatora', locked: true });
+    if (!s.admin) return send2(403, { error: 'Historia zmian jest dla administratora', locked: true });
     const rows = db.prepare('SELECT data,updated_at,deleted,by FROM history WHERE col=? AND id=? ORDER BY hid DESC LIMIT 50').all(col, id);
     return send2(200, { versions: rows.map((r) => ({ data: JSON.parse(r.data), updated_at: r.updated_at, deleted: !!r.deleted, by: r.by })) });
   }
@@ -510,19 +546,20 @@ async function handle(req, res) {
       const sub = b.sub;
       if (!sub || !pushUrlOk(sub.endpoint) || !sub.keys || typeof sub.keys.p256dh !== 'string' || typeof sub.keys.auth !== 'string' || sub.keys.p256dh.length > 200 || sub.keys.auth.length > 100) return send2(422, { error: 'Nieprawidłowa subskrypcja' });
       if (db.prepare('SELECT COUNT(*) n FROM push').get().n >= 300 && !db.prepare('SELECT 1 FROM push WHERE endpoint=?').get(sub.endpoint)) return send2(429, { error: 'Za dużo urządzeń' });
-      db.prepare('INSERT INTO push(endpoint,sub,name,quiet,mute,created) VALUES(?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub,name=excluded.name,quiet=excluded.quiet,mute=excluded.mute,fails=0')
-        .run(sub.endpoint, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, Date.now());
+      db.prepare('INSERT INTO push(endpoint,sub,name,quiet,mute,created,admin) VALUES(?,?,?,?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET sub=excluded.sub,name=excluded.name,quiet=excluded.quiet,mute=excluded.mute,admin=excluded.admin,fails=0')
+        .run(sub.endpoint, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }), name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, Date.now(), s.admin ? 1 : 0);
       return send2(200, { ok: true });
     }
     const ep = b.endpoint, row = pushUrlOk(ep) ? db.prepare('SELECT * FROM push WHERE endpoint=?').get(ep) : null;
     if (p === '/push/unsubscribe') { if (row) pushDel.run(ep); return send2(200, { ok: true }); }
     if (!row) return send2(404, { error: 'Nie ma takiego urządzenia', gone: true });
-    if (p === '/push/prefs') { db.prepare('UPDATE push SET name=?, quiet=?, mute=? WHERE endpoint=?').run(name || row.name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, ep); return send2(200, { ok: true }); }
+    if (p === '/push/prefs') { db.prepare('UPDATE push SET name=?, quiet=?, mute=?, admin=? WHERE endpoint=?').run(name || row.name, b.quiet === false ? 0 : 1, b.mute ? 1 : 0, s.admin ? 1 : 0, ep); return send2(200, { ok: true }); }
     if (p === '/push/read') { db.prepare('UPDATE push SET badge=0 WHERE endpoint=?').run(ep); return send2(200, { ok: true }); }
     if (p === '/push/test') { const ok = await sendPush(row, { t: 'ŁAPA', b: 'Powiadomienia działają. Dostaniesz je, gdy ktoś napisze na czacie.', url: '#/czat', tag: 'test', badge: 0 }, true); return send2(200, { ok }); }
   }
 
   // GET /import?url=...  — pobiera i odczytuje stronę jednego psa ze strony schroniska
+  if (!s.admin && (p === '/import' || p === '/import/links' || p === '/site/sync' || (/^\/photo\//.test(p) && req.method === 'POST'))) return send2(403, { error: 'Tylko administrator' });
   if (p === '/import' && req.method === 'GET') {
     let u; try { u = new URL(url.searchParams.get('url') || ''); } catch { return send2(422, { error: 'To nie jest poprawny adres' }); }
     if (u.protocol === 'http:') u.protocol = 'https:';

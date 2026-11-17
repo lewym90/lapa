@@ -22,7 +22,7 @@ def srv(path, tok):
 
 with sync_playwright() as p:
     b=p.chromium.launch()
-    ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'wolontariusz-haslo-1','Ania')
+    ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'administrator-haslo-3','Ania')
     # nowy pies przez menu +
     pg.click('.nav .plus'); pg.wait_for_selector('text=Nowy pies w schronisku'); pg.click('text=Nowy pies w schronisku')
     pg.fill('#n_i','Burek'); pg.select_option('#n_p','samiec'); pg.fill('#n_w','ok. 2 lata, średni'); pg.click('#nf button[type=submit]')
@@ -70,7 +70,7 @@ with sync_playwright() as p:
       window.__m=d;}""")
     check('import: zachowuje id i kanał www', pg.evaluate("window.__m.id.startsWith('m') && !!window.__m.kanaly.www && !!window.__m.kanaly.fb && window.__m.nowy===true"))
     # druga osoba widzi zdrowie i psa
-    ctx2,pg2=newpage(b,{'width':390,'height':844}); login(pg2,'wolontariusz-haslo-1','Basia'); pg2.wait_for_timeout(2500)
+    ctx2,pg2=newpage(b,{'width':390,'height':844}); login(pg2,'administrator-haslo-3','Basia'); pg2.wait_for_timeout(2500)
     check('sync: druga osoba widzi nowego psa i zdrowie', pg2.evaluate("""async()=>{const s=await import('/js/store.js');return (await s.list('psy')).some(x=>x.imie==='Burek')&&(await s.list('zdrowie')).length===1}"""))
-    ctx3,pg3=newpage(b,{'width':1280,'height':800}); login(pg3,'wolontariusz-haslo-1','Cezary'); pg3.wait_for_timeout(2000); pg3.evaluate("location.hash='#/zrobic'"); pg3.wait_for_selector('.gap'); pg3.screenshot(path='n_desktop_zrobic.png')
+    ctx3,pg3=newpage(b,{'width':1280,'height':800}); login(pg3,'administrator-haslo-3','Cezary'); pg3.wait_for_timeout(2000); pg3.evaluate("location.hash='#/zrobic'"); pg3.wait_for_selector('.gap'); pg3.screenshot(path='n_desktop_zrobic.png')
     print('WYNIK:',ok,'OK',bad,'FAIL'); print([e for e in errs if '401' not in e[1]][:5])

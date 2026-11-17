@@ -1,4 +1,4 @@
-// Finanse: wpłaty i wydatki, koszty leczenia z teczek psów, podsumowania i eksport do sprawozdania. Tylko koordynator.
+// Finanse: wpłaty i wydatki, koszty leczenia z teczek psów, podsumowania i eksport do sprawozdania. Tylko administrator.
 import { raw } from './ui-core.js';
 import { imieZnaki } from './znak.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
@@ -15,7 +15,7 @@ const d10 = (t) => { const d = new Date(t || Date.now()); return d.getFullYear()
 let rok = new Date().getFullYear();
 
 export async function finanse() {
-  if (!state.coordinator) return { tab: 'start', title: 'Finanse', html: html`${pageBar('Finanse')}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Finanse</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div></div>` };
+  if (!state.coordinator) return { tab: 'start', title: 'Finanse', html: html`${pageBar('Finanse')}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Finanse</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` };
   const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const inY = (t) => new Date(t).getFullYear() === rok;
   const wp = fin.filter((x) => x.typ === 'wplata' && inY(x.data)), wy = fin.filter((x) => x.typ === 'wydatek' && inY(x.data)), zk = zdr.filter((z) => z.koszt && inY(z.data));

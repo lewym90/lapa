@@ -25,9 +25,9 @@ const pull = async (tok) => (await call('/sync?since=0&private=0', { tok })).j.c
 try {
   // VOL_TTL i COORD_TTL krótkie, żeby sprawdzić, że administrator nie wygasa
   await start({ VOL_TTL_MS: '1500', COORD_TTL_MS: '1500' });
-  const a = await login('administrator-haslo-3'), k = await login('koordynator-haslo-2'), w = await login('wolontariusz-haslo-1');
-  ck('logowanie administratora: admin i koordynator', a.admin === true && a.coordinator === true, JSON.stringify(a));
-  ck('logowanie koordynatora: bez admina', k.admin === false && k.coordinator === true);
+  const a = await login('administrator-haslo-3'), w = await login('wolontariusz-haslo-1');
+  ck('logowanie administratora: admin (ma też dawne uprawnienia koordynatora)', a.admin === true && a.coordinator === true, JSON.stringify(a));
+  ck('hasło koordynatora już nie działa (1.16)', (await call('/auth/login', { method: 'POST', body: { password: 'koordynator-haslo-2' } })).s === 401);
   ck('logowanie wolontariusza', w.admin === false && w.coordinator === false);
   ck('status administratora', (await call('/auth/status', { tok: a.token })).j.admin === true);
   ck('administrator widzi dane osobowe', (await call('/sync?since=0&private=1', { tok: a.token })).s === 200);
@@ -35,18 +35,18 @@ try {
   // oznaczenia: tylko administrator, bez podpisu autora
   const zn = { col: 'oznaczenia', id: 'd1', data: { wybrani: { on: true, powody: ['silny'] }, opis: 'dla aktywnych' }, updated_at: Date.now(), deleted: false, by: 'Ania' };
   ck('wolontariusz nie zapisze oznaczenia', (await push(w.token, [zn])).j.results[0].status === 'forbidden');
-  ck('koordynator nie zapisze oznaczenia', (await push(k.token, [zn])).j.results[0].status === 'forbidden');
   ck('administrator zapisze oznaczenie', (await push(a.token, [{ ...zn, by: 'Tajna' }])).j.results[0].status === 'ok');
-  const got = (await pull(w.token)).find((c) => c.col === 'oznaczenia');
-  ck('wolontariusz widzi oznaczenie', got && got.data.opis === 'dla aktywnych');
+  ck('wolontariusz nie widzi oznaczeń (1.16: tylko Brama, tylko administrator)', !(await pull(w.token)).some((c) => c.col === 'oznaczenia'));
+  const got = (await pull(a.token)).find((c) => c.col === 'oznaczenia');
+  ck('administrator widzi oznaczenie', got && got.data.opis === 'dla aktywnych');
   ck('bez podpisu autora', got && got.by === '', got && got.by);
   ck('usunięcie przez wolontariusza zablokowane', (await push(w.token, [{ ...zn, deleted: true, updated_at: Date.now() + 1 }])).j.results[0].status === 'forbidden');
-  ck('psy dalej zapisuje każdy', (await push(w.token, [{ col: 'psy', id: 'd1', data: { imie: 'Saba', boks: '7' }, updated_at: Date.now(), deleted: false, by: 'Ania' }])).j.results[0].status === 'ok');
+  ck('wolontariusz nie zapisze psa (1.16)', (await push(w.token, [{ col: 'psy', id: 'd1', data: { imie: 'Saba', boks: '7' }, updated_at: Date.now(), deleted: false, by: 'Ania' }])).j.results[0].status === 'forbidden');
+  ck('administrator zapisze psa', (await push(a.token, [{ col: 'psy', id: 'd1', data: { imie: 'Saba', boks: '7' }, updated_at: Date.now(), deleted: false, by: 'Ania' }])).j.results[0].status === 'ok');
 
   // wygasanie: wolontariusz i koordynator po czasie bez aktywności, administrator nie
   await sl(2200);
   ck('wolontariusz wygasł (krótki czas testowy)', (await call('/auth/status', { tok: w.token })).s === 401);
-  ck('koordynator: dane osobowe zablokowane', (await call('/auth/status', { tok: k.token })).j?.coordinator !== true);
   const st = await call('/auth/status', { tok: a.token });
   ck('administrator dalej zalogowany', st.s === 200 && st.j.admin === true);
 
@@ -78,8 +78,9 @@ await stop();
 // bez hasła administratora w konfiguracji: rola wyłączona, nikt nie zapisze oznaczeń
 fs.rmSync(D + '/data', { recursive: true, force: true });
 delete H.PASS_ADMIN_HASH; await start();
-const k2 = await login('koordynator-haslo-2');
-ck('bez hasła admina: koordynator działa', k2.coordinator === true && k2.admin === false);
+const k2 = await login('wolontariusz-haslo-1');
+ck('bez hasła admina: wolontariusz działa', k2.coordinator === false && k2.admin === false);
+ck('bez hasła admina: odblokowanie niemożliwe', (await call('/auth/unlock', { method: 'POST', tok: k2.token, body: { password: 'administrator-haslo-3' } })).s === 401);
 ck('bez hasła admina: oznaczenia zablokowane', (await push(k2.token, [{ col: 'oznaczenia', id: 'x', data: {}, updated_at: Date.now(), deleted: false, by: '' }])).j.results[0].status === 'forbidden');
 ck('bez hasła admina: puste hasło nie loguje', (await call('/auth/login', { method: 'POST', body: { password: '' } })).s === 400);
 await stop();

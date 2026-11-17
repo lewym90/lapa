@@ -523,3 +523,24 @@ details>summary{list-style:revert}
   .avatar.wyb { border-color: var(--wyb) !important; box-shadow: 0 0 0 2px var(--wyb); }
   .gap .gp.wyb { box-shadow: 0 0 0 3px var(--wyb); }
 }
+
+/* 1.16: wolontariusz (podgląd) i zgłoszenia „ja to ogarnę” */
+.nav.wol{grid-template-columns:repeat(5,1fr)}
+.wolh{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--graphite);margin:18px 0 8px}
+.ocena{display:grid;gap:6px}
+.ocr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:12px;background:rgba(18,53,44,.05);font-size:15px}
+.ocr b{font-weight:600}
+.ocr .oc-ok{color:var(--ok)} .ocr .oc-neutral{color:var(--graphite)} .ocr .oc-ostroznie{color:var(--gold)} .ocr .oc-nie{color:var(--terra-d)}
+.zgl{display:flex;flex-direction:column;margin-top:10px;border-top:1px solid var(--line)}
+.card.zgl{margin-top:0;border-top:0}
+.zglr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.zglr:last-child{border-bottom:0}
+.zglr > span:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;min-width:0}
+.zglr small{display:block;width:100%;color:var(--sage);font-size:13px}
+.zgla{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.iconbtn.sm{width:36px;height:36px}
+.bimie{display:flex;align-items:center;gap:12px;flex:1;min-width:0;background:none;border:0;padding:0;margin:0;text-align:left;color:inherit;font:inherit;cursor:pointer}
+.row.wybr{outline:2px solid var(--wyb);outline-offset:-2px}
+.zco{display:block;width:100%;font-weight:600;font-size:15px;color:var(--graphite);margin-bottom:2px}
+.zco a{color:var(--green)}
+button.zco.zlink{background:none;border:0;padding:0;text-align:left;font:inherit;font-weight:600;font-size:15px;color:var(--green);text-decoration:underline;text-underline-offset:2px;cursor:pointer}

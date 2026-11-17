@@ -47,7 +47,7 @@ export const blobPut = (k, blob) => run(['blobs'], 'readwrite', (s) => p(s.put(b
 export const blobGet = (k) => run(['blobs'], 'readonly', (s) => p(s.get(k)));
 export const blobDel = (k) => run(['blobs'], 'readwrite', (s) => p(s.delete(k)));
 
-// Po zablokowaniu koordynatora: usuń z telefonu wszystkie dane osobowe (kolekcje p_*) i ich kolejkę.
+// Po wyłączeniu trybu administratora: usuń z telefonu wszystkie dane osobowe (kolekcje p_*) i ich kolejkę.
 export async function purgePrivate() {
   await run(['records', 'outbox', 'meta'], 'readwrite', async (rs, os, ms) => {
     const recs = await p(rs.getAll());
@@ -55,6 +55,18 @@ export async function purgePrivate() {
     const outs = await p(os.getAll());
     for (const o of outs) if (o.col.startsWith('p_')) os.delete(o.n);
     ms.delete('cursor_private');
+  });
+}
+// Zmiana roli (np. pierwsze uruchomienie 1.16 albo „Wyłącz tryb administratora”):
+// wolontariusz – usuń z telefonu wszystkie dane i kolejkę (poza własnymi zgłoszeniami) i pobierz od nowa tylko to, co mu wolno;
+// administrator – pobierz wszystko od początku (lokalne, niewysłane zmiany zostają).
+export async function przelaczRole(admin, volWrite) {
+  await run(['records', 'outbox', 'meta'], 'readwrite', async (rs, os, ms) => {
+    if (!admin) {
+      rs.clear();
+      for (const o of await p(os.getAll())) if (!volWrite.has(o.col)) os.delete(o.n);
+    }
+    ms.delete('cursor'); ms.delete('cursor_private');
   });
 }
 export async function wipeAll() {

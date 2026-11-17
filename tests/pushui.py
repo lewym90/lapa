@@ -10,7 +10,7 @@ Object.defineProperty(navigator.serviceWorker,'ready',{get:()=>Promise.resolve({
 with sync_playwright() as p:
     b=p.chromium.launch()
     ctx,pg=newpage(b,{'width':390,'height':844}); ctx.add_init_script(STUB)
-    login(pg,'wolontariusz-haslo-1','Ania')
+    login(pg,'administrator-haslo-3','Ania')
     # pierwsze okno po zalogowaniu
     pg.wait_for_selector('text=Powiadomienia z czatu', timeout=9000); check('jednorazowe okno z prośbą o włączenie', pg.locator('[data-act=np-on-sheet]').count()==1)
     pg.click('[data-act=np-later-sheet]'); pg.wait_for_timeout(300)
@@ -36,7 +36,7 @@ with sync_playwright() as p:
     pg.reload(); pg.wait_for_selector('.topbar', timeout=8000); pg.wait_for_timeout(3000)
     go(pg,'#/ustawienia'); pg.wait_for_timeout(500); check('po ponownym uruchomieniu nadal włączone', 'Włączone na tym telefonie' in pg.inner_text('#app'))
     # karta zachęty na czacie dla osoby bez włączonych powiadomień
-    ctx2,p2=newpage(b,{'width':390,'height':844}); ctx2.add_init_script(STUB+"try{localStorage.setItem('lapa.push.asked','1')}catch(e){}"); login(p2,'wolontariusz-haslo-1','Basia')
+    ctx2,p2=newpage(b,{'width':390,'height':844}); ctx2.add_init_script(STUB+"try{localStorage.setItem('lapa.push.asked','1')}catch(e){}"); login(p2,'administrator-haslo-3','Basia')
     go(p2,'#/czat'); p2.wait_for_selector('#c-in'); check('karta „Włącz powiadomienia” na czacie', p2.locator('.pushcard [data-act=np-on]').count()==1)
     p2.click('.pushcard [data-act=np-on]'); p2.wait_for_timeout(1500); go(p2,'#/czat'); p2.wait_for_selector('#c-in'); check('po włączeniu karta znika', p2.locator('.pushcard').count()==0)
     print('BŁĘDY KONSOLI:',[e for e in errs if 'status of 500' not in e[1]])

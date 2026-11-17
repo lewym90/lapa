@@ -54,7 +54,7 @@ async function draftsFor(sheet) {
       b.querySelector('button').onclick = () => { for (const e of fs) { if (e.type === 'checkbox' || e.type === 'radio') e.checked = false; else if (e.tagName !== 'SELECT') e.value = ''; } metaSet(key, null).catch(() => {}); b.remove(); };
     }
   }
-  const sched = () => { draft.submitted = false; clearTimeout(draft.timer); draft.timer = setTimeout(() => saveDraft(), 350); };
+  const sched = () => { if (!draft) return; draft.submitted = false; clearTimeout(draft.timer); draft.timer = setTimeout(() => saveDraft(), 350); };
   sheet.addEventListener('input', sched); sheet.addEventListener('change', sched);
   sheet.addEventListener('submit', () => { if (draft) { draft.submitted = true; clearTimeout(draft.timer); } }, true);
 }
@@ -112,19 +112,30 @@ export const statusChip = (s) => {
 
 // ===== wspólne elementy układu =====
 export const actions = {};
+// Akcje dostępne dla wolontariusza (podgląd i własne zgłoszenia). Każda inna akcja: tylko administrator.
+// To druga linia obrony – przyciski administratora i tak nie są wolontariuszowi pokazywane, a serwer odrzuca zapis.
+export const VOL_ACTIONS = new Set(['menu', 'back', 'dog-filter', 'kolejnosc', 'dog-fav', 'dog-share', 'dog-walks', 'tr-open', 'zag-open', 'decl', 'of-potrzeba', 'of-transport', 'of-cofnij', 'sob-bede', 'unlock-sheet', 'set-logout', 'set-update', 'set-sync', 'bell']);
+const rola = { admin: () => true };
+export const ustawRole = (fn) => { rola.admin = fn; };
+const TYLKO_ADMIN = 'To może zrobić tylko administrator';
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-act]');
   if (!el) return;
-  const fn = actions[el.dataset.act];
-  if (fn) { e.preventDefault(); fn(el, e); }
+  const name = el.dataset.act, fn = actions[name];
+  if (!fn) return;
+  e.preventDefault();
+  if (!rola.admin() && !VOL_ACTIONS.has(name)) { toast(TYLKO_ADMIN, true); return; }
+  const blad = (err) => { if (err && err.name === 'TylkoAdmin') toast(TYLKO_ADMIN, true); else console.error(err); };
+  try { const r = fn(el, e); if (r && typeof r.catch === 'function') r.catch(blad); } catch (err) { blad(err); } // wywołanie od razu (zdjęcia, udostępnianie wymagają dotyku)
 });
-export const brandBar = (dot = false) => html`<header class="topbar">
+addEventListener('unhandledrejection', (e) => { if (e.reason && e.reason.name === 'TylkoAdmin') { e.preventDefault(); toast(TYLKO_ADMIN, true); } });
+export const brandBar = (dot = false, czat = true) => html`<header class="topbar">
   <button class="iconbtn" data-act="menu" aria-label="Menu">${icon('menu', 'big')}</button>
   <a class="brand" href="#/start" aria-label="ŁAPA — Nowodwór, ekran główny">
     <span style="font-size:36px;color:var(--gold-l);display:grid">${icon('paw')}</span>
     <span><span class="brand-word">ŁAPA</span><span class="brand-sub">NOWODWÓR</span></span>
   </a>
-  <span style="display:flex"><a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a><button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button>
+  <span style="display:flex">${czat ? html`<a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a>` : ''}<button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button>
   <a class="iconbtn" href="#/ustawienia" aria-label="Ustawienia i profil">${icon('user')}</a></span>
 </header>`;
 export const pageBar = (title, { back = true, right = '' } = {}) => html`<header class="topbar">

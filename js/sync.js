@@ -3,7 +3,7 @@ import * as db from './db.js';
 import { emit, on } from './bus.js';
 import { state, lock, sessionLost } from './auth.js';
 import { uploadPending } from './photos.js';
-import { API } from './config.js';
+import { API, VOL_WRITE } from './config.js';
 
 export const status = { state: 'idle', pending: 0, last: 0 };
 let running = false, again = false, timer;
@@ -53,6 +53,9 @@ async function pull(priv) {
 export async function run() {
   if (running) { again = true; return; }
   if (!getToken() || !state.loggedIn) return;
+  // zmiana roli: porządki na telefonie także bez internetu (wolontariusz nie może trzymać danych administratora)
+  const rola = state.admin ? 'admin' : 'wolontariusz';
+  if ((await db.metaGet('rola')) !== rola) { await db.przelaczRole(state.admin, VOL_WRITE); await db.metaSet('rola', rola); emit('change', { col: '*' }); }
   if (!navigator.onLine) { setStatus({ state: 'offline', pending: await db.outboxCount() }); return; }
   running = true; setStatus({ state: 'busy' });
   let changed = 0;

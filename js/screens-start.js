@@ -7,6 +7,7 @@ import { gaps, wToku } from './teczka.js';
 import { zalegle } from './adopcje.js';
 import { dzisItems, dzisCard, dzisCount } from './terminarz.js';
 import { aktywneLiczba } from './zaginiecia.js';
+import { noweZgloszenia } from './wolontariusz.js';
 import { greeting, dogOfDay, dogNeeds, fmtShort, NEED_LABELS, fmtDate } from './util.js';
 
 const seenK = 'lapa.kseen';
@@ -15,7 +16,7 @@ const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return nu
 export async function start() {
   const [dogs, walks, kom, zdr] = await Promise.all([list('psy'), list('spacery'), list('komunikaty'), list('zdrowie')]);
   const todo = gaps(dogs, zdr, walks), adLate = await zalegle(), lost = await aktywneLiczba();
-  const nowePsy = dogs.filter(wToku), dog = dogOfDay(dogs); const dzis = await dzisItems();
+  const nowePsy = dogs.filter(wToku), dog = dogOfDay(dogs); const dzis = await dzisItems(), nZgl = await noweZgloszenia();
   const helpDogs = dogs.filter((d) => d.status === 'pilne' || dogNeeds(d, walks).length).sort((a, b) => (b.status === 'pilne') - (a.status === 'pilne'));
   kom.sort((a, b) => b.ts - a.ts);
   const kLast = kom[0], dot = !!kLast && kLast.ts > (+lsGet(seenK) || 0);
@@ -41,6 +42,7 @@ export async function start() {
       <a class="tile sage" href="#/transport">${icon('truck', 't-ico')}<span class="t-lbl">Transport</span>${icon('arrow', 't-arr')}</a>
       <a class="tile green" href="#/brama" style="grid-column:1/-1;min-height:64px;flex-direction:row;align-items:center;gap:12px">${icon('walk', 't-ico')}<span class="t-lbl">Brama: wydaj / zwróć psa na spacer</span>${icon('arrow', 't-arr')}</a>
     </div>
+    ${nZgl ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zgloszenia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--gold)">${icon('user')}<span><b>Nowe zgłoszenia wolontariuszy: ${nZgl}</b><br><span class="hint">Kto chce pomóc: potrzeby, transport, spacery. Z telefonami.</span></span>${icon('chev')}</a></div>` : ''}
     ${lost ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/zaginiecia" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite);border-left:5px solid var(--terra)">${icon('alert')}<span><b>Poszukiwane psy: ${lost}</b><br><span class="hint">Zobacz kartę, post i plakat</span></span></a></div>` : ''}
     ${nowePsy.length ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/nowe" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('paw')}<span><b>Nowe psy do uzupełnienia: ${nowePsy.length}</b><br><span class="hint">${nowePsy.slice(0, 3).map((d) => d.imie).join(', ')}${nowePsy.length > 3 ? '…' : ''}</span></span></a></div>` : ''}
     ${adLate ? html`<div class="pad" style="margin-top:16px"><a class="card" href="#/adopcje" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--graphite)">${icon('heart')}<span><b>Adopcje: zaległe kroki (${adLate})</b><br><span class="hint">Ktoś czeka na odpowiedź albo wizytę</span></span></a></div>` : ''}
@@ -96,8 +98,8 @@ export async function komunikatySheet() {
   const kom = (await list('komunikaty')).sort((a, b) => b.ts - a.ts).slice(0, 20);
   try { localStorage.setItem(seenK, String(Date.now())); } catch {}
   openSheet(html`<h2>Komunikaty</h2>
-    ${kom.length ? kom.map((k) => html`<div class="obs"><div class="oh"><span>${k.autor || 'Koordynator'}</span><span>${fmtDate(k.ts)}</span></div><div style="white-space:pre-line">${k.tekst}</div></div>`) : html`<p class="hint" style="font-size:15px">Brak komunikatów. Gdy koordynator coś ogłosi, pojawi się tutaj i na ekranie Start.</p>`}
-    ${state.coordinator ? html`<form id="kf" style="margin-top:16px"><div class="field"><label for="kt">Nowy komunikat dla wszystkich</label><textarea class="textarea" id="kt" maxlength="800"></textarea></div><button class="btn block" type="submit">Opublikuj</button></form>` : ''}`.s, (s) => {
+    ${kom.length ? kom.map((k) => html`<div class="obs"><div class="oh"><span>${k.autor || 'Schronisko'}</span><span>${fmtDate(k.ts)}</span></div><div style="white-space:pre-line">${k.tekst}</div></div>`) : html`<p class="hint" style="font-size:15px">Brak komunikatów. Gdy schronisko coś ogłosi, pojawi się tutaj i na ekranie Start.</p>`}
+    ${state.admin ? html`<form id="kf" style="margin-top:16px"><div class="field"><label for="kt">Nowy komunikat dla wszystkich</label><textarea class="textarea" id="kt" maxlength="800"></textarea></div><button class="btn block" type="submit">Opublikuj</button></form>` : ''}`.s, (s) => {
     s.querySelector('#kf')?.addEventListener('submit', async (e) => {
       e.preventDefault(); const t = s.querySelector('#kt').value.trim(); if (!t) return;
       await save('komunikaty', { tekst: t, ts: Date.now(), autor: getName() }); closeSheet(); toast('Komunikat opublikowany');

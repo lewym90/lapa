@@ -9,7 +9,8 @@ import { dogBlock } from './adopcje.js';
 import { ktoText } from './kto.js';
 import * as db from './db.js';
 import { boksPill, wybPill, wybCls, wybrani, powody, boks, kto, opis, opisLine, linie, kolejnosc, kolejnoscHtml, poBoksie } from './znak.js';
-import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty } from './teczka.js';
+import { teczkaRows, zdrowieDla, zaufanieAktywne, aktywny, miejsce, days, wToku, stanKarty, OCENA_POLA, OCENA_LBL } from './teczka.js';
+import { zglDane, chipyPotrzeb } from './wolontariusz.js';
 
 const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -44,7 +45,7 @@ function grid(dogs, walks, zdr = []) {
   const f = filterDogs(dogs, walks);
   if (!f.length) return html`<div class="empty">${icon('paw')}<h3>${dogs.length ? 'Nikogo tu nie ma' : 'Jeszcze nie ma psów'}</h3><p>${dogs.length ? 'Zmień filtr albo wyszukiwanie.' : 'Dodaj psy przyciskiem poniżej: wklej link do ogłoszenia ze strony schroniska albo zaimportuj wszystkie naraz.'}</p></div>`;
   return html`<div class="dogs">${f.map((d) => { const lw = lastWalk(walks, d.id); return html`<a class="dcard${wybCls(d)}" href="#/psy/${d.id}"><div class="pic">${dogThumb(d)}<span class="bx">${raw(boksPill(d))}</span>${raw(wybPill(d))}<span class="st">${(miejsce(d) === 'dt' || miejsce(d) === 'hotelik') ? statusChip(miejsce(d)) : d.status && d.status !== 'schronisko' ? statusChip(d.status) : wToku(d) ? html`<span class="chip">Nowy</span>` : ''}</span></div>
-    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opis(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
+    <div class="meta"><h3>${d.imie} ${sexSymbol(d.plec)}</h3>${opisLine(d) ? raw(opisLine(d)) : d.haslo ? html`<div class="m2" style="font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${String(d.haslo).replace(/^.*?\s[-–—]\s/, '')}</div>` : ''}<div class="m2">${[d.wiek, d.wielkosc].filter(Boolean).join(' · ') || '—'}</div>${d.data_przyjecia && miejsce(d) === 'schronisko' ? html`<div class="m2">W schronisku ${days(d.data_przyjecia)} dni</div>` : ''}${wToku(d) ? (() => { const sk = stanKarty(d, walks, zdr); return html`<div class="m2" style="color:var(--terra-d);font-weight:600">Karta przyjęcia: ${sk.done} z ${sk.total}</div>`; })() : ''}${lw ? html`<div class="m2">Spacer: ${ago(lw)}</div>` : ''}</div></a>`; })}</div>`;
 }
 export async function list_() {
   const [dogs, walks, zdr] = await Promise.all([list('psy'), list('spacery'), list('zdrowie')]);
@@ -52,10 +53,10 @@ export async function list_() {
     tab: 'psy', title: 'Psy',
     html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
-    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
+    <div class="fchips" role="group" aria-label="Filtr">${FILTERS.filter(([k]) => state.admin || !['nowe', 'zaufanie'].includes(k)).map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
     <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>
     <div id="grid">${grid(dogs, walks, zdr)}</div>
-    <button class="btn gold fab" data-act="a-dog">${icon('plus')} Dodaj psa</button>`,
+    ${state.admin ? html`<button class="btn gold fab" data-act="a-dog">${icon('plus')} Dodaj psa</button>` : ''}`,
     mount(root) {
       const inp = root.querySelector('#fq'), g = root.querySelector('#grid');
       inp.addEventListener('input', () => { fq = inp.value; g.innerHTML = grid(dogs, walks, zdr).s; hydratePhotos(g); });
@@ -84,6 +85,7 @@ export async function pickDog(cb) {
 
 // ========== karta psa ==========
 export async function card(id) {
+  if (!state.admin) return cardWol(id);
   const [d, walks, obsAll, zdr] = await Promise.all([get('psy', id), list('spacery'), list('obserwacje'), zdrowieDla(id)]);
   if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
   const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start);
@@ -102,7 +104,7 @@ export async function card(id) {
     <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
       <div class="meta">${boks(d) ? raw(boksPill(d, 'big')) : miejsce(d) === 'schronisko' && aktywny(d) ? html`<button class="boks add big" data-act="dog-miejsce" data-id="${id}">+ Boks</button>` : ''}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + d.waga.replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((x) => html`<span>${x}</span>`)}</div>
       <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + d.siersc.toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}${needs.map((k) => html`<span class="chip terra">${NEED_LABELS[k]}</span>`)}</div>
-      ${wybrani(d) ? html`<div class="wybbox"><b>Tylko dla wybranych wolontariuszy</b><p>Powód: ${powody(d).join(', ') || 'nie podano'}${kto(d) ? html`<br>Mogą wychodzić: ${kto(d)}` : ''}</p></div>` : ''}
+      ${state.admin && wybrani(d) ? html`<div class="wybbox"><b>Tylko dla wybranych wolontariuszy</b><p>Powód: ${powody(d).join(', ') || 'nie podano'}${kto(d) ? html`<br>Mogą wychodzić: ${kto(d)}` : ''}</p></div>` : ''}
       ${d.opis ? html`<p class="desc">${d.opis}</p>` : html`<p class="desc" style="color:#6b736a">Brak opisu. Dodaj go przez „Edytuj” albo odśwież ze strony schroniska.</p>`}
       <div class="rows">
         ${teczkaRows(d, zdr, { walks: mine, obs })}
@@ -113,7 +115,7 @@ export async function card(id) {
       </div>
       ${dkto ? html`<p class="hint kto" style="text-align:center;margin:10px 0 0">${dkto}</p>` : ''}
       ${state.coordinator ? adBlock
-        : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko koordynator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem koordynatora</button></div>`}
+        : html`<div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osób zainteresowanych adopcją</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div>`}
       <div class="btnrow" style="margin-top:20px"><button class="btn block" data-act="dog-obs-add" data-id="${id}">${icon('pencil')} Zapisz obserwację</button></div>
       <div class="btnrow" style="margin-top:10px"><a class="btn ghost" href="#/spacer/${id}">${icon('walk')} Rozpocznij spacer</a><button class="btn ghost" data-act="dog-photo" data-id="${id}">${icon('camera')} Zdjęcia / sesja</button></div>
       <div class="btnrow" style="margin-top:10px"><button class="btn ghost" data-act="dog-print" data-id="${id}">${icon('download')} Karta do wysłania (PDF)</button><button class="btn ghost" data-act="dog-edit" data-id="${id}">${icon('pencil')} Edytuj</button></div>
@@ -199,12 +201,12 @@ export async function addPhoto(dogId) {
 actions['dog-photo'] = (el) => addPhoto(el.dataset.id);
 actions['unlock-sheet'] = () => unlockSheet();
 export function unlockSheet(after) {
-  openSheet(`<h2>Odblokuj uprawnienia</h2><p class="hint" style="margin:0 0 14px">Hasło koordynatora odblokuje numery telefonów i dane osób zainteresowanych adopcją (blokuje się samo po godzinie bez używania aplikacji). Hasło administratora daje wszystkie uprawnienia, także oznaczanie psów, i zostaje włączone na stałe.</p>
-    <form id="uf" novalidate><div class="field"><label for="up">Hasło koordynatora lub administratora</label><input class="input" id="up" type="password" autocomplete="off" autocapitalize="off"></div><div class="err" id="ue" role="alert"></div><button class="btn block" type="submit">${icon('unlock').s} Odblokuj</button></form>`, (s) => {
+  openSheet(`<h2>Hasło administratora</h2><p class="hint" style="margin:0 0 14px">Dla osób pracujących w schronisku. Odblokuje pełną aplikację (Brama, terminarz, edycja kart psów, adopcje, finanse) i zostanie włączone na stałe na tym telefonie.</p>
+    <form id="uf" novalidate><div class="field"><label for="up">Hasło administratora</label><input class="input" id="up" type="password" autocomplete="off" autocapitalize="off"></div><div class="err" id="ue" role="alert"></div><button class="btn block" type="submit">${icon('unlock').s} Odblokuj</button></form>`, (s) => {
     s.querySelector('#uf').addEventListener('submit', async (e) => {
       e.preventDefault(); const b = s.querySelector('button'); b.disabled = true;
-      try { const r = await unlock(s.querySelector('#up').value); closeSheet(); toast(r && r.admin ? 'Tryb administratora włączony' : 'Dane osobowe odblokowane'); after?.(); }
-      catch (err) { b.disabled = false; s.querySelector('#ue').textContent = err.status === 429 ? 'Za dużo prób. Spróbuj za kilka minut.' : err.status === 0 ? 'Brak połączenia.' : 'Nieprawidłowe hasło.'; }
+      try { const r = await unlock(s.querySelector('#up').value); closeSheet(); toast('Tryb administratora włączony'); after?.(); }
+      catch (err) { b.disabled = false; s.querySelector('#ue').textContent = err.status === 429 ? 'Za dużo prób. Spróbuj za kilka minut.' : err.status === 0 ? 'Brak połączenia.' : 'Nieprawidłowe hasło administratora.'; }
     });
     s.querySelector('#up').focus();
   });
@@ -247,6 +249,40 @@ export function dogForm(d = {}) {
   });
 }
 actions['dog-edit'] = async (el) => dogForm(await get('psy', el.dataset.id));
+
+// ========== karta psa dla wolontariusza: tylko podgląd ==========
+// Zdjęcia, dane, cechy, opis, charakter, czego potrzebuje (ze zgłoszeniem), historia spacerów, link do ogłoszenia, Udostępnij.
+async function cardWol(id) {
+  const [d, walks, z] = await Promise.all([get('psy', id), list('spacery'), zglDane()]);
+  if (!d) return { tab: 'psy', nav: false, html: html`<div class="empty" style="padding-top:90px">${icon('paw')}<h3>Nie ma takiego psa</h3><a class="btn gold" href="#/psy">Wróć do listy</a></div>` };
+  const mine = walks.filter((w) => w.pies_id === id).sort((a, b) => b.start - a.start), km = mine.reduce((s, w) => s + (w.dystans_km || 0), 0);
+  const pics = dogPics(d), isFav = favs().has(id), needs = dogNeeds(d, walks), o = d.ocena || {};
+  const ocena = OCENA_POLA.filter(([p]) => o[p]).map(([p, l]) => `<div class="ocr"><span>${esc(l)}</span><b class="oc-${esc(o[p])}">${esc(OCENA_LBL[o[p]] || '')}</b></div>`).join('');
+  return {
+    tab: 'psy', title: d.imie, live: true,
+    html: html`<section class="dogtop"><div class="topact"><button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>
+        <span style="display:flex;gap:8px"><button class="iconbtn" data-act="dog-fav" data-id="${id}" aria-pressed="${isFav}" aria-label="Ulubiony">${raw(icon('heart').s.replace('class="ico', isFav ? 'style="fill:var(--terra);stroke:var(--terra)" class="ico' : 'class="ico'))}</button>
+        <button class="iconbtn" data-act="dog-share" data-id="${id}" aria-label="Udostępnij">${icon('share')}</button></span></div>
+      <div class="gal" id="gal">${pics.length ? pics.map((p) => html`<div>${picImg(p, d.imie)}</div>`) : html`<div><div class="nophoto">${icon('paw')}</div></div>`}</div>
+      ${pics.length > 1 ? html`<div class="dots" id="dots">${pics.map((_, i) => html`<i class="${i ? '' : 'on'}"></i>`)}</div>` : ''}</section>
+    <section class="dogsheet"><h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>
+      <div class="meta">${raw(boksPill(d, 'big'))}${[d.wiek, d.wielkosc, d.waga && 'ok. ' + String(d.waga).replace(/^ok\.?\s*/i, ''), d.status && STATUS[d.status]].filter(Boolean).map((t) => html`<span>${t}</span>`)}</div>
+      <div class="chips">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + String(d.siersc).toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}${(d.tagi || []).map((t) => html`<span class="chip">${t}</span>`)}</div>
+      ${d.opis ? html`<p class="desc">${d.opis}</p>` : ''}
+      ${ocena ? html`<h3 class="wolh">Charakter</h3><div class="ocena">${raw(ocena)}</div>` : ''}
+      ${needs.length ? html`<h3 class="wolh">Czego potrzebuje</h3><div class="chips">${raw(chipyPotrzeb(d, needs, z.dek))}</div><p class="hint" style="margin:6px 0 0">Dotknij, żeby zgłosić, że się tym zajmiesz.</p>` : ''}
+      <div class="rows" style="margin-top:14px">
+        <button class="row" data-act="dog-walks" data-id="${id}">${icon('paw')}<span class="rt"><b>Historia spacerów</b><small>${mine.length} ${plural(mine.length, 'spacer', 'spacery', 'spacerów')}${km ? ' | ' + km.toFixed(1).replace('.', ',') + ' km' : ''}${mine[0] ? ' | ostatni ' + ago(mine[0].start) : ''}</small></span>${icon('chev')}</button>
+        ${d.zrodlo_url ? html`<a class="row" href="${safeUrl(d.zrodlo_url)}" target="_blank" rel="noopener">${icon('link')}<span class="rt"><b>Ogłoszenie na stronie schroniska</b><small>Otwórz w przeglądarce</small></span>${icon('chev')}</a>` : ''}
+      </div>
+    </section>`,
+    mount(root) {
+      const gal = root.querySelector('#gal'), dots = root.querySelectorAll('#dots i');
+      gal?.addEventListener('scroll', () => { const i = Math.round(gal.scrollLeft / gal.clientWidth); dots.forEach((x, k) => x.classList.toggle('on', k === i)); }, { passive: true });
+      hydratePhotos(root);
+    }
+  };
+}
 
 // ========== import ze strony schroniska ==========
 import { dogFromImport } from './dogmerge.js';

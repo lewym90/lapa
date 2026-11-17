@@ -5,7 +5,7 @@ import { rysujPlakat, pokazObraz, zdjecieDoPlakatu } from './plakat.js';
 import { html, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet, plusBtn } from './ui.js';
 import { list, listRecs, save, remove, get } from './store.js';
 import { ktoText, ktoInto } from './kto.js';
-import { getName } from './auth.js';
+import { getName, state } from './auth.js';
 import { fmtDate } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
@@ -25,8 +25,8 @@ export async function zaginiecia() {
   const a = zs.filter(aktywne).sort((x, y) => y.kiedy - x.kiedy), f = zs.filter((z) => !aktywne(z)).sort((x, y) => y.znaleziony_ts - x.znaleziony_ts);
   const card = (z) => html`<div class="card gap"><button class="gi" data-act="zag-open" data-id="${z.id}" style="text-align:left;background:none;border:0;padding:0"><span class="gp${byId[z.pies_id] ? wybCls(byId[z.pies_id]) : ''}">${byId[z.pies_id] ? dogThumb(byId[z.pies_id]) : icon('paw')}</span><span class="rt"><b>${z.imie} ${byId[z.pies_id] ? raw(boksPill(byId[z.pies_id], 'in')) : ''}</b>${byId[z.pies_id] ? raw(linie(byId[z.pies_id])) : ''}<small>${aktywne(z) ? 'Zaginął(a) ' + fmtDate(z.kiedy) + (z.ostatnio ? ' · ' + z.ostatnio : '') : 'Znaleziony(a) ' + fmtDate(z.znaleziony_ts)}</small><small class="kto">${ktoText(zby[z.id], z.autor)}</small></span></button></div>`;
   return { tab: 'start', title: 'Zaginięcia', live: true,
-    html: html`${pageBar('Zaginięcia', { right: html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` })}
-    <div class="pad stack">${a.length ? a.map(card) : html`<div class="empty">${icon('check')}<h3>Nikt nie jest teraz poszukiwany</h3><p>Zgłoś zaginięcie przyciskiem +. Aplikacja przygotuje post i plakat.</p></div>`}
+    html: html`${pageBar('Zaginięcia', { right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}
+    <div class="pad stack">${a.length ? a.map(card) : html`<div class="empty">${icon('check')}<h3>Nikt nie jest teraz poszukiwany</h3><p>${state.admin ? 'Zgłoś zaginięcie przyciskiem +. Aplikacja przygotuje post i plakat.' : 'Gdy pies zaginie, pojawi się tutaj. Możesz wtedy udostępnić post i plakat.'}</p></div>`}
     ${f.length ? html`<h3 style="color:var(--sage);margin:16px 0 0">Odnalezione</h3>${f.slice(0, 10).map(card)}` : ''}</div>`,
     mount(r) { hydratePhotos(r); } };
 }
@@ -60,9 +60,9 @@ actions['zag-open'] = async (el) => {
     <div class="field"><label for="z_pt">Gotowy post (możesz poprawić)</label><textarea class="textarea" data-nodraft id="z_pt" style="min-height:200px"></textarea></div>
     <div class="btnrow"><button class="btn" id="z_c">Kopiuj</button><button class="btn ghost" id="z_s">Wyślij…</button></div>
     <div class="btnrow" style="margin-top:8px"><button class="btn ghost" id="z_pl">Plakat do wydruku</button><a class="btn ghost" id="z_wa" target="_blank" rel="noopener">WhatsApp</a></div>
-    ${aktywne(z) ? `<div class="field" style="margin-top:14px"><label for="z_u">Aktualizacja (np. widziany w Wólce)</label><input class="input" id="z_u" maxlength="200"><button class="btn ghost block sm" style="margin-top:6px" id="z_ua">Dodaj aktualizację do posta</button></div>
+    ${aktywne(z) && state.admin ? `<div class="field" style="margin-top:14px"><label for="z_u">Aktualizacja (np. widziany w Wólce)</label><input class="input" id="z_u" maxlength="200"><button class="btn ghost block sm" style="margin-top:6px" id="z_ua">Dodaj aktualizację do posta</button></div>
     <button class="btn gold block" style="margin-top:12px" id="z_f">Znaleziony! 🎉</button>` : ''}
-    <div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="z_e">Edytuj</button><button class="btn ghost" style="color:var(--terra-d)" id="z_x">Usuń</button></div>`, async (s) => {
+    ${state.admin ? `<div class="btnrow" style="margin-top:12px"><button class="btn ghost" id="z_e">Edytuj</button><button class="btn ghost" style="color:var(--terra-d)" id="z_x">Usuń</button></div>` : ''}`, async (s) => {
     ktoInto(s, '#z_kto', 'zaginiecia', z.id, z.autor); const t = s.querySelector('#z_pt'); t.value = postZ(z); const wa = () => { s.querySelector('#z_wa').href = 'https://wa.me/?text=' + encodeURIComponent(t.value); }; wa(); t.oninput = wa;
     s.querySelector('#z_c').onclick = async () => { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch { t.select(); } };
     s.querySelector('#z_s').onclick = async () => { if (navigator.share) { try { await navigator.share({ text: t.value }); } catch {} } else { try { await navigator.clipboard.writeText(t.value); toast('Skopiowano'); } catch {} } };
@@ -73,8 +73,8 @@ actions['zag-open'] = async (el) => {
       if (z.pies_id) { const d = await get('psy', z.pies_id); if (d && d.miejsce === 'zaginiony') await save('psy', { ...d, miejsce: d.poprz_miejsce || 'schronisko' }); }
       closeSheet(); toast('Super wiadomość! Zapisane');
     });
-    s.querySelector('#z_e').onclick = async () => { closeSheet(); form(z, (await list('psy')).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'))); };
-    s.querySelector('#z_x').onclick = async () => { if (await confirmSheet('Usunąć zgłoszenie?', 'Zniknie u wszystkich.', 'Usuń', true)) { await remove('zaginiecia', z.id); closeSheet(); toast('Usunięto'); } };
+    if (s.querySelector('#z_e')) s.querySelector('#z_e').onclick = async () => { closeSheet(); form(z, (await list('psy')).sort((x, y) => (x.imie || '').localeCompare(y.imie || '', 'pl'))); };
+    if (s.querySelector('#z_x')) s.querySelector('#z_x').onclick = async () => { if (await confirmSheet('Usunąć zgłoszenie?', 'Zniknie u wszystkich.', 'Usuń', true)) { await remove('zaginiecia', z.id); closeSheet(); toast('Usunięto'); } };
   });
 };
 async function plakat(z) {

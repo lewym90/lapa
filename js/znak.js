@@ -1,9 +1,10 @@
-// Znaczki psa widoczne wszędzie, gdzie pojawia się pies:
-// - numer boksu (wpisuje każdy wolontariusz, pole d.boks; tylko gdy pies jest w schronisku),
-// - „Tylko dla wybranych” z powodem i krótki opis psa (ustawia wyłącznie administrator; kolekcja „oznaczenia”, doklejana jako d.ozn).
+// Znaczki psa:
+// - numer boksu (wpisuje administrator, widzą wszyscy; pole d.boks; tylko gdy pies jest w schronisku) – wszędzie, gdzie pojawia się pies,
+// - „Tylko dla wybranych” z powodem i krótki opis psa (administrator; kolekcja „oznaczenia”, doklejana jako d.ozn) – widzi tylko administrator.
 // Nie trafiają do tekstów postów, plakatów ani karty PDF.
 import { esc } from './ui-core.js';
 import { actions } from './ui.js';
+import { state } from './auth.js';
 
 export const POWODY = [['wycofany', 'wycofany'], ['trudny', 'trudny'], ['silny', 'silny']];
 // Krótki opis psa: zamknięta lista (wybór jednym dotknięciem, bez wpisywania).
@@ -21,18 +22,26 @@ export const opis = (d) => String((d && d.ozn && d.ozn.opis) || '').trim();
 export const wybraniTxt = (d) => (wybrani(d) ? 'Tylko wybrani' + (powody(d).length ? ': ' + powody(d).join(', ') : '') : '');
 
 // ----- kawałki HTML (zwykłe napisy, gotowe do wstawienia także przez raw()) -----
-export const wybCls = (d) => (wybrani(d) ? ' wyb' : '');
+// Od 1.16 oznaczenie „tylko dla wybranych” i krótki opis psa widzi WYŁĄCZNIE administrator (wszędzie: Brama, Psy, karta, Start, Pomoc…).
+// Wolontariusz nie dostaje tych danych z serwera; dodatkowo funkcje sprawdzają rolę.
+const adm = (d) => !!(state.admin && d);
+export const wybCls = (d) => (adm(d) && wybrani(d) ? ' wyb' : '');
 export const boksPill = (d, cls = '') => (boks(d) ? `<span class="boks ${cls}">Boks ${esc(boks(d))}</span>` : '');
-export const wybPill = (d, cls = '') => (wybrani(d) ? `<span class="wybl ${cls}">${esc(wybraniTxt(d))}</span>` : '');
-export const opisLine = (d, cls = '') => (opis(d) ? `<span class="opisl ${cls}">${esc(opis(d))}</span>` : '');
+export const wybPill = (d, cls = '') => (adm(d) && wybrani(d) ? `<span class="wybl ${cls}">${esc(wybraniTxt(d))}</span>` : '');
+export const opisLine = (d, cls = '') => (adm(d) && opis(d) ? `<span class="opisl ${cls}">${esc(opis(d))}</span>` : '');
 // Pod imieniem w wierszach list (Brama, wybór psa, Start, Pomoc, Nowe psy, Dziś…): opis administratora i „Tylko wybrani”.
-export const linie = (d) => `${opisLine(d)}${wybrani(d) ? `<span class="wybt">${esc(wybraniTxt(d))}</span>` : ''}`;
+export const linie = (d) => (adm(d) ? `${opisLine(d)}${wybrani(d) ? `<span class="wybt">${esc(wybraniTxt(d))}</span>` : ''}` : '');
 // Imię ze znaczkami w miejscach bez zdjęcia (terminarz, transport, czat, adopcje, finanse): krótko, w jednej linii.
 export const imieZnaki = (d, imie) => {
   const n = esc(imie ?? (d && d.imie) ?? '');
   if (!d) return n;
+  if (!adm(d)) return `${n}${boksPill(d, 'in')}`;
   return `${n}${boksPill(d, 'in')}${opis(d) ? ` <span class="opisi">${esc(opis(d))}</span>` : ''}${wybrani(d) ? ` <span class="wybi">${esc(wybraniTxt(d))}</span>` : ''}`;
 };
+// Brama (zostawione nazwy z wersji roboczej)
+export const wybClsB = wybCls;
+export const opisLineB = opisLine;
+export const linieB = linie;
 
 // ----- kolejność: alfabetycznie albo według boksów (Brama, wybór psa do spaceru, lista Psy) -----
 // Według boksów: najpierw psy z boksem w kolejności 1, 2, 7, 7a, 12, A3 (liczby jak liczby, nie jak tekst),

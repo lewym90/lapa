@@ -1,10 +1,14 @@
 // Warstwa danych: zapis lokalny natychmiast, wysyłka na serwer w tle.
 import * as db from './db.js';
-import { LOCAL_ONLY } from './config.js';
+import { LOCAL_ONLY, VOL_WRITE } from './config.js';
 import { emit } from './bus.js';
 import { uid } from './util.js';
 import { kick } from './sync.js';
-import { getName } from './auth.js';
+import { getName, state } from './auth.js';
+
+// Wolontariusz może zapisać tylko własne zgłoszenia; reszta tylko administrator (to samo sprawdza serwer).
+export class TylkoAdmin extends Error { constructor() { super('To może zrobić tylko administrator'); this.name = 'TylkoAdmin'; } }
+const wolno = (col) => state.admin || VOL_WRITE.has(col);
 
 // Oznaczenia administratora (kolekcja „oznaczenia”, id = id psa) są doklejane do psa jako d.ozn przy każdym odczycie,
 // więc widać je wszędzie, gdzie pojawia się pies. Nigdy nie są zapisywane w rekordzie psa (save je odcina).
@@ -17,6 +21,7 @@ async function withOzn(dogs) {
 const bezOzn = (col, obj) => { if (col !== 'psy' || !obj || !('ozn' in obj)) return obj; const { ozn, ...rest } = obj; void ozn; return rest; };
 
 export async function save(col, obj) {
+  if (!wolno(col)) throw new TylkoAdmin();
   obj.id ||= uid();
   const data = bezOzn(col, obj);
   const rec = { col, id: obj.id, data, updated_at: Date.now(), deleted: false, by: getName() };
@@ -26,6 +31,7 @@ export async function save(col, obj) {
   return obj;
 }
 export async function remove(col, id) {
+  if (!wolno(col)) throw new TylkoAdmin();
   const old = await db.getRec(col, id);
   const rec = { col, id, data: old?.data || {}, updated_at: Date.now(), deleted: true, by: getName() };
   await db.putRec(rec);

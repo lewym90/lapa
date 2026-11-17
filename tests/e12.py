@@ -21,7 +21,7 @@ def srv(path, tok):
     except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b'{}')
 
 with sync_playwright() as p:
-    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'wolontariusz-haslo-1','Ania')
+    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'administrator-haslo-3','Ania')
     pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('moje_zadania',{id:'old1',tytul:'Zawieźć Alfa do weta',termin:Date.now()+86400e3});await s.save('wydarzenia',{id:'oldev',tytul:'Stary wspólny',start:Date.now()+2*86400e3,autor:'Michał'});await s.save('psy',{id:'d1',imie:'Alf',status:'do_adopcji',zdjecia:[]});}""")
     go(pg,'#/wydarzenia'); pg.wait_for_selector('[data-act=tm-tab]'); pg.wait_for_timeout(800)
     t=pg.inner_text('#app'); check('zakładka sobotnie spacery domyślnie', 'Zwykle sobota 9:00' in t)
@@ -39,7 +39,7 @@ with sync_playwright() as p:
     n=pg.locator('.ev:has-text("Lek dla Alfa")').count(); check('powtarzanie: wiele dni', n>=30); print('wystąpień',n)
     pg.locator('[data-act=tm-open][data-id]').filter(has_text='Lek dla Alfa').first.click(); pg.wait_for_selector('#tme'); pg.click('#tmx'); pg.wait_for_selector('[data-yes]'); pg.click('[data-yes]'); pg.wait_for_timeout(800)
     check('usunięty', pg.locator('.ev:has-text("Lek dla Alfa")').count()==0)
-    ctx2,p2=newpage(b,{'width':390,'height':900}); login(p2,'wolontariusz-haslo-1','Michał'); go(p2,'#/wydarzenia'); p2.wait_for_selector('[data-act=tm-tab]'); p2.click('[data-t=ter]'); p2.wait_for_timeout(2500); go(p2,'#/wydarzenia'); p2.click('[data-t=ter]'); p2.wait_for_timeout(800)
+    ctx2,p2=newpage(b,{'width':390,'height':900}); login(p2,'administrator-haslo-3','Michał'); go(p2,'#/wydarzenia'); p2.wait_for_selector('[data-act=tm-tab]'); p2.click('[data-t=ter]'); p2.wait_for_timeout(2500); go(p2,'#/wydarzenia'); p2.click('[data-t=ter]'); p2.wait_for_timeout(800)
     t=p2.inner_text('#app'); check('Michał widzi wspólny, nie widzi prywatnych Ani', 'Stary wspólny' in t and 'Zawieźć Alfa' not in t)
     # Dziś komunikat
     pg.evaluate("async()=>{const s=await import('/js/store.js');await s.save('terminarz',{id:'dz1',tytul:'Adopcja o 17:00',start:new Date(new Date().toDateString()+' 17:00').getTime(),widocznosc:'wszyscy',owner:'Ania',autor:'Ania'});}")

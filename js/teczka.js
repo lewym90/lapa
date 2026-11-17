@@ -13,9 +13,9 @@ export const MIEJSCA = [['schronisko', 'W schronisku'], ['dt', 'W domu tymczasow
 export const KANALY = [['fb', 'Facebook (album)'], ['www', 'Strona schroniska'], ['ig', 'Instagram'], ['tiktok', 'TikTok'], ['yt', 'YouTube'], ['puszatek', 'Puszatek'], ['psinder', 'Psinder']];
 export const ZDROWIE_TYPY = [['szczepienie', 'Szczepienie'], ['odrobaczanie', 'Odrobaczanie'], ['pchly', 'Pchły i kleszcze'], ['kastracja', 'Kastracja / sterylizacja'], ['chip', 'Czip'], ['weterynarz', 'Wizyta u weterynarza'], ['lek', 'Lek / leczenie'], ['badanie', 'Badanie'], ['inne', 'Inne']];
 const TYP = Object.fromEntries(ZDROWIE_TYPY);
-const OCENA_POLA = [['ludzie', 'Do ludzi'], ['dzieci', 'Do dzieci'], ['psy', 'Do innych psów'], ['koty', 'Do kotów'], ['smycz', 'Na smyczy']];
+export const OCENA_POLA = [['ludzie', 'Do ludzi'], ['dzieci', 'Do dzieci'], ['psy', 'Do innych psów'], ['koty', 'Do kotów'], ['smycz', 'Na smyczy']];
 const OCENA_OPC = [['', 'Nie wiadomo'], ['ok', 'Bardzo dobrze'], ['neutral', 'Neutralnie'], ['ostroznie', 'Ostrożnie / z zastrzeżeniem'], ['nie', 'Słabo / nie polecamy']];
-const OCENA_LBL = Object.fromEntries(OCENA_OPC);
+export const OCENA_LBL = Object.fromEntries(OCENA_OPC);
 const SEL = (id, label, opts, val) => `<div class="field"><label for="${id}">${label}</label><select class="select" id="${id}">${opts.map(([k, l]) => `<option value="${k}" ${k === val ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`;
 const d10 = (t) => { const d = new Date(t || Date.now()); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const plural = (n, a, b, c) => (n === 1 ? a : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? b : c);
@@ -129,7 +129,7 @@ actions['dog-oznacz'] = async (el) => {
   if (!state.admin) { toast('To może zmienić tylko administrator', true); return; }
   const d = await get('psy', el.dataset.id); if (!d) return;
   const o = d.ozn || {}, w = o.wybrani || {}, sel = new Set(w.powody || []);
-  openSheet(`<h2>Oznaczenie: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Widać je przy tym psie we wszystkich zakładkach, u wszystkich wolontariuszy. Nie widać, kto je ustawił.</p><form id="of2" novalidate>
+  openSheet(`<h2>Oznaczenie: ${esc(d.imie)}</h2><p class="hint" style="margin:0 0 12px">Widzą je tylko administratorzy: w Bramie, na liście Psy, na karcie psa i w innych miejscach. Wolontariusze tego nie widzą. Nie widać, kto je ustawił.</p><form id="of2" novalidate>
     <div class="field"><span class="lbl">Krótki opis psa (pod imieniem, zamiast hasła ze strony)</span><div class="chips" id="oz_o">${['', ...OPISY].map((k) => `<button type="button" class="chip outline ${(o.opis || '') === k ? 'on' : ''}" data-op="${esc(k)}" aria-pressed="${(o.opis || '') === k}">${k ? esc(k) : 'bez opisu'}</button>`).join('')}</div></div>
     <label class="check" style="margin-top:6px"><input type="checkbox" id="oz_on" ${w.on ? 'checked' : ''}> <b>Tylko dla wybranych wolontariuszy</b> (czerwona obwódka)</label>
     <div class="field" style="margin-top:12px"><span class="lbl">Dlaczego (możesz zaznaczyć kilka)</span><div class="chips">${POWODY.map(([k, l]) => `<button type="button" class="chip outline pw ${sel.has(k) ? 'on' : ''}" data-pw="${k}">${l}</button>`).join('')}</div></div>
@@ -147,7 +147,7 @@ actions['dog-oznacz'] = async (el) => {
       const wyb = on.checked ? { on: true, powody: POWODY.map(([k]) => k).filter((k) => sel.has(k)), inny, kto: s.querySelector('#oz_k').value.trim() } : null;
       if (!op && !wyb) await remove('oznaczenia', d.id);
       else await save('oznaczenia', { id: d.id, opis: op, wybrani: wyb });
-      closeSheet(); toast('Zapisane');
+      closeSheet(); toast('Zapisane'); if (location.hash.startsWith('#/brama')) dispatchEvent(new HashChangeEvent('hashchange'));
     });
   });
 };

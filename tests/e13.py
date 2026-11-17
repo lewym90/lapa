@@ -21,7 +21,7 @@ def srv(path, tok):
     except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b'{}')
 
 with sync_playwright() as p:
-    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'wolontariusz-haslo-1','Ania')
+    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':900}); login(pg,'administrator-haslo-3','Ania')
     pg.evaluate("""async()=>{const s=await import('/js/store.js');const d=await import('/js/db.js');await s.save('terminarz',{id:'dz1',tytul:'Adopcja o 17:00',start:new Date(new Date().toDateString()+' 17:00').getTime(),widocznosc:'wszyscy',owner:'Ania',autor:'Ania'});await s.save('terminarz',{id:'dz2',tytul:'Lek Alf',start:Date.now()-2*864e5,widocznosc:'ja',owner:'Ania',autor:'Ania',zadanie:true});await d.metaSet('poranny',null);}""")
     pg.reload(); pg.wait_for_timeout(500)
     try:

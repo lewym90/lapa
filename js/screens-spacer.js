@@ -1,6 +1,6 @@
 import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, pageBar, confirmSheet } from './ui.js';
 import { list, save, get, remove } from './store.js';
-import { getName } from './auth.js';
+import { getName, state } from './auth.js';
 import { fmtDate, fmtTime, hhmm, minutesText, ago, distanceKm, uid } from './util.js';
 import { dogThumb } from './screens-psy.js';
 import { addPhotoFile, hydratePhotos } from './photos.js';
@@ -147,12 +147,12 @@ export async function report(id) {
       <div class="stats"><div class="stat">${icon('route')}<div><small>Dystans</small><b>${w.dystans_km ? w.dystans_km.toFixed(1).replace('.', ',') + ' km' : '—'}</b></div></div>
         <div class="stat">${icon('clock')}<div><small>Czas</small><b>${minutesText(w.czas_min || 0)}</b></div></div></div>
       ${tags.length ? html`<div class="chips" style="margin-bottom:14px">${tags}</div>` : ''}
-      <h3 style="font-size:18px;margin:6px 0 8px;display:flex;justify-content:space-between">Notatka ze spaceru <button class="iconbtn" style="width:32px;height:32px;color:var(--green)" data-act="rep-note" data-id="${id}" aria-label="Edytuj notatkę">${icon('pencil')}</button></h3>
+      <h3 style="font-size:18px;margin:6px 0 8px;display:flex;justify-content:space-between">Notatka ze spaceru ${state.admin ? html`<button class="iconbtn" style="width:32px;height:32px;color:var(--green)" data-act="rep-note" data-id="${id}" aria-label="Edytuj notatkę">${icon('pencil')}</button>` : ''}</h3>
       <div class="notebox">${w.notatka || 'Bez notatki.'}</div>
       ${(w.zdjecia || []).length ? html`<h3 style="font-size:18px;margin:16px 0 8px">Zdjęcia (${w.zdjecia.length})</h3><div class="thumbs">${w.zdjecia.map((p) => html`<div class="thumb"><img data-photo="${p}" alt="Zdjęcie ze spaceru" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></div>`)}</div>` : ''}
       ${w.osoba || w.kontakt ? html`<p class="sub" style="margin:8px 0">Kto szedł: ${[w.osoba, w.kontakt].filter(Boolean).join(' · ')}</p>` : ''}${(w.tagi || []).length ? html`<div class="chips" style="margin-bottom:10px">${w.tagi.map((t) => html`<span class="chip">${t}</span>`)}</div>` : ''}
-      <a class="btn block" style="margin-top:20px" href="#/psy/${w.pies_id}">${icon('check')} Gotowe</a>
-      <button class="btn ghost block" style="margin-top:10px;color:var(--terra-d)" data-act="rep-del" data-id="${id}">Usuń ten spacer (pomyłka)</button></section></div>`,
+      <a class="btn block" style="margin-top:20px" href="#/psy/${w.pies_id}">${state.admin ? icon('check') : icon('back')} ${state.admin ? 'Gotowe' : 'Wróć do psa'}</a>
+      ${state.admin ? html`<button class="btn ghost block" style="margin-top:10px;color:var(--terra-d)" data-act="rep-del" data-id="${id}">Usuń ten spacer (pomyłka)</button>` : ''}</section></div>`,
     mount(root) { hydratePhotos(root); }
   };
 }

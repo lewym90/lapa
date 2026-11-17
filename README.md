@@ -5,7 +5,7 @@ Aplikacja PWA dla wolontariuszy Schroniska dla Psów w Nowodworze: kartoteka ps�
 - `index.html`, `css/`, `js/`, `sw.js`, `manifest.webmanifest`: aplikacja (bez budowania, wystarczy GitHub Pages).
 - `server/`: serwer wspólnych danych (Node 22, bez zależności). Instalacja na VPS: `server/install.sh`.
 
-W repozytorium nie ma haseł ani kluczy. Hasła wolontariusza i koordynatora są ustawiane na serwerze przy instalacji i zapisane tylko jako skróty.
+W repozytorium nie ma haseł ani kluczy. Hasła wolontariusza i administratora są ustawiane na serwerze przy instalacji i zapisane tylko jako skróty (od 1.16 nie ma hasła koordynatora).
 
 ## Nowa wersja
 

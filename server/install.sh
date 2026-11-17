@@ -48,9 +48,9 @@ curl -fsSL "${RAW%/server}/js/dogmerge.js" -o "$APP/dogmerge.mjs" || die "pobier
 # 4) Hasła (pytane tylko przy pierwszej instalacji; zmiana później: bash $APP/zmien-haslo.sh)
 cat > "$APP/zmien-haslo.sh" <<'Z'
 #!/usr/bin/env bash
-# Zmiana hasła wolontariusza lub koordynatora. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|koordynator
+# Zmiana hasła. Użycie: bash /opt/lapa/zmien-haslo.sh wolontariusz|administrator
 set -uo pipefail
-case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; koordynator) KEY=PASS_COORDINATOR_HASH;; administrator) KEY=PASS_ADMIN_HASH;; *) echo "Użycie: $0 wolontariusz|koordynator|administrator"; exit 1;; esac
+case "${1:-}" in wolontariusz) KEY=PASS_VOLUNTEER_HASH;; administrator) KEY=PASS_ADMIN_HASH;; *) echo "Użycie: $0 wolontariusz|administrator"; exit 1;; esac
 [ "$(id -u)" = 0 ] || { echo "uruchom jako root"; exit 1; }
 read -rsp "Nowe hasło (min. 8 znaków): " P1; echo; read -rsp "Powtórz hasło: " P2; echo
 [ "$P1" = "$P2" ] || { echo "Hasła się różnią."; exit 1; }
@@ -65,14 +65,14 @@ if [ ! -f "$ENVF" ]; then
   read -rsp "Hasło WOLONTARIUSZA (min. 8 znaków): " P1; echo; read -rsp "Powtórz: " P2; echo
   [ "$P1" = "$P2" ] || die "hasła wolontariusza się różnią"
   HV="$(printf '%s' "$P1" | "$NODE" "$APP/hash-password.mjs")" || die "hasło wolontariusza za krótkie"
-  read -rsp "Hasło KOORDYNATORA (min. 8 znaków, inne niż powyższe): " P3; echo; read -rsp "Powtórz: " P4; echo
-  [ "$P3" = "$P4" ] || die "hasła koordynatora się różnią"
+  read -rsp "Hasło ADMINISTRATORA (min. 8 znaków, inne niż powyższe): " P3; echo; read -rsp "Powtórz: " P4; echo
+  [ "$P3" = "$P4" ] || die "hasła administratora się różnią"
   [ "$P3" != "$P1" ] || die "hasła muszą być różne"
-  HC="$(printf '%s' "$P3" | "$NODE" "$APP/hash-password.mjs")" || die "hasło koordynatora za krótkie"
+  HC="$(printf '%s' "$P3" | "$NODE" "$APP/hash-password.mjs")" || die "hasło administratora za krótkie"
   ( umask 077
   { echo "PORT=$PORT"; echo "HOST=127.0.0.1"; echo "DB_FILE=$APP/data/lapa.db"
     echo "ALLOWED_ORIGINS=https://lewym90.github.io"
-    echo "PASS_VOLUNTEER_HASH='$HV'"; echo "PASS_COORDINATOR_HASH='$HC'"; } > "$ENVF" )
+    echo "PASS_VOLUNTEER_HASH='$HV'"; echo "PASS_ADMIN_HASH='$HC'"; } > "$ENVF" )
   unset P1 P2 P3 P4
 fi
 chmod 600 "$ENVF"
@@ -126,4 +126,4 @@ OKR=0; for _ in 1 2 3 4 5; do curl -fsS -m 10 "https://$DOM/lapa/health" >/dev/n
 say "GOTOWE. Pozostałe usługi działają jak wcześniej.$([ $OKR = 1 ] || echo ' (UWAGA: trasa publiczna jeszcze nie odpowiada – odczekaj chwilę i sprawdź ponownie)')"
 echo
 echo "Serwer ŁAPY działa pod adresem: https://$DOM/lapa"
-echo "Zmiana hasła później: bash $APP/zmien-haslo.sh wolontariusz   (albo: koordynator)"
+echo "Zmiana hasła później: bash $APP/zmien-haslo.sh wolontariusz   (albo: administrator)"

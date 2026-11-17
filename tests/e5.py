@@ -22,7 +22,7 @@ def srv(path, tok):
 
 with sync_playwright() as p:
     b=p.chromium.launch()
-    ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'wolontariusz-haslo-1','Ania')
+    ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'administrator-haslo-3','Ania')
     pg.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'m1',imie:'Nimus',plec:'samiec',status:'schronisko',zdjecia:[]});}""")
     pg.evaluate("location.hash='#/zaginiecia'"); pg.wait_for_selector('[data-act=zag-new]'); pg.click('[data-act=zag-new]'); pg.wait_for_selector('#zf')
     pg.select_option('#z_p','m1'); pg.fill('#z_g','Nowodwór'); pg.fill('#z_o','Lubartów'); pg.fill('#z_d','Łagodny, zielona obroża'); pg.click('#zf button[type=submit]'); pg.wait_for_selector('#z_pt'); pg.wait_for_timeout(400)
@@ -35,7 +35,6 @@ with sync_playwright() as p:
     pg.evaluate("location.hash='#/zaginiecia'"); pg.wait_for_selector('.gap'); pg.click('[data-act=zag-open]'); pg.wait_for_selector('#z_f'); pg.click('#z_f'); pg.wait_for_timeout(900)
     check('znaleziony: wraca do schroniska', pg.evaluate("import('/js/store.js').then(s=>s.get('psy','m1')).then(d=>d.miejsce)")=='schronisko')
     # finanse
-    pg.evaluate("location.hash='#/finanse'"); pg.wait_for_selector('.lockbox'); pg.click('[data-act=unlock-sheet]'); pg.wait_for_selector('#up'); pg.fill('#up','koordynator-haslo-2'); pg.keyboard.press('Enter'); pg.wait_for_timeout(1500)
     pg.evaluate("location.hash='#/start'"); pg.evaluate("location.hash='#/finanse'"); pg.wait_for_selector('[data-act=fin-add]'); pg.click('[data-act=fin-add]'); pg.wait_for_selector('#ff')
     pg.select_option('#f_t','wplata'); pg.fill('#f_k','1250,50'); pg.select_option('#f_z','licytacja'); pg.click('#ff button[type=submit]'); pg.wait_for_timeout(700)
     pg.click('[data-act=fin-add]'); pg.wait_for_selector('#ff'); pg.fill('#f_k','300'); pg.select_option('#f_c','karma'); pg.select_option('#f_p','m1'); pg.click('#ff button[type=submit]'); pg.wait_for_timeout(700)

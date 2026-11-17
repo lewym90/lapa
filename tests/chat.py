@@ -8,8 +8,8 @@ def say(pg, text, mode='send'):
 def msgs(pg): return pg.inner_text('#c-msgs')
 with sync_playwright() as p:
     b=p.chromium.launch()
-    ca,A=newpage(b,{'width':390,'height':844}); prep(ca); login(A,'wolontariusz-haslo-1','Ania')
-    cb,B=newpage(b,{'width':390,'height':844}); prep(cb); login(B,'wolontariusz-haslo-1','Basia')
+    ca,A=newpage(b,{'width':390,'height':844}); prep(ca); login(A,'administrator-haslo-3','Ania')
+    cb,B=newpage(b,{'width':390,'height':844}); prep(cb); login(B,'administrator-haslo-3','Basia')
     A.evaluate("""async()=>{const s=await import('/js/store.js');await s.save('psy',{id:'dk1',imie:'Ares',plec:'samiec',wiek:'3 lata',status:'zwykly',miejsce:'schronisko',opis:'Łagodny pies, lubi spacery.'});}""")
     go(A,'#/czat'); A.wait_for_selector('#c-in')
     t=A.inner_text('.cnote'); check('informacja o braku szyfrowania', 'nie są szyfrowane' in t and 'Jak to działa' in t)
@@ -58,7 +58,7 @@ with sync_playwright() as p:
     A.click('.cb.me >> nth=0'); A.wait_for_selector('[data-a=edit]'); A.click('[data-a=edit]'); A.wait_for_timeout(200); check('tryb edycji', A.input_value('#c-in').startswith('Kto jutro'))
     A.fill('#c-in','Kto jutro zawiezie Ares do weta o 17?'); A.click('[data-act=c-send]'); B.wait_for_timeout(2800)
     check('edycja widoczna u Basi z adnotacją', 'o 17?' in msgs(B) and 'edytowano' in msgs(B))
-    B.click('.cb:not(.me) >> nth=0'); B.wait_for_timeout(300); check('Basia nie ma „Edytuj” cudzej wiadomości', B.locator('[data-a=edit]').count()==0 and B.locator('[data-a=del]').count()==0); B.keyboard.press('Escape'); B.evaluate("document.querySelector('#sheet-root .scrim')?.click()")
+    B.click('.cb:not(.me) >> nth=0'); B.wait_for_timeout(300); check('Basia (administrator) nie edytuje cudzej, ale może usunąć', B.locator('[data-a=edit]').count()==0 and B.locator('[data-a=del]').count()==1); B.keyboard.press('Escape'); B.evaluate("document.querySelector('#sheet-root .scrim')?.click()")
     A.click('.cb.me >> nth=0'); A.click('[data-a=del]'); A.click('[data-yes]'); B.wait_for_timeout(3000); check('usunięta znika u wszystkich', 'o 17?' not in msgs(B) and 'o 17?' not in msgs(A))
     # 9. przypięcie i szukanie
     A.click('.cb >> nth=1'); A.click('[data-a=pin]'); A.wait_for_timeout(800); check('baner przypiętej', 'Przypięte' in A.inner_text('#c-pin'))

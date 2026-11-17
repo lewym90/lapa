@@ -21,7 +21,7 @@ def srv(path, tok):
     except urllib.error.HTTPError as e: return e.code, json.loads(e.read() or b'{}')
 
 with sync_playwright() as p:
-    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'wolontariusz-haslo-1','Ania')
+    b=p.chromium.launch(); ctx,pg=newpage(b,{'width':390,'height':844}); login(pg,'administrator-haslo-3','Ania')
     r=pg.evaluate("""async()=>{const m=await import('/js/screens-psy.js');
       const mk=(h)=>m.dogFromImport({id:'1',name:'X',url:'u',status:'do_adopcji',haslo:h,fields:{},opis:'Lubi ludzi. Nie lubi towarzystwa innych psów.'},{});
       const a=mk('ADINA&nbsp;- w domu tymczasowym&nbsp;🏠'), h=mk('LAREDO - w domowym hoteliku dla psów🏠'), p=mk('X - w procesie adopcji :)'), n=mk('KIRIAN - będziesz ze mnie dumny');

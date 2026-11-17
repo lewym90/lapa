@@ -32,10 +32,10 @@ const fake = http.createServer((q, r) => { const ch = []; q.on('data', (c) => ch
 
 async function boot(extra, port, keep = false) {
   if (!keep) { fs.rmSync(D, { recursive: true, force: true }); fs.mkdirSync(D); } fs.copyFileSync(R + '/server/lapa-server.mjs', D + '/lapa-server.mjs'); fs.copyFileSync(R + '/js/dogmerge.js', D + '/dogmerge.mjs');
-  const env = { ...process.env, LAPA_TEST_FAST: '1', LAPA_TEST_PUSH_HOST: '127.0.0.1:19101', DB_FILE: D + '/data/lapa.db', PORT: String(port), SITE_SYNC_HOURS: '99', PASS_VOLUNTEER_HASH: hash('wolontariusz-haslo-1'), PASS_COORDINATOR_HASH: hash('koordynator-haslo-2'), ALLOWED_ORIGINS: 'http://127.0.0.1:8000', ...extra };
+  const env = { ...process.env, LAPA_TEST_FAST: '1', LAPA_TEST_PUSH_HOST: '127.0.0.1:19101', DB_FILE: D + '/data/lapa.db', PORT: String(port), SITE_SYNC_HOURS: '99', PASS_VOLUNTEER_HASH: hash('wolontariusz-haslo-1'), PASS_ADMIN_HASH: hash('administrator-haslo-3'), ALLOWED_ORIGINS: 'http://127.0.0.1:8000', ...extra };
   const srv = spawn('node', ['--disable-warning=ExperimentalWarning', D + '/lapa-server.mjs'], { env, stdio: ['ignore', 'inherit', 'inherit'] });
   const B = 'http://127.0.0.1:' + port; for (let i = 0; i < 30; i++) { try { await fetch(B + '/health'); break; } catch { await sl(200); } }
-  const tok = (await (await fetch(B + '/auth/login', { method: 'POST', body: JSON.stringify({ password: 'wolontariusz-haslo-1' }) })).json()).token;
+  const tok = (await (await fetch(B + '/auth/login', { method: 'POST', body: JSON.stringify({ password: 'administrator-haslo-3' }) })).json()).token;
   const H = { authorization: 'Bearer ' + tok, 'content-type': 'application/json' };
   const post = async (p, b) => { const r = await fetch(B + p, { method: 'POST', headers: H, body: JSON.stringify(b) }); return { s: r.status, j: await r.json().catch(() => ({})) }; };
   const msg = (id, autor, o = {}) => post('/sync', { changes: [{ col: 'czat', id, data: { id, ts: Date.now(), autor, text: 'Kto zawiezie psa do weta jutro o 18?', kind: 'msg', ...o }, updated_at: o.updated_at || Date.now(), deleted: false, by: autor }] });

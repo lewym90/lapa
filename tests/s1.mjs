@@ -11,11 +11,11 @@ const site=http.createServer((q,r)=>{const u=new URL(q.url,'http://x'); let m;
  else if(u.pathname==='/do-adopcji-pilne'){r.end('<html></html>');}
  else if((m=/^\/psy-do-adopcji\/([^/]+)\/(\d+)$/.exec(u.pathname))&&dogs[m[2]]) r.end(page(dogs[m[2]]));
  else {r.statusCode=404;r.end('no');}}).listen(18500);
-const env={...process.env,LAPA_TEST_SITE:'http://127.0.0.1:18500',LAPA_TEST_FAST:'1',DB_FILE:D+'/data/lapa.db',PORT:'18998',PASS_VOLUNTEER_HASH:hash('wolontariusz-haslo-1'),PASS_COORDINATOR_HASH:hash('koordynator-haslo-2'),SITE_SYNC_HOURS:'99'};
+const env={...process.env,LAPA_TEST_SITE:'http://127.0.0.1:18500',LAPA_TEST_FAST:'1',DB_FILE:D+'/data/lapa.db',PORT:'18998',PASS_VOLUNTEER_HASH:hash('wolontariusz-haslo-1'),PASS_ADMIN_HASH:hash('administrator-haslo-3'),SITE_SYNC_HOURS:'99'};
 const srv=spawn('node',['--disable-warning=ExperimentalWarning',D+'/lapa-server.mjs'],{env,stdio:['ignore','inherit','inherit']});
 const B='http://127.0.0.1:18998'; const sl=(ms)=>new Promise(r=>setTimeout(r,ms));
 for(let i=0;i<30;i++){try{await fetch(B+'/health');break}catch{await sl(200)}}
-const tok=(await (await fetch(B+'/auth/login',{method:'POST',body:JSON.stringify({password:'wolontariusz-haslo-1'})})).json()).token;
+const tok=(await (await fetch(B+'/auth/login',{method:'POST',body:JSON.stringify({password:'administrator-haslo-3'})})).json()).token;
 const H={authorization:'Bearer '+tok}; let fails=0; const ck=(n,c)=>{console.log(c?'OK  ':'FAIL',n); if(!c)fails++;};
 const health=async()=>(await (await fetch(B+'/health')).json()).site;
 const run=async()=>{await fetch(B+'/site/sync',{method:'POST',headers:H}); await sl(300); for(let i=0;i<100;i++){const s=await health(); if(!s.running&&s.t) {await sl(200); const s2=await health(); if(!s2.running) return s2;} await sl(200);} };
