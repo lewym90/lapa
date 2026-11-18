@@ -138,7 +138,7 @@ export async function sobotyWol() {
         ${mine ? `<button class="btn sm ghost" data-act="of-cofnij" data-col="zgloszenia" data-id="${esc(mine.id)}">${icon('check').s} Będę · Wycofaj</button>` : `<button class="btn sm gold" data-act="sob-bede" data-key="${esc(x.key)}" data-t="${x.start}">Będę</button>`}</div>`}</div>`;
   }).join('');
   return { tab: 'spacery', title: 'Sobotnie spacery', live: true,
-    html: html`${pageBar('Sobotnie spacery', { back: false, ico: 'calendar', img: 'img/naglowki/terminarz.webp' })}<p class="hint" style="padding:0 20px;margin:4px 0 10px;color:var(--sage)">Zwykle w sobotę pod bramą schroniska. Daj znać, że będziesz – administrator zobaczy Twoje imię i telefon, inni tylko imię.</p><div class="evlist">${raw(rows)}</div>` };
+    html: html`${pageBar('Sobotnie spacery', { back: false, ico: 'calendar', img: 'img/naglowki/spacery.webp' })}<p class="hint" style="padding:0 20px;margin:4px 0 10px;color:var(--sage)">Zwykle w sobotę pod bramą schroniska. Daj znać, że będziesz – administrator zobaczy Twoje imię i telefon, inni tylko imię.</p><div class="evlist">${raw(rows)}</div>` };
 }
 actions['sob-bede'] = (el) => {
   const key = el.dataset.key, t = +el.dataset.t;

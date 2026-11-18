@@ -203,3 +203,4 @@ input[type=checkbox],input[type=radio]{accent-color:#c99b58}
 }
 .hello.hst h1{font-size:clamp(30px,8vw,42px)}
 .komp .kstr{margin:12px 0 0}.komp p.desc{margin:12px 0 14px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.stat b{white-space:nowrap}

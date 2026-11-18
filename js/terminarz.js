@@ -109,7 +109,7 @@ export async function wydarzenia(opts = {}) {
   const tb = (k, l) => `<button class="chip dark ${tab === k ? 'on' : ''}" data-act="tm-tab" data-t="${k}" style="flex:1;justify-content:center;padding:11px 6px">${l}</button>`;
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
-    html: html`${pageBar(tab === 'sob' ? 'Sobotnie spacery' : 'Terminarz', { back: false, ico: 'calendar', img: 'img/naglowki/terminarz.webp' })}
+    html: html`${pageBar(tab === 'sob' ? 'Sobotnie spacery' : 'Terminarz', { back: false, ico: 'calendar', img: tab === 'sob' ? 'img/naglowki/spacery.webp' : 'img/naglowki/terminarz.webp' })}
     <div class="pad" style="display:flex;gap:8px;margin-bottom:6px;align-items:center">${raw(tb('ter', 'Terminarz') + tb('sob', 'Sobotnie spacery'))}${plusBtn(tab === 'sob' ? 'sb-extra' : 'tm-new', tab === 'sob' ? 'Dodaj termin spaceru' : 'Dodaj wpis')}</div>${raw(body)}`
   };
 }
