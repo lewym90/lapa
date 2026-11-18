@@ -2,7 +2,10 @@
 # Aktualizacja serwera ŁAPY (kod, bez zmiany danych i istniejących haseł). Uruchom na serwerze jako root:
 #   bash <(curl -fsSL https://raw.githubusercontent.com/lewym90/lapa/main/server/aktualizuj.sh)
 # Gdy nie ma jeszcze hasła administratora, skrypt poprosi o nie (dwa razy, nic się nie wyświetla podczas wpisywania).
+#   ... aktualizuj.sh nowa-baza   to samo + start od zera: pusta baza (psy pobiorą się same ze strony schroniska).
+#                                Stare dane (baza, zdjęcia, kopie) trafiają do /opt/lapa/data/stara-aplikacja-DATA, hasła i klucze powiadomień zostają.
 set -euo pipefail
+TRYB="${1:-}"
 APP=/opt/lapa; ENVF=/etc/lapa.env; NODE="$APP/node/bin/node"; REF="${LAPA_REF:-main}"; RAW="https://raw.githubusercontent.com/lewym90/lapa/$REF/server"; JS="https://raw.githubusercontent.com/lewym90/lapa/$REF/js"
 cd "$APP"
 
@@ -69,3 +72,17 @@ systemctl restart lapa
 sleep 2
 if curl -fsS -m 5 http://127.0.0.1:8797/health >/dev/null; then echo "GOTOWE: serwer ŁAPY zaktualizowany i działa."; rm -f lapa-server.mjs.bak dogmerge.mjs.bak
 else echo "BŁĄD: przywracam poprzednią wersję"; mv lapa-server.mjs.bak lapa-server.mjs; [ -f dogmerge.mjs.bak ] && mv dogmerge.mjs.bak dogmerge.mjs || true; systemctl restart lapa; exit 1; fi
+
+# 5) „nowa-baza”: aplikacja startuje od zera (stara baza odłożona w całości, nic nie jest kasowane)
+if [ "$TRYB" = nowa-baza ]; then
+  STARA="$APP/data/stara-aplikacja-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$STARA"
+  systemctl stop lapa
+  for f in "$APP"/data/lapa.db "$APP"/data/lapa.db-* "$APP"/data/site-status.json "$APP"/data/photos "$APP"/data/backups; do [ -e "$f" ] && mv "$f" "$STARA"/ || true; done
+  systemctl start lapa; sleep 3
+  if curl -fsS -m 5 http://127.0.0.1:8797/health | grep -q '"epoka"'; then
+    echo "GOTOWE: nowa, pusta baza. Stare dane: $STARA"
+    echo "Psy pobiorą się ze strony schroniska za ok. 2 minuty (pierwszy odczyt z „Adoptowanymi” trwa kilkanaście minut)."
+  else
+    echo "BŁĄD: serwer nie wstał z nową bazą – przywracam starą."; systemctl stop lapa; mv "$STARA"/* "$APP"/data/; systemctl start lapa; exit 1
+  fi
+fi

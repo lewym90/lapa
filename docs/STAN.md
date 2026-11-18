@@ -48,6 +48,10 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 - Karta psa administratora: hasło i opis ze strony (jak u wolontariusza) nad bazą psa.
 - Zrzuty kontrolne robić z udawanym paskiem stanu iPhone'a (--sat 59px, --sab 34px), szerokość 393.
 
+## Wydanie 2.2.3 jako nowa aplikacja (2026-11-18)
+- Gałąź `test` scalona do `main` (GitHub Pages). Serwer produkcyjny: `aktualizuj.sh nowa-baza` – nowy kod i pusta baza; stara baza, zdjęcia i kopie w /opt/lapa/data/stara-aplikacja-DATA. Hasła (/etc/lapa.env) i klucze powiadomień (vapid.json) zostają. Telefony same czyszczą stare dane (epoka bazy), wszyscy logują się ponownie.
+- Wersja testowa (/lapa-test, gałąź `test`) zostaje do sprawdzania kolejnych zmian.
+
 ## Dla kolejnej sesji
 - Potwierdzić, że serwer jest po aktualizacji 1.14.0 (hasło administratora działa). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.
 - Nie zbadane: Instagram, TikTok, YouTube, Puszatek, Psinder; powiadomienia poza aplikacją; kopia poza serwerem; wideo powitalne; redesign strony schroniska.
