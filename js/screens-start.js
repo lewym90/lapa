@@ -36,7 +36,7 @@ export async function start() {
   return {
     tab: 'start', title: 'Start', live: true,
     html: html`${brandBar(dot)}
-    <section class="hello"><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
+    <section class="hello"><img class="hdog" src="img/naglowki/start.webp" alt=""><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
     ${kLast && now - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="pad" style="margin-top:16px"><section class="card dzis" aria-label="Dziś"><h3>Dziś</h3>${rows.length ? raw(rows.join('')) : html`<p class="sub" style="margin:6px 0 2px">Na dziś nic. Spokojnego dnia!</p>`}</section></div>

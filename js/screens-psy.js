@@ -1,4 +1,4 @@
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, dogImg, safeUrl, sexSymbol, STATUS, statusChip, confirmSheet, pageBar } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName, unlock } from './auth.js';
 import { SITE } from './config.js';
@@ -54,7 +54,7 @@ export async function list_() {
   const [dogs, walks] = await Promise.all([list('psy'), list('spacery')]); const zdr = [];
   return {
     tab: 'psy', title: 'Psy',
-    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">Psy</h1><span style="width:44px"></span></header>
+    html: html`${pageBar('Psy', { back: false, ico: 'paw', img: 'img/naglowki/psy.webp' })}
     <div class="pad"><div class="search">${icon('search')}<input id="fq" type="search" placeholder="Szukaj psa po imieniu" value="${fq}" aria-label="Szukaj psa" autocomplete="off"></div></div>
     <div class="fchips" role="group" aria-label="Filtr">${FILTERS.map(([k, l]) => html`<button class="chip dark ${ff === k ? 'on' : ''}" data-act="dog-filter" data-k="${k}" aria-pressed="${ff === k}">${l}</button>`)}</div>
     <div class="pad" style="margin-top:-6px">${raw(kolejnoscHtml('psy'))}</div>

@@ -25,7 +25,7 @@ export async function finanse() {
     <div class="fchips">${lata.map((y) => html`<button class="chip dark ${rok === y ? 'on' : ''}" data-act="fin-rok" data-y="${y}">${y}</button>`)}</div>
     <div class="pad komp">
       <div class="kbox"><div class="kd"><span>Wpłaty</span><b>${zl(wp)}</b></div><div class="kd"><span>Wydatki</span><b>${zl(wy)}${leczenie ? html` <em>· w tym leczenie z kart psów ${zl(leczenie)}</em>` : ''}</b></div>
-        <div class="kd"><span>Saldo ${rok}</span><b style="color:${wp - wy < 0 ? 'var(--terra-d)' : 'var(--green)'}">${zl(wp - wy)}</b></div></div>
+        <div class="kd"><span>Saldo ${rok}</span><b style="color:${wp - wy < 0 ? 'var(--terra-d)' : '#8fd0a4'}">${zl(wp - wy)}</b></div></div>
       <h2 class="kh">Wpisy</h2>
       <div class="kbox">${wpisy.length ? raw(wpisy.map(wiersz).join('')) : html`<p class="kpusto">Brak wpisów w ${rok}.</p>`}</div>
       <button class="btn ghost block" style="margin-top:18px" data-act="fin-csv">${icon('download')} Zestawienie roku ${rok} (CSV)</button>

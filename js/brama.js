@@ -41,33 +41,37 @@ export async function brama() {
   const juz = s.lista.filter((d) => !s.out.has(d.id) && s.bylo.has(d.id));
   const ql = q.toLowerCase();
   const f = (d) => (d.imie || '').toLowerCase().includes(ql);
-  const dogRow = (d, btn) => `<div class="row card${wybCls(d) ? ' wybr' : ''}" style="gap:12px"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="avatar sm">${dogThumb(d).s}</span><span class="rt"><b>${esc(d.imie)} ${boksPill(d, 'in')}</b>${linie(d)}<small>${d.status === 'w_trakcie' ? '<span class="adbadge">w procesie adopcji</span>' : ''}${btn.sub}</small></span></button>${btn.html}</div>`;
+  // Karta psa: zdjęcie w złotej ramce, imię, znaczki, stan na dziś z ikonką, łapka w tle i przyciski po prawej.
+  const dogRow = (d, btn) => `<div class="bcard card${wybCls(d) ? ' wybr' : ''}"><span class="wm">${icon('paw').s}</span><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="bav">${dogThumb(d).s}</span><span class="bt"><b class="bn">${esc(d.imie)} ${boksPill(d, 'in')}</b>${d.status === 'w_trakcie' ? `<span class="adbadge">${icon('paw').s}w procesie adopcji</span>` : ''}${linie(d)}<span class="bsub">${icon(btn.ico || 'calendar').s}<span>${btn.sub}</span></span></span></button><div class="bact">${btn.html}</div></div>`;
   let body = '';
   if (tab === 'wydaj') {
-    const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: d.plec === 'suka' ? 'dziś jeszcze nie była' : 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` })),
-      ...juz.filter(f).map((d) => dogRow(d, { sub: `dziś ${d.plec === 'suka' ? 'była' : 'był'} już ${s.dzis.filter((w) => w.pies_id === d.id).length}x`, html: `<button class="btn ghost" data-act="br-out" data-id="${esc(d.id)}">Wydaj</button>` }))];
+    const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: d.plec === 'suka' ? 'dziś jeszcze nie była' : 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">${icon('smycz').s}Wydaj</button>` })),
+      ...juz.filter(f).map((d) => dogRow(d, { sub: `dziś ${d.plec === 'suka' ? 'była' : 'był'} już ${s.dzis.filter((w) => w.pies_id === d.id).length}x`, ico: 'check', html: `<button class="btn ghost" data-act="br-out" data-id="${esc(d.id)}">${icon('smycz').s}Wydaj</button>` }))];
     body = rows.join('') || `<div class="empty">${icon('paw').s}<h3>Brak psów</h3><p>Psy pojawią się same, gdy serwer sprawdzi stronę schroniska.</p></div>`;
   } else if (tab === 'out') {
     const rows = [...s.out.values()].sort(s.wgBoksu || ((a, b) => a.start - b.start)).filter((w) => (w.pies_imie || '').toLowerCase().includes(ql)).map((w) => {
       const d = s.lista.find((x) => x.id === w.pies_id) || { imie: w.pies_imie };
       const m = min(Date.now() - w.start);
-      return dogRow(d, { sub: `<span data-since="${w.start}" ${m > 90 ? 'style="color:var(--terracotta);font-weight:600"' : ''}>${hhmm(w.start)} (${dur(m)})</span>${w.osoba ? ' | ' + esc(w.osoba) : ''}${w.kontakt ? '<br>' + kontaktHtml(w.kontakt) : ''}`, html: `<button class="btn ghost" data-act="br-info" data-id="${esc(w.id)}" aria-label="Dane osoby">${icon('pencil').s}</button><button class="btn gold" data-act="br-back" data-id="${esc(w.id)}">Zwróć</button>` });
+      return dogRow(d, { ico: 'clock', sub: `<span data-since="${w.start}" ${m > 90 ? 'style="color:var(--terracotta);font-weight:600"' : ''}>${hhmm(w.start)} (${dur(m)})</span>${w.osoba ? ' | ' + esc(w.osoba) : ''}${w.kontakt ? '<br>' + kontaktHtml(w.kontakt) : ''}`, html: `<button class="btn ghost" data-act="br-info" data-id="${esc(w.id)}" aria-label="Dane osoby">${icon('pencil').s}</button><button class="btn gold" data-act="br-back" data-id="${esc(w.id)}">${icon('home').s}Zwróć</button>` });
     });
     body = rows.join('') || `<div class="empty">${icon('walk').s}<h3>Nikt nie jest na spacerze</h3></div>`;
   } else {
     const rows = s.wrocily.filter((w) => (w.pies_imie || '').toLowerCase().includes(ql)).map((w) => {
       const d = s.lista.find((x) => x.id === w.pies_id) || { imie: w.pies_imie };
-      return dogRow(d, { sub: `${hhmm(w.start)} do ${hhmm(w.end)} (${dur(min(w.end - w.start))})${w.osoba ? ' | ' + esc(w.osoba) : ''}${(w.tagi || []).length ? ' | ' + esc(w.tagi.join(', ')) : ''}${w.kontakt ? '<br>' + kontaktHtml(w.kontakt) : ''}`, html: `<button class="btn ghost" data-act="br-info" data-id="${esc(w.id)}" aria-label="Dopisz dane">${icon('pencil').s}</button>` });
+      return dogRow(d, { ico: 'check', sub: `${hhmm(w.start)} do ${hhmm(w.end)} (${dur(min(w.end - w.start))})${w.osoba ? ' | ' + esc(w.osoba) : ''}${(w.tagi || []).length ? ' | ' + esc(w.tagi.join(', ')) : ''}${w.kontakt ? '<br>' + kontaktHtml(w.kontakt) : ''}`, html: `<button class="btn ghost" data-act="br-info" data-id="${esc(w.id)}" aria-label="Dopisz dane">${icon('pencil').s}</button>` });
     });
     body = rows.join('') || `<div class="empty">${icon('walk').s}<h3>Jeszcze nikt nie wrócił</h3></div>`;
   }
-  const tb = (k, t, n) => `<button class="chip" data-act="br-tab" data-t="${k}" style="flex:1;justify-content:center;white-space:nowrap;padding:10px 4px;${tab === k ? 'background:var(--gold);color:#1b1b17;font-weight:600' : ''}">${t} ${n}</button>`;
+  const tb = (k, t, n, ic) => `<button class="chip${tab === k ? ' on' : ''}" data-act="br-tab" data-t="${k}" aria-pressed="${tab === k}">${icon(ic).s}${t} ${n}</button>`;
+  const opcje = brOpcje();
   return {
     tab: 'brama', title: 'Brama', live: false,
-    html: html`${pageBar('Brama – spacery', { back: false })}<div class="pad">
-      <p class="sub" style="margin:4px 0 12px">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}, <b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z ${s.lista.length} psów. Bez spaceru: <b>${nieWyd.length}</b>.</p>
-      <div style="display:flex;gap:8px;margin-bottom:12px">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size) + tb('out', 'Poza', s.out.size) + tb('wrocily', 'Wróciły', s.wrocily.length))}</div>
-      <div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa" autocomplete="off" value="${esc(q)}"></div>${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}<p class="hint" style="margin:6px 2px 0;color:var(--sage);font-size:13px">Dotknij imienia psa, żeby ustawić wydawanie na spacer (kto może wyprowadzać, krótki opis). Widzą to tylko administratorzy.</p></div>
+    html: html`${pageBar('Brama – spacery', { back: false, ico: 'paw', sub: 'Zarządzaj wyprowadzaniem psów na spacer', img: 'img/naglowki/brama.webp' })}<div class="pad">
+      <div class="statbar">${icon('calendar')}<span class="sp">Dziś: <b>${s.dzis.length}</b> ${plural(s.dzis.length, 'spacer', 'spacery', 'spacerów')}</span><span class="sep"></span><span class="sp"><b>${new Set(s.dzis.map((w) => w.pies_id)).size}</b> z <b>${s.lista.length}</b> psów</span><span class="sep"></span><span class="sp">Bez spaceru: <b class="gold">${nieWyd.length}</b></span></div>
+      <div class="segs">${raw(tb('wydaj', 'Wydaj', s.lista.length - s.out.size, 'smycz') + tb('out', 'Poza', s.out.size, 'home') + tb('wrocily', 'Wróciły', s.wrocily.length, 'check'))}</div>
+      <div class="srow"><div class="search">${icon('search')}<input id="bq" aria-label="Szukaj psa" type="search" placeholder="Szukaj psa..." autocomplete="off" value="${esc(q)}"></div><button class="sqbtn${opcje ? ' on' : ''}" data-act="br-opcje" aria-label="Kolejność i podpowiedź" aria-pressed="${opcje}">${icon('sliders')}</button></div>
+      ${opcje ? html`${raw(kolejnoscHtml('brama', tab === 'wydaj' ? 'Alfabetycznie' : 'Godzina'))}<p class="infol">${icon('info')}<span>Dotknij imienia psa, żeby ustawić wydawanie na spacer (kto może wyprowadzać, krótki opis). Widzą to tylko administratorzy.</span></p>` : ''}
+    </div>
       <div class="pad stack" id="bl" style="margin-top:8px">${raw(body)}</div>
       <div style="height:16px"></div>`,
     mount(root) {
@@ -85,6 +89,9 @@ export async function brama() {
 const rerender = () => dispatchEvent(new HashChangeEvent('hashchange'));
 
 actions['br-tab'] = (el) => { tab = el.dataset.t; rerender(); };
+// Przycisk obok wyszukiwarki pokazuje albo chowa wybór kolejności i podpowiedź (zapamiętane na telefonie).
+const brOpcje = () => { try { return localStorage.getItem('lapa.brama.opcje') !== '0'; } catch { return true; } };
+actions['br-opcje'] = () => { try { localStorage.setItem('lapa.brama.opcje', brOpcje() ? '0' : '1'); } catch { /* tryb prywatny */ } rerender(); };
 actions['br-out'] = async (el) => {
   const d = await get('psy', el.dataset.id); if (!d) return;
   const od = DZIEN(), dzis = (await list('spacery')).filter((w) => w.tryb === 'brama' && w.start >= od && w.osoba);

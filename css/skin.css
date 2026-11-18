@@ -1,0 +1,132 @@
+/* ===== Szata 2.0: ciemna zieleń, wypukłe karty z jasną krawędzią, złote wypukłe przyciski, nagłówki z medalionem ===== */
+:root{
+  --rim:rgba(150,186,170,.30); --rim-top:rgba(206,228,215,.7);
+  --raised:linear-gradient(180deg,#1d463a 0%,#13352b 48%,#0b271f 100%);
+  --raised-sh:inset 0 1px 0 rgba(255,255,255,.10),inset 0 -1px 0 rgba(0,0,0,.35),0 10px 22px rgba(0,0,0,.42),0 2px 4px rgba(0,0,0,.30);
+  --goldbg:linear-gradient(180deg,#f7d9a2 0%,#e5bb7a 28%,#cc9d5c 62%,#a87a3f 100%);
+  --goldsh:inset 0 1px 0 rgba(255,250,235,.85),inset 0 -2px 3px rgba(96,58,16,.45),0 6px 14px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.22);
+  --terra-d:#EBA287;
+  --sunk:linear-gradient(180deg,#0f2c24,#16382f); --sunk-sh:inset 0 2px 6px rgba(0,0,0,.45),inset 0 -1px 0 rgba(255,255,255,.05);
+}
+body{background:#04150f}
+.shell{background:radial-gradient(110% 55% at 75% 0%,#164336 0%,#0c2a21 42%,#061a14 78%,#04130e 100%)}
+.shell::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(80% 50% at 50% 110%,rgba(0,0,0,.55),transparent 70%)}
+.main{position:relative;z-index:1}
+
+/* karty: wypukłe, z jasną górną krawędzią */
+.card,.dcard{background:var(--raised);color:var(--ink);border:1px solid var(--rim);border-top-color:var(--rim-top);box-shadow:var(--raised-sh);border-radius:20px}
+.card h3,.dcard h3{color:var(--ink)}
+.card .sub{color:var(--ink-2)}
+.card-head h3 .ico{color:var(--gold-l)}
+.dcard .pic{background:linear-gradient(160deg,#24493e,#122f26)}
+.dcard .m2{color:var(--ink-2)}
+.dcard .st .chip{background:rgba(9,28,22,.82);color:var(--ink);border:1px solid var(--rim)}
+
+/* przyciski */
+.btn{background:var(--raised);color:var(--ink);border:1px solid var(--rim);border-top-color:var(--rim-top);box-shadow:var(--raised-sh);border-radius:16px}
+.btn.gold,.plusbtn{background:var(--goldbg);color:#1a1207;border:1px solid #7d5a2a;box-shadow:var(--goldsh);text-shadow:0 1px 0 rgba(255,240,210,.45);font-weight:700}
+.btn.gold .ico{stroke-width:2.1}
+.btn.ghost{background:var(--raised);color:var(--gold-l);border:1px solid rgba(203,165,108,.55);box-shadow:var(--raised-sh)}
+.btn.line{background:transparent;color:var(--ink);border:1px solid var(--rim);box-shadow:none}
+.btn.terra{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px rgba(0,0,0,.4)}
+
+/* chipy */
+.chip{background:var(--raised);color:var(--ink);border:1px solid var(--rim);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 3px 8px rgba(0,0,0,.3)}
+.chip.on,.chip.dark.on,.chip.outline.on{background:var(--goldbg);color:#1a1207;border-color:#7d5a2a;box-shadow:var(--goldsh);font-weight:600}
+.chip.outline,.chip.dark{background:var(--raised);color:var(--ink);border-color:var(--rim)}
+.chip.terra{background:rgba(200,121,91,.22);color:#f0b59c;border-color:rgba(200,121,91,.45)}
+.chip.gold{background:rgba(203,165,108,.16);color:var(--gold-l);border-color:rgba(203,165,108,.4)}
+.dchip{background:rgba(244,240,231,.08);color:var(--ink)}
+
+/* pola formularzy i wyszukiwarka: wklęsłe */
+.input,.select,.textarea,.search input{background:var(--sunk);color:var(--ink);border:1px solid var(--rim);box-shadow:var(--sunk-sh)}
+.input::placeholder,.textarea::placeholder,.search input::placeholder{color:rgba(201,204,191,.6)}
+.search input{min-height:54px;border-radius:18px;padding-left:50px;font-size:17px}
+.search .ico{left:17px;font-size:22px;color:var(--ink-2)}
+.field>label,.field>.lbl{color:var(--ink-2)}
+.select option{background:#0f2c24;color:var(--ink)}
+
+/* okna od dołu i komunikaty */
+#sheet-root .sheet{background:linear-gradient(180deg,#1b4237 0%,#0f2d24 30%,#0a231c 100%);color:var(--ink);border-top:1px solid var(--rim-top);box-shadow:0 -12px 40px rgba(0,0,0,.55)}
+.sheet .grab{background:rgba(244,240,231,.25)}
+.sheetx{background:rgba(244,240,231,.1);color:var(--ink)}
+#toast{background:var(--raised);color:var(--ink);border:1px solid var(--rim-top)}
+
+/* nawigacja dolna */
+.nav{background:linear-gradient(180deg,#0f2b23 0%,#08201a 100%);border:1px solid rgba(203,165,108,.55);box-shadow:0 14px 34px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06)}
+.nav a.tab{color:var(--ink)}
+.nav a.tab.on{color:var(--gold-l)}
+.nav .plus{background:var(--goldbg);color:#1a1207;border:4px solid #0b241d;box-shadow:0 0 0 2px rgba(203,165,108,.55),0 10px 22px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,250,235,.85),inset 0 -3px 4px rgba(96,58,16,.45);width:70px;height:70px;margin-top:-30px}
+.nav .plus .ico{font-size:34px;stroke-width:2}
+.nav .plus .plbl{font-size:13px;font-weight:700}
+.nav .plus.on{box-shadow:0 0 0 2px rgba(203,165,108,.75),0 10px 22px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,250,235,.85),inset 0 -3px 4px rgba(96,58,16,.45)}
+
+/* nagłówek ekranu: medalion z ikoną, tytuł szeryfowy, podtytuł, pies po prawej */
+.hdr{position:relative;display:flex;align-items:center;gap:12px;padding:12px 16px 14px;min-height:88px;overflow:visible}
+.hdr .medal{width:54px;height:54px;flex:none;border-radius:50%;display:grid;place-items:center;color:#d9ae6a;font-size:28px;position:relative;z-index:2;
+  background:radial-gradient(circle at 50% 35%,#16261f,#070d0a 75%);border:2px solid #c9a063;box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 2px rgba(0,0,0,.5),inset 0 2px 6px rgba(255,220,160,.12),0 6px 14px rgba(0,0,0,.5)}
+.hdr .ht{position:relative;z-index:2;min-width:0;flex:1}
+.hdr h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,7vw,31px);line-height:1.08;color:#f3e3c8;text-shadow:0 2px 10px rgba(0,0,0,.45);margin:0}
+.hdr p{margin:3px 0 0;font-size:13.5px;color:#f6ecd8;opacity:.92}
+.hdr .hright{position:relative;z-index:2}
+.hdr .hdog,.hello .hdog{position:absolute;right:0;top:-6px;height:118px;width:auto;max-width:42%;object-fit:contain;object-position:right top;z-index:1;pointer-events:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0%,#000 30%),linear-gradient(180deg,#000 60%,transparent 100%);-webkit-mask-composite:source-in;mask-image:linear-gradient(90deg,transparent 0%,#000 30%),linear-gradient(180deg,#000 60%,transparent 100%);mask-composite:intersect}
+.hdr.zback{min-height:72px;padding-top:10px}
+.hdr.zback h1{font-size:clamp(24px,6.6vw,30px)}
+.hdr .iconbtn{flex:none;background:var(--raised);border:1px solid var(--rim);box-shadow:var(--raised-sh)}
+
+/* pasek statystyk (ciemny, wklęsły) */
+.statbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:20px;background:linear-gradient(180deg,#020b08,#051510);border:1px solid rgba(110,140,120,.45);box-shadow:inset 0 2px 8px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,.04);font-size:15px;color:var(--ink);margin:0 0 14px}
+.statbar>.ico{font-size:24px;color:var(--gold-l);margin-right:4px}
+.statbar .sp{flex:1;text-align:center;white-space:nowrap}
+.statbar .sp:first-of-type{text-align:left}
+.statbar .sep{width:1px;height:24px;flex:none;background:rgba(244,240,231,.28)}
+.statbar b{font-weight:700}
+.statbar .gold{color:var(--gold-l);font-size:20px}
+
+/* zakładki z ikonami */
+.segs{display:flex;gap:10px;margin-bottom:14px}
+.segs .chip{flex:1;justify-content:center;min-height:56px;font-size:17px;font-weight:600;border-radius:22px;gap:9px;padding:0 6px;white-space:nowrap}
+.segs .chip .ico{font-size:22px}
+.segs .chip.on .ico{stroke-width:2.1}
+
+/* wyszukiwarka z przyciskiem obok */
+.srow{display:flex;gap:12px;align-items:center}
+.srow .search{flex:1}
+.sqbtn{width:58px;height:54px;flex:none;border-radius:18px;display:grid;place-items:center;color:var(--gold-l);font-size:26px;background:var(--raised);border:1.5px solid rgba(203,165,108,.7);box-shadow:var(--raised-sh)}
+.sqbtn.on{border-color:#d9b47a}
+.kolej{color:var(--ink)}
+.kolej .chip{min-height:38px;padding:4px 18px;font-size:15px}
+.infol{display:flex;gap:12px;align-items:flex-start;margin:12px 4px 4px;color:var(--ink-2);font-size:14px;line-height:1.4}
+.infol .ico{font-size:22px;flex:none;margin-top:1px;color:var(--ink-2)}
+
+/* karta psa w Bramie */
+.bcard{position:relative;display:flex;align-items:center;gap:10px;padding:12px 12px 12px 12px;min-height:100px;overflow:hidden}
+.bcard .bimie{gap:14px;position:relative;z-index:1}
+.bcard .bav{width:72px;height:72px;flex:none;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#1a3a30;
+  border:3px solid #c99b58;box-shadow:0 0 0 1px rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.5),inset 0 0 0 1px rgba(0,0,0,.4)}
+.bcard .bav img{width:100%;height:100%;object-fit:cover}
+.bcard .bav .nophoto{font-size:30px;color:var(--gold-l)}
+.bcard .bt{display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0}
+.bcard .bn{font-family:var(--serif);font-weight:600;font-size:22px;line-height:1.1;color:#f6ead6;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bcard .bn .boks.in{font-family:var(--sans);margin:0}
+.bcard .bsub{display:flex;align-items:center;gap:7px;font-size:14px;white-space:nowrap;color:var(--ink-2)}
+.bcard .bsub .ico{font-size:18px;color:var(--ink-2)}
+.bcard .adbadge{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:12.5px;padding:2px 10px 2px 8px;white-space:nowrap;background:linear-gradient(180deg,#1f5f8a,#14476b);border:1px solid rgba(120,180,220,.45);color:#fff;font-weight:600;letter-spacing:0;line-height:1.4}
+.bcard .adbadge .ico{font-size:14px}
+.bcard .wm{position:absolute;right:122px;top:10px;font-size:38px;color:rgba(168,200,186,.13);transform:rotate(14deg);z-index:0;pointer-events:none}
+.bcard .bact{display:flex;gap:8px;align-items:center;flex:none;position:relative;z-index:1;margin-left:auto}
+.bcard .bact .btn{min-height:46px;padding:0 16px;border-radius:15px;font-size:17px;gap:8px}
+.bcard .bact .btn .ico{font-size:20px}
+.bcard .bact .btn.ghost{color:var(--gold-l)}
+.bcard .opisl,.bcard .wybl{margin:0}
+.bcard.wybr{outline:2px solid var(--wyb);outline-offset:-2px}
+.bcard .bsub .late{color:#f0a88f;font-weight:600}
+@media (max-width:380px){.bcard .bav{width:62px;height:62px}.bcard .bn{font-size:21px}.bcard .bact .btn{padding:0 14px;font-size:16px}.bcard .wm{display:none}}
+.chat{min-height:calc(100dvh - 128px)}
+.hdr .hright{display:flex;align-items:center;gap:6px}
+input[type=checkbox],input[type=radio]{accent-color:#c99b58}
+.hello{position:relative}
+.hello .hdog{top:-58px;height:150px;opacity:.95}
+.hello h1,.hello p{position:relative;z-index:2}
+.hdr:has(.hright) .hdog{right:60px}

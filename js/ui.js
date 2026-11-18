@@ -137,10 +137,13 @@ export const brandBar = (dot = false, czat = true) => html`<header class="topbar
   </a>
   <span style="display:flex">${czat ? html`<a class="iconbtn" href="#/czat" aria-label="Czat wolontariuszy">${icon('chat')}<span class="cbadge" hidden></span></a>` : ''}<button class="iconbtn" data-act="bell" aria-label="Komunikaty">${icon('bell')}${dot ? raw('<span class="dot"></span>') : ''}</button></span>
 </header>`;
-export const pageBar = (title, { back = true, right = '' } = {}) => html`<header class="topbar">
-  ${back ? html`<button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>` : html`<span style="width:44px"></span>`}
-  <h1 style="font-size:22px;font-weight:500;text-align:center;flex:1;padding:0 6px">${title}</h1>
-  <span style="min-width:44px;display:flex;justify-content:flex-end">${right}</span>
+// Nagłówek ekranu: na głównych ekranach medalion z ikoną, tytuł i opcjonalnie podtytuł oraz zdjęcie psa po prawej;
+// na podstronach przycisk „Wstecz” i tytuł.
+export const pageBar = (title, { back = true, right = '', ico = 'paw', sub = '', img = '' } = {}) => html`<header class="topbar hdr${back ? ' zback' : ''}">
+  ${back ? html`<button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>` : html`<span class="medal">${icon(ico)}</span>`}
+  <div class="ht"><h1>${title}</h1>${sub ? html`<p>${sub}</p>` : ''}</div>
+  ${right ? html`<span class="hright">${right}</span>` : ''}
+  ${img ? html`<img class="hdog" src="${img}" alt="">` : ''}
 </header>`;
 export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" data-act="${act}" aria-label="${label}">${icon('plus')}</button>`;
 actions.back = () => { if (history.length > 1) history.back(); else location.hash = '#/start'; };

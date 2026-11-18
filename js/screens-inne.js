@@ -69,7 +69,7 @@ export async function pomocEkran() {
   const [psyHtml, potrzHtml, trHtml] = await Promise.all([pomocPsyHtml(), potrzebyHtml(), transportHtml()]);
   return {
     tab: 'pomoc', title: 'Pomoc', live: true,
-    html: html`${pageBar('Pomoc', { back: false })}
+    html: html`${pageBar('Pomoc', { back: false, ico: 'heart', img: 'img/naglowki/pomoc.webp' })}
     <div class="sec" style="margin-top:6px"><h2>Potrzeby rzeczowe</h2>${state.admin ? html`<button class="link" data-act="a-need">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(potrzHtml)}</div>
     <div class="sec"><h2>Transport</h2>${state.admin ? html`<button class="link" data-act="a-trans">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(trHtml)}</div>
     <div class="sec"><h2>Psy</h2></div><div class="pad stack">${raw(psyHtml)}</div><div style="height:20px"></div>`,

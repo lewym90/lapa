@@ -1,10 +1,10 @@
 /* ŁAPA – service worker (praca offline).
    Po każdej zmianie plików zwiększ numer w VERSION, aby wymusić aktualizację. */
-const VERSION = 'lapa-v2.0.0';
+const VERSION = 'lapa-v2.1.0';
 const IMG_CACHE = 'lapa-img-v1';
 const IMG_MAX = 220;
 const ASSETS = [
-  './', 'index.html', 'manifest.webmanifest', 'css/app.css',
+  './', 'index.html', 'manifest.webmanifest', 'css/app.css', 'css/skin.css', 'img/naglowki/brama.webp', 'img/naglowki/psy.webp', 'img/naglowki/start.webp', 'img/naglowki/terminarz.webp', 'img/naglowki/pomoc.webp',
   'js/main.js', 'js/bus.js', 'js/ui-core.js', 'js/config.js', 'js/db.js', 'js/store.js', 'js/api.js', 'js/auth.js', 'js/sync.js', 'js/ui.js', 'js/util.js', 'js/icons.js',
   'js/tekst.js', 'js/update.js', 'js/teczka.js', 'js/kto.js', 'js/znak.js', 'js/wolontariusz.js', 'js/kompendium.js', 'js/czat.js', 'js/push.js', 'js/adopcje.js', 'js/zaginiecia.js', 'js/finanse.js', 'js/photos.js', 'js/screens-start.js', 'js/screens-psy.js', 'js/screens-spacer.js', 'js/brama.js', 'js/udzial.js', 'js/terminarz.js', 'js/dogmerge.js', 'js/screens-inne.js',
   'fonts/inter-latin.woff2', 'fonts/inter-latin-ext.woff2',

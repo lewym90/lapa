@@ -250,7 +250,7 @@ actions['c-done'] = async (el) => { const m = await get('czat', el.dataset.id); 
 actions['c-msg'] = async (el) => {
   const m = await get('czat', el.dataset.id); if (!m) return;
   const me = getName(), mine = same(m.autor, me), can = mine || state.coordinator;
-  openSheet(`<h2>Wiadomość</h2><p class="hint" style="margin:0 0 6px">${esc(m.autor || '')}, ${esc(fmtDate(m.ts))} ${esc(fmtTime(m.ts))}</p><p style="margin:0 0 10px;color:var(--graphite)">${esc(snip(m, 140))}</p>
+  openSheet(`<h2>Wiadomość</h2><p class="hint" style="margin:0 0 6px">${esc(m.autor || '')}, ${esc(fmtDate(m.ts))} ${esc(fmtTime(m.ts))}</p><p style="margin:0 0 10px;color:var(--ink)">${esc(snip(m, 140))}</p>
     <div class="remoji">${BASIC.map((k) => `<button data-e="${k}" aria-label="Reakcja ${EMOJI[k]}">${EMOJI[k]}</button>`).join('')}</div>
     <div class="rows"><button class="row" data-a="re">${icon('reply').s}<span class="rt"><b>Odpowiedz</b></span></button>
     <button class="row" data-a="pin">${icon('pin').s}<span class="rt"><b>${m.pin ? 'Odepnij' : 'Przypnij u góry'}</b></span></button>
@@ -309,7 +309,7 @@ actions['c-ref'] = async (el) => {
   if (t === 'pies') {
     const d = await get('psy', id); if (!d) return none();
     openSheet(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:10px"><span class="avatar${wybCls(d)}" style="width:84px;height:84px">${dogThumb(d).s}</span><div><h2 style="margin:0">${esc(d.imie)} ${boksPill(d, 'in')}</h2>${linie(d)}<div class="sub">${esc([d.plec, d.wiek, d.wielkosc, d.status && STATUS[d.status]].filter(Boolean).join(' · '))}</div></div></div>
-      ${d.haslo ? `<p class="hint" style="margin:0 0 6px">${esc(d.haslo)}</p>` : ''}${d.opis ? `<p style="margin:0 0 12px;color:var(--graphite)">${esc(String(d.opis).slice(0, 260))}${d.opis.length > 260 ? '…' : ''}</p>` : ''}
+      ${d.haslo ? `<p class="hint" style="margin:0 0 6px">${esc(d.haslo)}</p>` : ''}${d.opis ? `<p style="margin:0 0 12px;color:var(--ink)">${esc(String(d.opis).slice(0, 260))}${d.opis.length > 260 ? '…' : ''}</p>` : ''}
       <button class="btn gold block" data-go="#/psy/${esc(id)}">Otwórz pełną kartę psa</button><button class="btn ghost block" style="margin-top:8px" data-sheet-close>Wróć do czatu</button>`, (s) => { hydratePhotos(s); goBtn(s); });
   } else if (t === 'zag') {
     const z = await get('zaginiecia', id); if (!z) return none();

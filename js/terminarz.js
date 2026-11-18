@@ -1,5 +1,5 @@
 // Terminarz (wspólny i prywatny) + Sobotnie spacery z edycją, odwołaniami i zgłoszeniami. Poranny komunikat „Dziś”.
-import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, confirmSheet, plusBtn } from './ui.js';
+import { html, raw, icon, esc, openSheet, closeSheet, toast, actions, confirmSheet, plusBtn, pageBar } from './ui.js';
 import { list, save, remove, get } from './store.js';
 import { state, getName } from './auth.js';
 import { uid, dayKey, startOfDay, fmtDayLong, fmtTime, nextSaturdays } from './util.js';
@@ -109,7 +109,7 @@ export async function wydarzenia(opts = {}) {
   const tb = (k, l) => `<button class="chip dark ${tab === k ? 'on' : ''}" data-act="tm-tab" data-t="${k}" style="flex:1;justify-content:center;padding:11px 6px">${l}</button>`;
   return {
     tab: 'wydarzenia', title: 'Wydarzenia',
-    html: html`<header class="topbar"><span style="width:44px"></span><h1 style="font-size:26px;font-weight:500;flex:1;text-align:center">${tab === 'sob' ? 'Sobotnie spacery' : 'Terminarz'}</h1>${plusBtn(tab === 'sob' ? 'sb-extra' : 'tm-new', tab === 'sob' ? 'Dodaj termin spaceru' : 'Dodaj wpis')}</header>
+    html: html`${pageBar(tab === 'sob' ? 'Sobotnie spacery' : 'Terminarz', { back: false, ico: 'calendar', img: 'img/naglowki/terminarz.webp', right: plusBtn(tab === 'sob' ? 'sb-extra' : 'tm-new', tab === 'sob' ? 'Dodaj termin spaceru' : 'Dodaj wpis') })}
     <div class="pad" style="display:flex;gap:8px;margin-bottom:6px">${raw(tb('ter', 'Terminarz') + tb('sob', 'Sobotnie spacery'))}</div>${raw(body)}`
   };
 }

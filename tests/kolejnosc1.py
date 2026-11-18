@@ -14,27 +14,27 @@ with sync_playwright() as p:
     imiona = lambda sel: [x.split('\n')[0].split(' ')[0].strip() for x in pg.locator(sel).all_inner_texts()]
 
     go(pg, '#/brama', 800)
-    check('Brama: domyślnie alfabetycznie', imiona('#bl .row b') == ALFA, imiona('#bl .row b'))
+    check('Brama: domyślnie alfabetycznie', imiona('#bl .bcard .bn') == ALFA, imiona('#bl .bcard .bn'))
     check('Brama „Wydaj”: przycisk Alfabetycznie | Boks', pg.locator('.kolej [data-t=domyslnie]').inner_text() == 'Alfabetycznie' and pg.locator('.kolej [data-t=boks]').count() == 1)
     pg.click('.kolej [data-t=boks]'); pg.wait_for_timeout(500)
-    check('Brama: według boksów, bez boksu alfabetycznie na końcu', imiona('#bl .row b') == WG_BOKSU, imiona('#bl .row b'))
+    check('Brama: według boksów, bez boksu alfabetycznie na końcu', imiona('#bl .bcard .bn') == WG_BOKSU, imiona('#bl .bcard .bn'))
     # wydaj trzy psy w kolejności godzin: Rex, Fado, Ala
     for imie in ['Rex', 'Fado', 'Ala']:
-        pg.locator('#bl .row', has_text=imie).locator('[data-act=br-out]').click(); pg.wait_for_selector('#wo'); pg.click('#wo button[type=submit]'); pg.wait_for_timeout(350)
+        pg.locator('#bl .bcard', has_text=imie).locator('[data-act=br-out]').click(); pg.wait_for_selector('#wo'); pg.click('#wo button[type=submit]'); pg.wait_for_timeout(350)
     pg.click('[data-act=br-tab][data-t=out]'); pg.wait_for_timeout(400)
     check('„Poza”: przycisk Godzina | Boks', pg.locator('.kolej [data-t=domyslnie]').inner_text() == 'Godzina')
-    check('„Poza” według boksów', imiona('#bl .row b') == ['Fado', 'Rex', 'Ala'], imiona('#bl .row b'))
+    check('„Poza” według boksów', imiona('#bl .bcard .bn') == ['Fado', 'Rex', 'Ala'], imiona('#bl .bcard .bn'))
     pg.click('.kolej [data-t=domyslnie]'); pg.wait_for_timeout(400)
-    check('„Poza” według godziny (jak dotąd)', imiona('#bl .row b') == ['Rex', 'Fado', 'Ala'], imiona('#bl .row b'))
+    check('„Poza” według godziny (jak dotąd)', imiona('#bl .bcard .bn') == ['Rex', 'Fado', 'Ala'], imiona('#bl .bcard .bn'))
     for imie in ['Ala', 'Rex', 'Fado']:  # zwrot w tej kolejności
-        pg.locator('#bl .row', has_text=imie).locator('[data-act=br-back]').click(); pg.wait_for_timeout(350)
+        pg.locator('#bl .bcard', has_text=imie).locator('[data-act=br-back]').click(); pg.wait_for_timeout(350)
     pg.click('[data-act=br-tab][data-t=wrocily]'); pg.wait_for_timeout(400)
-    check('„Wróciły” według godziny: ostatni zwrot na górze', imiona('#bl .row b') == ['Fado', 'Rex', 'Ala'], imiona('#bl .row b'))
+    check('„Wróciły” według godziny: ostatni zwrot na górze', imiona('#bl .bcard .bn') == ['Fado', 'Rex', 'Ala'], imiona('#bl .bcard .bn'))
     pg.click('.kolej [data-t=boks]'); pg.wait_for_timeout(400)
-    check('„Wróciły” według boksów', imiona('#bl .row b') == ['Fado', 'Rex', 'Ala'], imiona('#bl .row b'))
+    check('„Wróciły” według boksów', imiona('#bl .bcard .bn') == ['Fado', 'Rex', 'Ala'], imiona('#bl .bcard .bn'))
     pg.click('[data-act=br-tab][data-t=wydaj]'); pg.wait_for_timeout(400)
     # najpierw psy, które dziś jeszcze nie wyszły, potem te, które już były; w obu grupach według boksów
-    check('Brama „Wydaj” po spacerach: grupy jak dotąd, w każdej boksy', imiona('#bl .row b') == ['Kora', 'Bari', 'Dina', 'Zuza', 'Fado', 'Rex', 'Ala'], imiona('#bl .row b'))
+    check('Brama „Wydaj” po spacerach: grupy jak dotąd, w każdej boksy', imiona('#bl .bcard .bn') == ['Kora', 'Bari', 'Dina', 'Zuza', 'Fado', 'Rex', 'Ala'], imiona('#bl .bcard .bn'))
 
     # lista Psy (osobny wybór)
     go(pg, '#/psy', 800); pg.click('[data-act=dog-filter][data-k=aktywne]'); pg.wait_for_timeout(400)

@@ -36,10 +36,10 @@ with sync_playwright() as p:
     go(pa, '#/psy/d6', 900); check('Pies, którego nie ma na stronie: „Nie ma takiego psa”', 'Nie ma takiego psa' in text(pa))
     # Brama: pies w procesie adopcji jest, z oznaczeniem; byli – nie
     go(pa, '#/brama', 800); pa.click('[data-act=br-tab][data-t=wydaj]'); pa.wait_for_timeout(400)
-    row = pa.locator('.row', has_text='Cezar').first
-    try: row.locator('small .adbadge').wait_for(timeout=4000)
+    row = pa.locator('.bcard', has_text='Cezar').first
+    try: row.locator('.adbadge').wait_for(timeout=4000)
     except Exception: pass
-    check('Brama: pies w procesie adopcji z oznaczeniem', row.locator('small .adbadge').count() == 1)
+    check('Brama: pies w procesie adopcji z oznaczeniem', row.locator('.adbadge').count() == 1)
     check('Brama: bez psów z „Byli u nas” i ukrytych', not any(x in text(pa) for x in ['Bella', 'Dina', 'Fido', 'Gucio']))
     # menu i „+”: bez dodawania psa, adopcji, social media, archiwum
     go(pa, '#/start', 700); pa.click('[data-act=menu]'); pa.wait_for_timeout(300); m = pa.inner_text('.drawer')

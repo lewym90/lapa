@@ -64,7 +64,7 @@ function side() {
 
 function nav(tab) {
   const t = (x) => x ? `<a class="tab ${tab === x[0] ? 'on' : ''}" href="#/${x[0]}" ${tab === x[0] ? 'aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`
-    : `<a class="plus${tab === 'brama' ? ' on' : ''}" href="#/brama" aria-label="Brama: wydaj i zwróć psa">${icon('walk').s}<span class="plbl">Brama</span></a>`;
+    : `<a class="plus${tab === 'brama' ? ' on' : ''}" href="#/brama" aria-label="Brama: wydaj i zwróć psa">${icon('spacer').s}<span class="plbl">Brama</span></a>`;
   return `<nav class="nav${state.admin ? '' : ' wol'}" aria-label="Główna nawigacja">${(state.admin ? TABS : TABS_WOL).map(t).join('')}</nav>`;
 }
 

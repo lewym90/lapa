@@ -90,7 +90,7 @@ with sync_playwright() as p:
     check('wolontariusz: znak.js nie pokazuje oznaczeń', 'specjalny' not in r and 'silny' not in r and 'wyb' not in r, r)
 
     # --- Brama (administrator): opis, powód, czerwona ramka, dotknięcie imienia = oznaczenie ---
-    go(pg, '#/brama', 900); row = pg.locator('.row', has_text='Saba').first; tt = row.inner_text()
+    go(pg, '#/brama', 900); row = pg.locator('.bcard', has_text='Saba').first; tt = row.inner_text()
     check('Brama: boks, opis, powód', 'Boks 7a' in tt and 'dla aktywnych' in tt and 'Tylko wybrani: wycofany, silny' in tt, tt)
     check('Brama: czerwona ramka wiersza', 'wybr' in row.get_attribute('class'))
     pg.click('.bimie[data-id=d1]'); pg.wait_for_selector('#of2')
@@ -127,7 +127,7 @@ with sync_playwright() as p:
     check('administrator po „godzinie” dalej administratorem', pa.evaluate("async()=>{const a=await import('/js/auth.js');return a.state.admin && a.state.coordinator}"))
     # zdjęcie oznaczenia
     go(pa, '#/psy/d1', 900); pa.click('[data-act=dog-oznacz]'); pa.wait_for_selector('#of2'); pa.click('[data-op=""]'); pa.uncheck('#oz_on'); pa.click('#of2 button[type=submit]'); pa.wait_for_timeout(500); sync(pa)
-    sync(pg, 1200); go(pg, '#/start', 500); go(pg, '#/brama', 900); row = pg.locator('.row', has_text='Saba').first
+    sync(pg, 1200); go(pg, '#/start', 500); go(pg, '#/brama', 900); row = pg.locator('.bcard', has_text='Saba').first
     check('po zdjęciu: Brama bez ramki i opisu', 'wybr' not in (row.get_attribute('class') or '') and 'dla aktywnych' not in row.inner_text(), [row.get_attribute('class'), row.inner_text(), pa.evaluate("async()=>(await (await import('/js/db.js')).getRec('oznaczenia','d1'))"), pa.evaluate("async()=>{const a=await import('/js/api.js');return (await a.api('/sync?since=0')).changes.filter(c=>c.col==='oznaczenia')}"), pg.evaluate("async()=>(await (await import('/js/db.js')).getRec('oznaczenia','d1'))")])
     go(pg, '#/psy', 900); k = pg.locator('.dcard', has_text='Saba')
     check('po zdjęciu: lista bez obwódki i z hasłem ze strony', 'wyb' not in k.get_attribute('class') and 'w cieniu strachu' in k.inner_text(), k.inner_text())
