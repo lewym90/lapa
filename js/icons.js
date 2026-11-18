@@ -47,6 +47,8 @@ const P = {
 };
 P.smycz = '<path d="M8.5 3.5a3.2 3.2 0 0 0-3.4 5.3l2.8 2.8a3.2 3.2 0 0 0 4.5-4.5L9.6 4.3a3 3 0 0 0-1.1-.8z"/><path d="m11.2 11.2 4.6 4.6"/><path d="M15.2 15.2a2.6 2.6 0 1 0 3.6 3.6 2.6 2.6 0 0 0-3.6-3.6z"/>';
 P.spacer = '<circle cx="8" cy="3.8" r="1.9"/><path d="m8.3 6.6-1.1 5 2.6 2.6V21M7.2 11.6 4.6 14l-.9 4.2M8.9 8.2l2.3 2.2 3.2.4"/><path d="M14.4 10.8 16.6 15"/><path d="M15.6 15.2h4.2l1.1-1.4.9 1.2v1.2l-1 .6V21M16.4 15.2 15.5 21M19.8 16.8V21M15.6 15.2l-1-1.2"/>';
+// Środkowy przycisk Brama: człowiek z psem na smyczy (własny rysunek, pełne kształty).
+export const BRAMA_IKONA = `<svg class="ico brico" viewBox="0 0 64 50" aria-hidden="true"><circle cx="18" cy="6.5" r="4.6" fill="currentColor" stroke="none"/><path d="M18.5 13.5 16 27" stroke-width="7"/><path d="M16 27 11 36.5 7.5 46" stroke-width="5"/><path d="M16.5 27.5 21.5 36.5 25 46" stroke-width="5"/><path d="M18 15.5 12.5 21.5 10 27" stroke-width="3.6"/><path d="M19 15.5 23.5 21 28.5 22.5" stroke-width="3.6"/><path d="M28.5 22.5C33 27.5 37.5 29.8 44 29.4" stroke-width="1.6"/><path d="M41 30.5h12.5a3.5 3.5 0 0 1 3.5 3.5v1a3 3 0 0 1-3 3H41.5a3.2 3.2 0 0 1-3.2-3.2V33a2.5 2.5 0 0 1 2.7-2.5z" fill="currentColor" stroke="none"/><path d="M53 32.5c-.2-3 .6-6.2 2.6-8.4 1.2-1.3 3.4-1.1 4.4.4l1.9 2.5c.4.6.1 1.4-.6 1.6l-3 .7c-.6 1.6-1.4 3-2.6 4.1z" fill="currentColor" stroke="none"/><path d="M56.4 24.6c-.9.6-1.6 2.1-1.6 3.6" stroke-width="2.2"/><path d="M41.2 36.5 40.4 46M44.6 37 45 46M52.2 37.2 51.4 46M55.4 36.8 56.3 46" stroke-width="2.6"/><path d="M38.6 32.2c-2.2-.6-3.6-2.8-3.4-5.4" stroke-width="2.4"/></svg>`;
 export const FILLED = new Set(['paw']);
 export function icon(name, cls = '') {
   const fill = FILLED.has(name) ? ' fill' : '';

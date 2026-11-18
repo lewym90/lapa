@@ -42,7 +42,7 @@ export async function brama() {
   const ql = q.toLowerCase();
   const f = (d) => (d.imie || '').toLowerCase().includes(ql);
   // Karta psa: zdjęcie w złotej ramce, imię, znaczki, stan na dziś z ikonką, łapka w tle i przyciski po prawej.
-  const dogRow = (d, btn) => `<div class="bcard card${wybCls(d) ? ' wybr' : ''}"><span class="wm">${icon('paw').s}</span><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="bav">${dogThumb(d).s}</span><span class="bt"><b class="bn">${esc(d.imie)} ${boksPill(d, 'in')}</b>${d.status === 'w_trakcie' ? `<span class="adbadge">${icon('paw').s}w procesie adopcji</span>` : ''}${linie(d)}<span class="bsub">${icon(btn.ico || 'calendar').s}<span>${btn.sub}</span></span></span></button><div class="bact">${btn.html}</div></div>`;
+  const dogRow = (d, btn) => `<div class="bcard card${wybCls(d) ? ' wybr' : ''}"><button class="bimie" data-act="dog-oznacz" data-id="${esc(d.id)}" aria-label="Wydawanie na spacer: ${esc(d.imie)}"><span class="bav">${dogThumb(d).s}</span><span class="bt"><b class="bn">${esc(d.imie)} ${boksPill(d, 'in')}</b>${d.status === 'w_trakcie' ? `<span class="adbadge">${icon('paw').s}w procesie adopcji</span>` : ''}${linie(d)}<span class="bsub">${icon(btn.ico || 'calendar').s}<span>${btn.sub}</span></span></span></button><div class="bact"><span class="wm">${icon('paw').s}</span>${btn.html}</div></div>`;
   let body = '';
   if (tab === 'wydaj') {
     const rows = [...nieWyd.filter(f).map((d) => dogRow(d, { sub: d.plec === 'suka' ? 'dziś jeszcze nie była' : 'dziś jeszcze nie był', html: `<button class="btn gold" data-act="br-out" data-id="${esc(d.id)}">${icon('smycz').s}Wydaj</button>` })),

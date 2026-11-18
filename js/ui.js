@@ -141,8 +141,8 @@ export const brandBar = (dot = false, czat = true) => html`<header class="topbar
 // na podstronach przycisk „Wstecz” i tytuł.
 export const pageBar = (title, { back = true, right = '', ico = 'paw', sub = '', img = '' } = {}) => html`<header class="topbar hdr${back ? ' zback' : ''}">
   ${back ? html`<button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>` : html`<span class="medal">${icon(ico)}</span>`}
-  <div class="ht"><h1>${title}</h1>${sub ? html`<p>${sub}</p>` : ''}</div>
-  ${right ? html`<span class="hright">${right}</span>` : ''}
+  <div class="ht">${img && right ? html`<div class="htt"><h1>${title}</h1>${right}</div>` : html`<h1>${title}</h1>`}${sub ? html`<p>${sub}</p>` : ''}</div>
+  ${right && !img ? html`<span class="hright">${right}</span>` : ''}
   ${img ? html`<img class="hdog" src="${img}" alt="">` : ''}
 </header>`;
 export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" data-act="${act}" aria-label="${label}">${icon('plus')}</button>`;
