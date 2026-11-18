@@ -66,9 +66,9 @@ with sync_playwright() as p:
     A.click('[data-act=c-search]'); A.fill('#c-q','kierowca'); A.wait_for_timeout(400); check('wyszukiwanie', 'Znaleziono: 1' in A.inner_text('#c-scount') and A.locator('.cb').count()==1)
     A.fill('#c-q',''); A.click('[data-act=c-search]')
     # 10. informacja
-    A.click('.topbar [data-act=c-info]'); A.wait_for_selector('.infotxt'); t=A.inner_text('.infotxt'); check('opis: szyfrowanie, przechowywanie, ostrożność', 'nie są szyfrowane' in t and '30 dni' in t and 'zachowaj ostrożność' in t); A.click('.sheet [data-sheet-close]')
+    A.click('.hakc [data-act=c-info]'); A.wait_for_selector('.infotxt'); t=A.inner_text('.infotxt'); check('opis: szyfrowanie, przechowywanie, ostrożność', 'nie są szyfrowane' in t and '30 dni' in t and 'zachowaj ostrożność' in t); A.click('.sheet [data-sheet-close]')
     # 11. wyczyść u siebie
-    A.click('.topbar [data-act=c-info]'); A.click('[data-a=clear]'); A.click('[data-yes]'); A.wait_for_timeout(600); check('wyczyszczone tylko u Ani', 'Czat jest pusty' in msgs(A) and 'Mogę ja' in B.evaluate("document.querySelector('#c-msgs').innerText") )
+    A.click('.hakc [data-act=c-info]'); A.click('[data-a=clear]'); A.click('[data-yes]'); A.wait_for_timeout(600); check('wyczyszczone tylko u Ani', 'Czat jest pusty' in msgs(A) and 'Mogę ja' in B.evaluate("document.querySelector('#c-msgs').innerText") )
     print('BŁĘDY KONSOLI:',[e for e in errs if 'status of 500' not in e[1]])
     b.close()
 print(f'WYNIK: {ok} OK {bad} FAIL')

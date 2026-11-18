@@ -126,8 +126,6 @@ body{background:#04150f}
 input[type=checkbox],input[type=radio]{accent-color:#c99b58}
 .hello{position:relative}
 .hello h1,.hello p{position:relative;z-index:2}
-.hdr .htt{display:flex;align-items:center;gap:12px}
-.hdr .htt .plusbtn{width:42px;height:42px;font-size:24px}.hdr .htt .plusbtn .ico{font-size:24px}
 .main{overflow-x:clip}
 
 /* baner nagłówka: szeroki obraz z psem po prawej, pod tytułem, płynnie znika w tle */
@@ -139,8 +137,6 @@ input[type=checkbox],input[type=radio]{accent-color:#c99b58}
 .hdr.hb>*:not(.hban){position:relative;z-index:2}
 .hdr.hb .ht{max-width:64%;flex:0 1 auto}
 .hdr.hb h1{text-shadow:0 2px 12px rgba(0,0,0,.65)}
-.hello{position:relative;min-height:calc(var(--bh) - 70px)}
-.hello .hban{top:calc(-74px - var(--sat))}
 .hello h1,.hello p{position:relative;z-index:2;text-shadow:0 2px 12px rgba(0,0,0,.6)}
 .hello p{max-width:20ch}
 
@@ -164,6 +160,46 @@ input[type=checkbox],input[type=radio]{accent-color:#c99b58}
 .bcard .adbadge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:420px){.bcard{gap:8px;padding:11px 10px}.bcard .bimie{gap:11px}.bcard .bav{width:62px;height:62px}.bcard .bn{font-size:20px}.bcard .bsub{font-size:13px}.bcard .bact .btn{padding:0 12px;font-size:16px;min-height:44px}.bcard .bact .btn .ico{font-size:18px}.bcard .wm{right:calc(100% + 8px);font-size:34px}}
 .hdr.hb .ht{max-width:none}
-.hdr.hb .ht>h1,.hdr.hb .htt{max-width:min(58vw,440px)}
 .hdr.hb p{white-space:nowrap}
 .chat{min-height:calc(100dvh - var(--bh) - 70px)}
+
+/* Start: baner pod paskiem z logo (menu, logo i dzwonek zostają nad nim, na czystym tle) */
+.hello.hst{position:relative;min-height:calc(var(--bh) - 14px);padding-top:10px}
+.hello.hst .hban{top:-6px;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 62%,transparent 100%);mask-image:linear-gradient(180deg,transparent 0,#000 14%,#000 62%,transparent 100%)}
+.hello.hst h1{max-width:62%}
+.topbar{position:relative;z-index:3}
+.hdr.hb .ht>h1{max-width:min(56vw,440px)}
+/* przyciski ekranu przy banerze: osobny wiersz pod banerem, po prawej */
+.hakc{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:0 16px 8px;position:relative;z-index:2}
+.hakc .iconbtn{background:var(--raised);border:1px solid var(--rim);box-shadow:var(--raised-sh)}
+.fchips{display:flex;align-items:center}
+/* zdjęcie psa i ekran „Dziękujemy” wchodzą pod pasek stanu telefonu */
+@media (max-width:859px){.dogtop{margin-top:calc(-8px - var(--sat))}}
+.dzk{margin-top:calc(-8px - var(--sat))}
+.dzkt{padding-top:calc(min(100vw,620px) * 1.08)}
+/* tytuł nigdy nie wchodzi na psa */
+.hdr.hb .ht>h1{max-width:min(50vw,420px)}
+.hello.hst h1{max-width:none;white-space:nowrap;font-size:clamp(28px,8vw,40px)}
+.hello.hst h1::after{display:none}
+.hello.hst p{max-width:55%}
+/* baner na telefonie: obraz nieco mniejszy i przesunięty w prawo (pokazany fragment od -20% do 92% szerokości),
+   żeby pies zawsze stał na prawo od tytułu; lewa krawędź płynnie znika */
+:root{--bh:34.8vw}
+.hban{left:17.9%;right:auto;width:89.3%;height:auto;object-fit:fill;
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 22%),linear-gradient(180deg,#000 60%,transparent 100%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(90deg,transparent 0,#000 22%),linear-gradient(180deg,#000 60%,transparent 100%);mask-composite:intersect}
+.hdr.hb{min-height:calc(var(--bh) - 30px - var(--sat))}
+.hdr.hb .medal{width:48px;height:48px;font-size:24px}
+.hdr.hb{gap:10px}
+.hdr.hb h1{font-size:clamp(24px,6.4vw,31px)}
+.hdr.hb.zback h1{font-size:clamp(22px,5.8vw,28px)}
+.hdr.hb .ht,.hdr.hb .ht>h1{max-width:calc(68vw - 74px)}
+.hdr.hb p{white-space:normal;font-size:12.5px;line-height:1.35}
+.hello.hst{min-height:calc(var(--bh) - 4px)}
+.hello.hst h1{font-size:clamp(26px,7.2vw,40px)}
+@media (min-width:860px){
+  :root{--bh:240px}
+  .hban{left:auto;right:0;width:640px}
+  .hdr.hb .ht,.hdr.hb .ht>h1{max-width:440px}
+}
+.hello.hst h1{font-size:clamp(30px,8vw,42px)}

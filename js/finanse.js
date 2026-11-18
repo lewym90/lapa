@@ -21,8 +21,8 @@ export async function finanse() {
   const lata = [...new Set([rok, new Date().getFullYear(), ...fin.map((x) => new Date(x.data).getFullYear())])].sort((a, b) => a - b).slice(-4);
   const wiersz = (x) => `<button type="button" class="kwpis" data-act="fin-open" data-id="${esc(x.id)}"><span class="kwd">${esc(kiedy(x))}</span><span class="kwt"><b>${esc(opisW(x))}</b>${byId[x.pies_id] ? `<small>${esc(byId[x.pies_id].imie)}</small>` : ''}</span><span class="kwk${x.typ === 'wplata' ? ' plus' : ''}">${x.typ === 'wplata' ? '+' : '−'}${esc(zl(x.kwota))}</span></button>`;
   return { tab: 'start', title: 'Finanse', live: true,
-    html: html`${pageBar('Finanse', { img: 'img/naglowki/finanse.webp', right: html`${plusBtn('fin-add', 'Dodaj wpis')}` })}
-    <div class="fchips">${lata.map((y) => html`<button class="chip dark ${rok === y ? 'on' : ''}" data-act="fin-rok" data-y="${y}">${y}</button>`)}</div>
+    html: html`${pageBar('Finanse', { img: 'img/naglowki/finanse.webp' })}
+    <div class="fchips">${lata.map((y) => html`<button class="chip dark ${rok === y ? 'on' : ''}" data-act="fin-rok" data-y="${y}">${y}</button>`)}<span style="margin-left:auto">${plusBtn('fin-add', 'Dodaj wpis')}</span></div>
     <div class="pad komp">
       <div class="kbox"><div class="kd"><span>Wpłaty</span><b>${zl(wp)}</b></div><div class="kd"><span>Wydatki</span><b>${zl(wy)}${leczenie ? html` <em>· w tym leczenie z kart psów ${zl(leczenie)}</em>` : ''}</b></div>
         <div class="kd"><span>Saldo ${rok}</span><b style="color:${wp - wy < 0 ? 'var(--terra-d)' : '#8fd0a4'}">${zl(wp - wy)}</b></div></div>
