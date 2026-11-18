@@ -1,4 +1,4 @@
-export const VERSION = '2.2.1';
+export const VERSION = '2.2.2';
 const q = new URLSearchParams(location.search);
 const isLocal = ['localhost', '127.0.0.1'].includes(location.hostname);
 // Wersja testowa: aplikacja podawana przez serwer testowy spod …/app/ (np. https://…/lapa-test/app/) rozmawia z tym serwerem.

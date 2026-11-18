@@ -48,6 +48,8 @@ export function transForm() {
   }));
 }
 actions['a-trans'] = () => transForm();
+// Pomoc dla psa: wybór psa, potem to samo okno „Czego potrzebuje?” co w karcie psa.
+actions['a-psy'] = () => pickDog((d) => actions['dog-needs']({ dataset: { id: d.id } }));
 actions['tr-open'] = async (el) => {
   const x = await get('transporty', el.dataset.id); if (!x) return; const pd = x.pies_id ? await get('psy', x.pies_id) : null; const z = await zglDane();
   openSheet(`<h2>${esc(x.pies_imie || 'Transport')}</h2>${pd && imieZnaki(pd, '').trim() ? `<p style="margin:-4px 0 8px">${imieZnaki(pd, '').trim()}</p>` : ''}<p class="sub" style="margin:0 0 8px">${esc(x.skad)} → ${esc(x.dokad)}<br>${esc(fmtDayLong(x.kiedy))}, ${esc(fmtTime(x.kiedy))}</p>
@@ -72,7 +74,7 @@ export async function pomocEkran() {
     html: html`${pageBar('Pomoc', { back: false, ico: 'heart', img: 'img/naglowki/pomoc.webp' })}
     <div class="sec" style="margin-top:6px"><h2>Potrzeby rzeczowe</h2>${state.admin ? html`<button class="link" data-act="a-need">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(potrzHtml)}</div>
     <div class="sec"><h2>Transport</h2>${state.admin ? html`<button class="link" data-act="a-trans">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(trHtml)}</div>
-    <div class="sec"><h2>Psy</h2></div><div class="pad stack">${raw(psyHtml)}</div><div style="height:20px"></div>`,
+    <div class="sec"><h2>Psy</h2>${state.admin ? html`<button class="link" data-act="a-psy">+ Dodaj</button>` : ''}</div><div class="pad stack">${raw(psyHtml)}</div><div style="height:20px"></div>`,
     mount(r) { hydratePhotos(r); }
   };
 }
