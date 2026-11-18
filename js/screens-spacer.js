@@ -25,7 +25,7 @@ export async function report(id) {
   const tags = GROUPS.filter(([k]) => w[k]).map(([k, l]) => html`<span class="chip">${l}: ${w[k]}</span>`);
   return {
     tab: 'start', nav: false, title: 'Raport ze spaceru',
-    html: html`${pageBar('Raport ze spaceru')}<div class="pad"><section class="card" style="padding:18px">
+    html: html`${pageBar('Raport ze spaceru', { img: 'img/naglowki/terminarz.webp' })}<div class="pad"><section class="card" style="padding:18px">
       <div style="display:flex;gap:14px;align-items:center"><span class="avatar sm${d ? wybCls(d) : ''}">${d ? dogThumb(d) : html`<div class="nophoto">${icon('paw')}</div>`}</span>
         <div><h2 style="font-size:26px;color:var(--ink)">${w.pies_imie} ${d ? raw(boksPill(d, 'in')) : ''}</h2>${d ? raw(linie(d)) : ''}<div class="sub">Spacer · ${fmtDate(w.start)} · ${w.autor || ''}</div></div></div>
       <ul class="tl" style="margin-top:14px">${(w.os_czasu || []).map((e) => html`<li><span class="dotp"></span><span class="tm">${fmtTime(e.t)}</span><span>${e.txt}</span></li>`)}</ul>

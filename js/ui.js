@@ -139,11 +139,12 @@ export const brandBar = (dot = false, czat = true) => html`<header class="topbar
 </header>`;
 // Nagłówek ekranu: na głównych ekranach medalion z ikoną, tytuł i opcjonalnie podtytuł oraz zdjęcie psa po prawej;
 // na podstronach przycisk „Wstecz” i tytuł.
-export const pageBar = (title, { back = true, right = '', ico = 'paw', sub = '', img = '' } = {}) => html`<header class="topbar hdr${back ? ' zback' : ''}">
+// img: szeroki baner z psem po prawej (img/naglowki/*.webp) – leży pod nagłówkiem, przyciski stoją obok tytułu.
+export const pageBar = (title, { back = true, right = '', ico = 'paw', sub = '', img = '' } = {}) => html`<header class="topbar hdr${back ? ' zback' : ''}${img ? ' hb' : ''}">
+  ${img ? html`<img class="hban" src="${img}" alt="">` : ''}
   ${back ? html`<button class="iconbtn" data-act="back" aria-label="Wstecz">${icon('back')}</button>` : html`<span class="medal">${icon(ico)}</span>`}
   <div class="ht">${img && right ? html`<div class="htt"><h1>${title}</h1>${right}</div>` : html`<h1>${title}</h1>`}${sub ? html`<p>${sub}</p>` : ''}</div>
   ${right && !img ? html`<span class="hright">${right}</span>` : ''}
-  ${img ? html`<img class="hdog" src="${img}" alt="">` : ''}
 </header>`;
 export const plusBtn = (act, label = 'Dodaj') => html`<button class="plusbtn" data-act="${act}" aria-label="${label}">${icon('plus')}</button>`;
 actions.back = () => { if (history.length > 1) history.back(); else location.hash = '#/start'; };

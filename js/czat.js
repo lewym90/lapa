@@ -193,7 +193,7 @@ export async function czat() {
   const card = await promptCard();
   return {
     tab: 'start', title: 'Czat', nav: false, live: false,
-    html: html`${pageBar('Czat wolontariuszy', { right: html`<button class="iconbtn" data-act="c-search" aria-label="Szukaj w czacie">${icon('search')}</button><button class="iconbtn" data-act="c-info" aria-label="Jak działa czat">${icon('info')}</button>` })}
+    html: html`${pageBar('Czat wolontariuszy', { img: 'img/naglowki/czat.webp', right: html`<button class="iconbtn" data-act="c-search" aria-label="Szukaj w czacie">${icon('search')}</button><button class="iconbtn" data-act="c-info" aria-label="Jak działa czat">${icon('info')}</button>` })}
     <div class="chat">
       <div class="cnote">${icon('info')}<span>Czat widzą wszyscy wolontariusze. Wiadomości nie są szyfrowane, więc nie wpisuj haseł ani prywatnych danych. <button class="link" data-act="c-info">Jak to działa</button></span></div>
       ${card ? html`<div style="padding:0 12px 8px">${card}</div>` : ''}

@@ -12,7 +12,7 @@ const kiedy = (x) => x.data_txt || dataTs(x.data);
 let rok = new Date().getFullYear();
 
 export async function finanse() {
-  if (!state.coordinator) return { tab: 'start', title: 'Finanse', html: html`${pageBar('Finanse')}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Finanse</b><br><span class="hint">Widzi je tylko administrator.</span></p></div></div>` };
+  if (!state.coordinator) return { tab: 'start', title: 'Finanse', html: html`${pageBar('Finanse', { img: 'img/naglowki/finanse.webp' })}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Finanse</b><br><span class="hint">Widzi je tylko administrator.</span></p></div></div>` };
   const [fin, zdr, dogs] = await Promise.all([list('p_finanse'), list('zdrowie'), list('psy')]); const byId = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const inY = (t) => new Date(t).getFullYear() === rok;
   const wpisy = fin.filter((x) => inY(x.data)).sort((a, b) => b.data - a.data), zk = zdr.filter((z) => z.koszt && inY(z.data));
@@ -21,7 +21,7 @@ export async function finanse() {
   const lata = [...new Set([rok, new Date().getFullYear(), ...fin.map((x) => new Date(x.data).getFullYear())])].sort((a, b) => a - b).slice(-4);
   const wiersz = (x) => `<button type="button" class="kwpis" data-act="fin-open" data-id="${esc(x.id)}"><span class="kwd">${esc(kiedy(x))}</span><span class="kwt"><b>${esc(opisW(x))}</b>${byId[x.pies_id] ? `<small>${esc(byId[x.pies_id].imie)}</small>` : ''}</span><span class="kwk${x.typ === 'wplata' ? ' plus' : ''}">${x.typ === 'wplata' ? '+' : '−'}${esc(zl(x.kwota))}</span></button>`;
   return { tab: 'start', title: 'Finanse', live: true,
-    html: html`${pageBar('Finanse', { right: html`${plusBtn('fin-add', 'Dodaj wpis')}` })}
+    html: html`${pageBar('Finanse', { img: 'img/naglowki/finanse.webp', right: html`${plusBtn('fin-add', 'Dodaj wpis')}` })}
     <div class="fchips">${lata.map((y) => html`<button class="chip dark ${rok === y ? 'on' : ''}" data-act="fin-rok" data-y="${y}">${y}</button>`)}</div>
     <div class="pad komp">
       <div class="kbox"><div class="kd"><span>Wpłaty</span><b>${zl(wp)}</b></div><div class="kd"><span>Wydatki</span><b>${zl(wy)}${leczenie ? html` <em>· w tym leczenie z kart psów ${zl(leczenie)}</em>` : ''}</b></div>

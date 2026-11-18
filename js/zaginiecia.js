@@ -23,7 +23,7 @@ export async function zaginiecia() {
   const card = (z) => { const d = byId[z.pies_id]; return `<a class="card dtc" href="#/zaginiecia/${esc(z.id)}"><span class="avatar sm">${d ? dogThumb(d).s : `<div class="nophoto">${icon('paw').s}</div>`}</span><span class="rt"><b>${esc(z.imie || '')}</b><small>${esc([kiedyTxt(z), z.gdzie].filter(Boolean).join(' · '))}</small></span><span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></a>`; };
   return {
     tab: 'start', title: 'Zaginięcia', live: true,
-    html: html`${pageBar(state.admin ? 'Zaginięcia' : 'Zaginione psy', { right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}
+    html: html`${pageBar(state.admin ? 'Zaginięcia' : 'Zaginione psy', { img: 'img/naglowki/zaginiecia.webp', right: state.admin ? html`${plusBtn('zag-new', 'Zgłoś zaginięcie')}` : '' })}
     <div class="pad stack">${a.length ? raw(a.map(card).join('')) : html`<p class="pusto">Nikt nie jest teraz poszukiwany.</p>`}
     ${f.length ? html`<h3 style="color:var(--sage);margin:16px 0 0;font-size:17px">Odnalezione</h3>${raw(f.slice(0, 15).map(card).join(''))}` : ''}</div>`,
     mount(r) { hydratePhotos(r); }
@@ -41,7 +41,7 @@ export async function karta(id) {
   const akt = [...(z.akt || [])].sort((a, b) => b.ts - a.ts);
   return {
     tab: 'start', title: z.imie, live: true,
-    html: html`${pageBar(z.imie || 'Zaginięcie')}<div class="pad komp">
+    html: html`${pageBar(z.imie || 'Zaginięcie', { img: 'img/naglowki/zaginiecia.webp' })}<div class="pad komp">
       <div class="khead">${d ? html`<a class="avatar sm" href="#/psy/${d.id}" aria-label="Karta psa: ${d.imie}">${dogThumb(d)}</a>` : ''}<span class="kbadge${aktywne(z) ? ' szuk' : ''}">${aktywne(z) ? 'Szukamy' : 'Znaleziony'}</span></div>
       <div class="kbox">${raw(pola)}</div>
       <h2 class="kh">Aktualizacje</h2>

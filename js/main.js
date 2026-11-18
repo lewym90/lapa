@@ -4,7 +4,6 @@ import { on, emit } from './bus.js';
 import { status as syncStatus, kick } from './sync.js';
 import { ApiError } from './api.js';
 import { html, raw, icon, esc, closeSheet, toast, actions, ustawRole } from './ui.js';
-import { BRAMA_IKONA } from './icons.js';
 ustawRole(() => state.admin);
 import { VERSION, TEST } from './config.js';
 import { initUpdates } from './update.js';
@@ -65,7 +64,7 @@ function side() {
 
 function nav(tab) {
   const t = (x) => x ? `<a class="tab ${tab === x[0] ? 'on' : ''}" href="#/${x[0]}" ${tab === x[0] ? 'aria-current="page"' : ''}>${icon(x[2]).s}<span>${x[1]}</span></a>`
-    : `<a class="plus${tab === 'brama' ? ' on' : ''}" href="#/brama" aria-label="Brama: wydaj i zwróć psa">${BRAMA_IKONA}<span class="plbl">Brama</span></a>`;
+    : `<a class="plus${tab === 'brama' ? ' on' : ''}" href="#/brama" aria-label="Brama: wydaj i zwróć psa"><span class="brimg"></span><span class="plbl">Brama</span></a>`;
   return `<nav class="nav${state.admin ? '' : ' wol'}" aria-label="Główna nawigacja">${(state.admin ? TABS : TABS_WOL).map(t).join('')}</nav>`;
 }
 

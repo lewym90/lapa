@@ -165,7 +165,7 @@ export async function zgloszeniaAdmin() {
   const tra = nowsze(z.of.filter((o) => o.typ === 'transport' && T[o.ref] && o.stan !== 'odrzucona')).map((o) => { const x = T[o.ref]; return wiersz(o, 'oferty', `<button class="zco zlink" data-act="tr-open" data-id="${esc(x.id)}">${esc(x.pies_imie || 'Transport')}: ${esc(x.skad)} → ${esc(x.dokad)}, ${esc(fmtShort(x.kiedy))}${o.stan === 'przyjeta' ? ' · jedzie' : ''}</button>`, x.status === 'szuka' && o.stan !== 'przyjeta' ? `<button class="btn sm" data-act="of-kierowca" data-id="${esc(o.id)}">Przypisz</button>` : ''); });
   const sb = sob.filter((x) => x.status !== 'odwolany').map((x) => { const L = nowsze(z.zg.filter((r) => r.key === x.key && r.status === 'tak')); return L.length ? `<h3 style="font-size:16px;margin:12px 4px 6px">${esc(fmtDayLong(x.start))}, ${esc(fmtTime(x.start))} · ${L.length} os.</h3><div class="card zgl" style="padding:6px 14px">${L.map((r) => wiersz(r, 'zgloszenia', 'Będzie na spacerach')).join('')}</div>` : ''; }).join('');
   return { tab: 'start', title: 'Zgłoszenia wolontariuszy', live: true,
-    html: html`${pageBar('Zgłoszenia wolontariuszy')}<p class="hint" style="padding:0 20px;margin:4px 0 6px;color:var(--sage)">Kto zgłosił się do pomocy. Telefony widzi tylko administrator; serwer usuwa je po 30 dniach.</p>
+    html: html`${pageBar('Zgłoszenia wolontariuszy', { img: 'img/naglowki/zgloszenia.webp' })}<p class="hint" style="padding:0 20px;margin:4px 0 6px;color:var(--sage)">Kto zgłosił się do pomocy. Telefony widzi tylko administrator; serwer usuwa je po 30 dniach.</p>
       ${raw(sekcja('Pomoc dla psów', dek, 'Brak zgłoszeń.'))}${raw(sekcja('Potrzeby rzeczowe', pot, 'Brak zgłoszeń.'))}${raw(sekcja('Transport', tra, 'Brak zgłoszeń.'))}
       <div class="sec"><h2>Sobotnie spacery</h2></div><div class="pad">${raw(sb || '<p class="hint" style="margin:0 4px">Nikt jeszcze nie potwierdził.</p>')}</div><div style="height:24px"></div>` };
 }
@@ -193,7 +193,7 @@ export async function startWol() {
   ];
   return { tab: 'start', title: 'Start', live: true,
     html: html`${brandBar(kLast && kLast.ts > (+(localStorage.getItem('lapa.kseen') || 0)), false)}
-    <section class="hello"><img class="hdog" src="img/naglowki/start.webp" alt=""><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
+    <section class="hello"><img class="hban" src="img/naglowki/start.webp" alt=""><h1>${greeting()}</h1><p>Wolontariat Schroniska dla Psów w Nowodworze</p></section>
     ${kLast && Date.now() - kLast.ts < 7 * 864e5 ? html`<div class="pad" style="margin-top:14px"><div class="card" style="background:rgba(244,240,231,.1);color:var(--ivory);border:1px solid var(--line-l);box-shadow:none"><div class="card-head"><h3 style="color:var(--ivory);font-size:17px">${icon('bell')} Komunikat</h3><span class="hint" style="color:var(--sage)">${kLast.autor || ''} · ${fmtShort(kLast.ts)}</span></div><div style="white-space:pre-line">${kLast.tekst}</div></div></div>` : ''}
     ${hero}
     <div class="pad" style="margin-top:16px"><section class="card dzis" aria-label="Najbliżej"><h3>Najbliżej</h3>${rows.length ? raw(rows.join('')) : html`<p class="sub" style="margin:6px 0 2px">Na razie spokojnie. Zajrzyj na listę psów.</p>`}</section></div>

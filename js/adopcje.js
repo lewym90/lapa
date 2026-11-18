@@ -7,7 +7,7 @@ import { dogThumb, pickDog } from './screens-psy.js';
 import { hydratePhotos } from './photos.js';
 
 const tel = (t) => String(t || '').replace(/[^\d+]/g, '');
-const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title)}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` });
+const lockPage = (title) => ({ tab: 'start', title, html: html`${pageBar(title, { img: 'img/naglowki/dt.webp' })}<div class="pad"><div class="lockbox">${icon('lock')}<p style="margin:6px 0 10px"><b>Dane osobowe</b><br><span class="hint">Widzi je tylko administrator.</span></p><button class="btn sm" data-act="unlock-sheet">Odblokuj hasłem administratora</button></div></div>` });
 const RODZ = { dt: 'Dom tymczasowy', hotelik: 'Hotelik' };
 const adres = (p) => p.adres || '';
 const pen = () => icon('pencil').s.replace('class="ico', 'class="ico kpen');
@@ -23,7 +23,7 @@ export async function dt() {
     return `<a class="card dtc" href="#/dt/${esc(p.id)}"><span class="rt"><b>${esc(p.imie || 'Bez nazwy')}</b><small>${esc([RODZ[p.rodzaj || 'dt'], adres(p)].filter(Boolean).join(' · '))}</small>${ps.length ? `<small class="dtpsy">Teraz: ${esc(ps.map((d) => d.imie).join(', '))}</small>` : ''}</span>${icon('chev').s}</a>`; };
   return {
     tab: 'start', title: 'Domy tymczasowe i hoteliki', live: true,
-    html: html`${pageBar('Domy tymczasowe i hoteliki', { right: html`${plusBtn('dt-add', 'Dodaj')}` })}
+    html: html`${pageBar('Domy tymczasowe i hoteliki', { img: 'img/naglowki/dt.webp', right: html`${plusBtn('dt-add', 'Dodaj')}` })}
     <div class="pad stack">${rows.length ? raw(rows.map(karta).join('')) : html`<p class="pusto">Nikogo jeszcze nie ma. Dodaj przyciskiem +.</p>`}</div>`
   };
 }
@@ -37,7 +37,7 @@ export async function dtKarta(id) {
   const pola = POLA.map(([k, l]) => `<button type="button" class="kd ed${wart(k).length > 40 ? ' blok' : ''}" data-act="dt-edit" data-id="${esc(id)}" data-f="${k}"><span>${l}</span><b>${esc(wart(k)) || '<i>dodaj</i>'}</b>${pen()}</button>`).join('');
   return {
     tab: 'start', title: p.imie || 'Dom tymczasowy', live: true,
-    html: html`${pageBar(p.imie || 'Dom tymczasowy')}<div class="pad komp">
+    html: html`${pageBar(p.imie || 'Dom tymczasowy', { img: 'img/naglowki/dt.webp' })}<div class="pad komp">
       <div class="khead">${raw(Object.entries(RODZ).map(([k, l]) => `<button type="button" class="chip outline${(p.rodzaj || 'dt') === k ? ' on' : ''}" data-act="dt-rodzaj" data-id="${esc(id)}" data-k="${k}" aria-pressed="${(p.rodzaj || 'dt') === k}">${l}</button>`).join(''))}</div>
       <div class="kbox">${raw(pola)}</div>
       ${p.telefon ? html`<div class="btnrow" style="margin-top:10px"><a class="btn" href="tel:${tel(p.telefon)}">${icon('phone')} Zadzwoń</a><a class="btn ghost" href="sms:${tel(p.telefon)}">SMS</a></div>` : ''}

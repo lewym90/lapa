@@ -102,7 +102,7 @@ export async function settings() {
   const pend = await db.outboxCount(), notif = await settingsCard();
   return {
     tab: 'start', title: 'Ustawienia', live: false,
-    html: html`${pageBar('Ustawienia')}<div class="pad stack">
+    html: html`${pageBar('Ustawienia', { img: 'img/naglowki/ustawienia.webp' })}<div class="pad stack">
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Podpisuje Twoje wpisy, spacery i zgłoszenia.</p>
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       ${notif}
@@ -126,7 +126,7 @@ async function settingsWol() {
   const pend = await db.outboxCount();
   return {
     tab: 'start', title: 'Ustawienia', live: false,
-    html: html`${pageBar('Ustawienia')}<div class="pad stack">
+    html: html`${pageBar('Ustawienia', { img: 'img/naglowki/ustawienia.webp' })}<div class="pad stack">
       <section class="card"><h3>Twoje imię</h3><p class="sub" style="margin:2px 0 12px">Widzą je inni wolontariusze przy Twoich zgłoszeniach.</p>
         <form id="sn" class="field" style="margin:0"><input class="input" id="sni" aria-label="Twoje imię" maxlength="40" value="${getName()}" autocomplete="given-name"><button class="btn block" style="margin-top:10px" type="submit">Zapisz imię</button></form></section>
       <section class="card"><h3>Twój telefon</h3><p class="sub" style="margin:2px 0 12px">Podpowiada się przy zgłoszeniach („Mogę przywieźć”, „Mogę pojechać”, „Będę”). Zapisany tylko na tym telefonie. Przy zgłoszeniu widzi go wyłącznie administrator (przez 30 dni).</p>
@@ -183,11 +183,11 @@ actions['set-logout'] = async () => {
 export async function thanks() {
   return {
     tab: 'start', nav: false, title: 'Dziękujemy',
-    html: html`<div class="login" style="min-height:100dvh"><span class="pawbig">${icon('paw')}</span><div class="box" style="text-align:center">
-      <span style="font-size:60px;color:var(--gold);display:grid;place-items:center;animation:rise 1s both">${icon('heart')}</span>
-      <h1 style="font-size:46px;font-weight:500;margin:10px 0 6px;animation:rise 1s .15s both">Dziękujemy</h1><div style="width:54px;height:2px;background:var(--gold);margin:0 auto 22px"></div>
-      ${PODZIEKOWANIE.akapity.map((t, i) => html`<p style="font-family:var(--serif);font-size:19px;line-height:1.6;margin:0 0 16px;color:rgba(244,240,231,.92);animation:rise 1s ${0.3 + i * 0.25}s both">${t}</p>`)}
-      <p style="font-style:italic;color:var(--gold-l);margin:20px 0 28px">${PODZIEKOWANIE.podpis}</p>
+    html: html`<div class="dzk"><img class="dzbg" src="img/dziekujemy.webp" alt=""><div class="dzkt">
+      <span class="dzkh">${icon('heart')}</span>
+      <h1>Dziękujemy</h1><div class="dzkl"></div>
+      ${PODZIEKOWANIE.akapity.map((t, i) => html`<p style="animation:rise 1s ${0.3 + i * 0.25}s both">${t}</p>`)}
+      <p class="dzkp">${PODZIEKOWANIE.podpis}</p>
       <a class="btn gold block" href="#/start">Wchodzę ${icon('arrow')}</a></div></div>`
   };
 }
