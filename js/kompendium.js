@@ -55,6 +55,8 @@ export async function cardAdm(id, { pics, picImg, isFav }) {
     <section class="dogsheet komp">
       <h1>${d.imie} <span class="sex">${sexSymbol(d.plec)}</span></h1>${raw(opisLine(d))}
       <div class="khead">${raw(boksPill(d, 'big'))}${raw(znaczekStrony(d))}</div>
+      ${[d.wzrost, d.siersc, d.haslo].some(Boolean) ? html`<div class="chips kstr">${[d.wzrost && 'Wzrost ' + d.wzrost, d.siersc && 'Sierść: ' + String(d.siersc).toLowerCase(), d.haslo].filter(Boolean).map((t) => html`<span class="chip">${t}</span>`)}</div>` : ''}
+      ${d.opis ? html`<p class="desc">${d.opis}</p>` : ''}
       ${d.wazne ? html`<button type="button" class="kwazne" data-act="k-edit" data-f="wazne" data-id="${id}"><b>Ważne</b><span>${d.wazne}</span>${raw(pen())}</button>`
         : html`<button type="button" class="kdodaj" data-act="k-edit" data-f="wazne" data-id="${id}">${icon('plus')} Dodaj ważną informację</button>`}
 

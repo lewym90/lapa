@@ -351,7 +351,7 @@ async function adoptedLinks() {
   }
   return [...links];
 }
-const TRZY_LATA = 3 * 365.25 * 86400e3;
+const ROK = 365.25 * 86400e3; // „Byli u nas”: adoptowani z ostatniego roku
 // ===== Kopie zapasowe: baza co 30 minut (VACUUM INTO), zdjęcia kopiowane przyrostowo =====
 const BACKUP_DIR = path.join(path.dirname(DB_FILE), 'backups');
 fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -406,9 +406,9 @@ async function syncSite(reason = 'auto') {
     const hist = db.prepare('INSERT INTO history(col,id,data,updated_at,deleted,by,replaced_at) VALUES(?,?,?,?,?,?,?)');
     const put = db.prepare('INSERT OR REPLACE INTO records(col,id,data,updated_at,deleted,by) VALUES(?,?,?,?,?,?)');
     const idOf = (l) => /\/(\d+)\/?$/.exec(l)?.[1];
-    const stare = new Set(JSON.parse(metaGet('adopt_stare') || '[]')); // adoptowane ponad 3 lata temu (nie pobieramy ich ponownie)
+    const stare = new Set(JSON.parse(metaGet('adopt_stare') || '[]')); // adoptowane ponad rok temu (nie pobieramy ich ponownie)
     const naLiscie = new Set(links.map(idOf));
-    // „Adoptowane”: pobieramy tylko psy, których jeszcze nie mamy jako adoptowane (raz), i tylko z ostatnich 3 lat
+    // „Adoptowane”: pobieramy tylko psy, których jeszcze nie mamy jako adoptowane (raz), i tylko z ostatniego roku
     const doPobrania = [...links.map((l) => ({ l, adopt: false })), ...adopt.filter((l) => {
       const id = idOf(l); if (!id || naLiscie.has(id) || stare.has(id)) return false;
       const r = getRow.get('d' + id); if (!r) return true; if (r.deleted) return false;
@@ -421,7 +421,7 @@ async function syncSite(reason = 'auto') {
         if (!sensowny) { res.nieudanych++; continue; }
         const row = getRow.get('d' + imp.id); let old = {};
         if (row) { if (row.deleted) { res.pominietych++; continue; } old = JSON.parse(row.data); }
-        if (zAdopt && !old.id && imp.opublikowano && Date.now() - imp.opublikowano > TRZY_LATA) { stare.add(String(imp.id)); continue; }
+        if (zAdopt && !old.id && imp.opublikowano && Date.now() - imp.opublikowano > ROK) { stare.add(String(imp.id)); continue; }
         const dog = merge.dogFromImport(imp, old);
         if (!old.id) dog.auto_dodany = Date.now();
         if (old.id && cmpDog(dog) === cmpDog(old)) continue;

@@ -21,6 +21,7 @@ with sync_playwright() as p:
     save(pa, 'psy', {**base, 'id': 'd3', 'imie': 'Cezar', 'status': 'w_trakcie', 'zrodlo_id': '3', 'boks': '9'})
     save(pa, 'psy', {**base, 'id': 'd4', 'imie': 'Dina', 'status': 'adoptowany', 'zrodlo_id': '4', 'od_www': now - 30 * 864e5})
     save(pa, 'psy', {**base, 'id': 'd6', 'imie': 'Fido', 'status': 'do_adopcji', 'zrodlo_id': '6', 'zniknal_ze_strony': now - 864e5})
+    save(pa, 'psy', {**base, 'id': 'd8', 'imie': 'Hera', 'status': 'adoptowany', 'zrodlo_id': '8', 'od_www': now - 800 * 864e5})
     save(pa, 'psy', {**base, 'id': 'd7', 'imie': 'Gucio', 'status': 'adoptowany', 'zrodlo_id': '7', 'zniknal_ze_strony': now - 864e5})
     save(pa, 'psy', {**base, 'id': 'd5', 'imie': 'Ela', 'status': 'do_adopcji', 'miejsce': 'dt', 'zrodlo_id': '5'})
     sync(pa)
@@ -32,6 +33,7 @@ with sync_playwright() as p:
     pa.click('[data-act=dog-filter][data-k=byli]'); pa.wait_for_timeout(500); t = text(pa)
     check('Byli u nas: adoptowani ze strony, z latami pobytu', 'Bella' in t and 'Dina' in t and 'Azor' not in t and 'u nas 2020–2026' in t, t[:300])
     check('Byli u nas: bez psów, których nie ma na stronie', 'Fido' not in t and 'Gucio' not in t)
+    check('Byli u nas: tylko adoptowani z ostatniego roku', 'Hera' not in t)
     check('Byli u nas: najpierw ostatnio adoptowani', t.index('Bella') < t.index('Dina'))
     go(pa, '#/psy/d6', 900); check('Pies, którego nie ma na stronie: „Nie ma takiego psa”', 'Nie ma takiego psa' in text(pa))
     # Brama: pies w procesie adopcji jest, z oznaczeniem; byli – nie

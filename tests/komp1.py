@@ -17,8 +17,9 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     ca, pa = newpage(b); login(pa, 'Ania')
     now = pa.evaluate('Date.now()')
-    save(pa, 'psy', {'id': 'd1', 'imie': 'Wilma', 'plec': 'suka', 'wiek': 'ok. 6 lat', 'waga': '18 kg', 'wielkosc': 'średnia', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'boks': '12', 'zdjecia': [], 'zrodlo_id': '1', 'zrodlo_url': 'https://example.com/psy/1', 'od_www': pa.evaluate('new Date(2021,10,18,12).getTime()'), 'haslo': 'WILMA - spokojna dama', 'opis': 'Spokojna suczka.'})
+    save(pa, 'psy', {'id': 'd1', 'imie': 'Wilma', 'plec': 'suka', 'wiek': 'ok. 6 lat', 'waga': '18 kg', 'wielkosc': 'średnia', 'status': 'do_adopcji', 'miejsce': 'schronisko', 'boks': '12', 'zdjecia': [], 'zrodlo_id': '1', 'zrodlo_url': 'https://example.com/psy/1', 'haslo': 'WILMA - spokojna dama', 'opis': 'Wilma lubi długie spacery i drapanie za uchem.', 'od_www': pa.evaluate('new Date(2021,10,18,12).getTime()'), 'haslo': 'WILMA - spokojna dama'})
     go(pa, '#/psy/d1', 1000); t = text(pa)
+    check('administrator widzi opis i hasło ze strony (jak wolontariusz), nad bazą psa', 'WILMA - spokojna dama' in t and 'lubi długie spacery' in t and t.index('lubi długie spacery') < t.index('Dane'))
     for s_ in ['Dane', 'Wydawanie na spacer', 'Zdrowie', 'Dokumenty', 'Dla wolontariuszy', 'Notatki']:
         check('sekcja ' + s_, s_ in t)
     check('Wydawanie na spacer: „Każdy” i pusty opis', pa.locator('.kd', has_text='Kto może wyprowadzać').locator('text=Każdy').count() == 1 and pa.locator('.kd', has_text='Krótki opis').count() == 1)

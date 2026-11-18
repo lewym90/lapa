@@ -24,6 +24,8 @@ export const dogThumb = (d) => {
 // ========== lista psów ==========
 let fq = '', ff = 'aktywne';
 // Filtry listy Psy: Wszystkie, W schronisku, Ulubione i „Byli u nas” (psy z zakładki „Adoptowane” na stronie schroniska).
+// „Byli u nas”: adoptowani w ostatnim roku (data adopcji, a gdy jej nie znamy – data ogłoszenia na stronie).
+const zOstatniegoRoku = (d) => { const t = d.adoptowany_od || d.od_www; return !t || Date.now() - t <= 365.25 * 864e5; };
 const FILTERS = [['aktywne', 'Wszystkie'], ['schronisko', 'W schronisku'], ['ulubione', 'Ulubione'], ['byli', 'Byli u nas']];
 const lata = (d) => {
   if (!d.od_www) return '';
@@ -34,7 +36,7 @@ function filterDogs(dogs, walks = []) {
   const q = fq.trim().toLowerCase(), f = favs();
   return dogs.filter((d) => {
     if (q && !(d.imie || '').toLowerCase().includes(q)) return false;
-    if (ff === 'byli') return byl(d);
+    if (ff === 'byli') return byl(d) && zOstatniegoRoku(d);
     if (byl(d)) return false;
     if (ff === 'aktywne') return true;
     if (ff === 'ulubione') return f.has(d.id);

@@ -35,11 +35,18 @@ Wygląd: zieleń #173B32, kość słoniowa #F4F0E7, grafit #252925, szałwia #A8
 
 ## 2.0.0 (2026-11-17) – nowa aplikacja (gałąź `test`)
 - Właściciel: wersję testową wypuszczamy jako całkiem nową aplikację, bez zgodności ze starą (nikt nie używał starej). Usunięty cały kod zgodności: dawne archiwum, ręczne „adoptowany/zmarł”, migracja terminarza (wydarzenia, moje_zadania), `data_przyjecia`, `kanaly.www`, `moje_zdjecia`/`glowne`, `tagi` psa, potrzeby z liczbą i jednostką, stare kategorie finansów, `miasto` w DT, kafelki zdrowia „tak/nie”, ręczne odświeżanie psów (`importOne`, `refreshStale`) i endpointy `/import`, `/import/links`.
-- „Byli u nas” = psy z zakładki „Adoptowane” na stronie schroniska (`${SITE}/adoptowane?start=`, 9 na stronę). Pies przeniesiony na stronie do „Adoptowanych” trafia do „Byli u nas” przy najbliższym odczycie (z `adoptowany_od`, notatki administratora zostają). Nieznane wcześniej adoptowane psy dodajemy tylko z ostatnich 3 lat (data publikacji); starsze trafiają do listy `adopt_stare` w tabeli meta i nie są pobierane ponownie. Znanych adoptowanych nie pobieramy co godzinę.
+- „Byli u nas” = psy z zakładki „Adoptowane” na stronie schroniska (`${SITE}/adoptowane?start=`, 9 na stronę). Pies przeniesiony na stronie do „Adoptowanych” trafia do „Byli u nas” przy najbliższym odczycie (z `adoptowany_od`, notatki administratora zostają). Nieznane wcześniej adoptowane psy dodajemy tylko z ostatniego roku (od 2.2.3; wcześniej 3 lata), a lista „Byli u nas” pokazuje tylko adoptowanych w ostatnim roku (data publikacji); starsze trafiają do listy `adopt_stare` w tabeli meta i nie są pobierane ponownie. Znanych adoptowanych nie pobieramy co godzinę.
 - Psa, którego nie ma nigdzie na stronie (ani do adopcji, ani w „Adoptowanych”), aplikacja chowa (`zniknal_ze_strony`, `store.list` go pomija, karta: „Nie ma takiego psa”). Dane zostają, a gdy pies pojawi się znowu, wraca sam ze wszystkimi wpisami. Gdy zakładki „Adoptowane” nie da się odczytać, nic nie chowamy, a Start/Ustawienia pokazują uwagę.
 - Naprawione: data publikacji była odczytywana tylko dla maja, października i listopada (nazwy miesięcy w dopełniaczu, np. „marca”).
 - Epoka bazy: serwer losuje znacznik nowej bazy (`/health`, `/sync`). Telefon z danymi ze starszej bazy czyści je (także niewysłane zmiany) i pobiera wszystko od nowa.
 - Adres zakładki „Adoptowane” nie był sprawdzony z piaskownicy (strona niedostępna) – sprawdzić na serwerze `curl -s https://schronisko-nowodwor.com.pl/adoptowane | grep -c '/adoptowane/'`.
+
+## 2.1–2.2.3 (2026-11-18, gałąź `test`)
+- Nowa szata (css/skin.css): ciemne wypukłe karty z jasną krawędzią, złote wypukłe przyciski, wklęsłe pola, nagłówki z medalionem i szerokimi banerami z psami (img/naglowki/*.webp, wygenerowane przez właściciela). Przyciski ekranu przy banerze stoją w wierszu pod nim, nigdy na psie. Brama według renderu właściciela (pasek statystyk, zakładki z ikonami, karty psów z łapką w tle). Ikonka środkowego przycisku: img/brama-ikona.png (maska).
+- Ekran Dziękujemy: przybita piątka (img/dziekujemy.webp) na całym ekranie, wszystko mieści się bez przewijania (sprawdzone 375×667 do 1366×860).
+- Pomoc: „+ Dodaj” przy Psy (wybór psa → okno „Czego potrzebuje?”).
+- Karta psa administratora: hasło i opis ze strony (jak u wolontariusza) nad bazą psa.
+- Zrzuty kontrolne robić z udawanym paskiem stanu iPhone'a (--sat 59px, --sab 34px), szerokość 393.
 
 ## Dla kolejnej sesji
 - Potwierdzić, że serwer jest po aktualizacji 1.14.0 (hasło administratora działa). Komendę aktualizacji podawać tylko, gdy zmieni się `server/*` albo `js/dogmerge.js`.

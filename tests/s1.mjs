@@ -45,14 +45,14 @@ lim=5; const before=JSON.stringify((await all()).map(x=>x.id).sort()); dogs[1].o
 ck('7: zepsuta lista => błąd, bez zmian '+s.blad.slice(0,60),s.ok===false&&!(await dog(1)).opis.includes('NIE POWINNO'));
 lim=999; s=await run(); ck('8: po naprawie znów działa',s.ok&&(await dog(1)).opis.includes('NIE POWINNO'));
 // 1.20: zakładka „Adoptowane” → „Byli u nas”; psa nie ma nigdzie na stronie → znika z aplikacji (wraca, gdy znów się pojawi)
-const rok=new Date().getFullYear();
-adopt[100]=mk(100,{data:`<p>poniedziałek, 3 marca ${rok-1}</p>`}); adopt[101]=mk(101,{data:'<p>środa, 6 marca 2019</p>'});
+const rok=new Date().getFullYear(); const MIES=['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia']; const dw=new Date(Date.now()-60*864e5), niedawno=`<p>poniedziałek, ${dw.getDate()} ${MIES[dw.getMonth()]} ${dw.getFullYear()}</p>`, ponadRok=`<p>poniedziałek, 3 marca ${rok-2}</p>`;
+adopt[100]=mk(100,{data:niedawno}); adopt[101]=mk(101,{data:ponadRok});
 await edit(10,(x)=>({...x,wazne:'notatka admina'}));
 adopt[10]=dogs[10]; delete dogs[10];
 s=await run(); d=await dog(10);
 ck('13: pies przeniesiony na stronie do „Adoptowane” → Byli u nas, notatka zostaje '+JSON.stringify({st:d.status,a:!!d.adoptowany_od,z:d.zniknal_ze_strony,n:s.adoptowanych,u:s.uwaga}),d.status==='adoptowany'&&d.adoptowany_od&&!d.zniknal_ze_strony&&d.wazne==='notatka admina');
-d=await dog(100); ck('13b: nieznany adoptowany z ostatnich 3 lat → dodany',d&&d.status==='adoptowany'&&!d.adoptowany_od&&s.adoptowanych===2&&s.nowych===0);
-ck('13c: adoptowany ponad 3 lata temu → nie dodany',!(await dog(101)));
+d=await dog(100); ck('13b: nieznany adoptowany z ostatniego roku → dodany',d&&d.status==='adoptowany'&&!d.adoptowany_od&&s.adoptowanych===2&&s.nowych===0);
+ck('13c: adoptowany ponad rok temu → nie dodany',!(await dog(101)));
 let ile=pobrane; s=await run(); ck('14: znane adoptowane nie są pobierane co godzinę '+JSON.stringify({p:pobrane-ile,n:s.adoptowanych}),s.adoptowanych===0&&pobrane-ile===0);
 const z2=dogs[2]; delete dogs[2]; s=await run(); d=await dog(2);
 ck('15: psa nie ma nigdzie na stronie → znika z aplikacji '+JSON.stringify({z:!!d.zniknal_ze_strony,n:s.zniknelo}),!!d.zniknal_ze_strony&&d.status==='do_adopcji'&&s.zniknelo===1&&s.zniknelo_nazwy[0]==='Burek2');
@@ -60,7 +60,7 @@ s=await run(); ck('15b: drugie sprawdzenie bez zmian',s.zniknelo===0);
 await edit(2,(x)=>({...x,wazne:'pamiętamy'}));
 dogs[2]=z2; s=await run(); d=await dog(2); ck('16: pojawił się znowu → wraca z notatkami '+JSON.stringify({w:s.wrocilo}),!d.zniknal_ze_strony&&d.wazne==='pamiętamy'&&s.wrocilo===1);
 delete adopt[100]; s=await run(); d=await dog(100); ck('17: zniknął z „Adoptowanych” → znika z aplikacji',!!d.zniknal_ze_strony);
-adopt[100]=mk(100,{data:`<p>poniedziałek, 3 marca ${rok-1}</p>`}); s=await run(); d=await dog(100); ck('17b: wrócił do „Adoptowanych” → znów w Byli u nas',!d.zniknal_ze_strony&&d.status==='adoptowany');
+adopt[100]=mk(100,{data:niedawno}); s=await run(); d=await dog(100); ck('17b: wrócił do „Adoptowanych” → znów w Byli u nas',!d.zniknal_ze_strony&&d.status==='adoptowany');
 adopt10=dogs[10]=adopt[10]; delete adopt[10]; s=await run(); d=await dog(10); ck('18: wrócił z adopcji na listę do adopcji',d.status==='do_adopcji'&&!d.adoptowany_od&&!d.zniknal_ze_strony);
 adoptPada=true; const z3=dogs[3]; delete dogs[3]; s=await run(); d=await dog(3);
 ck('19: „Adoptowane” nie działa → nic nie chowamy, jest uwaga '+JSON.stringify({ok:s.ok,u:s.uwaga.slice(0,50)}),s.ok&&!d.zniknal_ze_strony&&s.uwaga.includes('Adoptowane'));
